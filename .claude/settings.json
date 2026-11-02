@@ -1,0 +1,25 @@
+{
+  "plansDirectory": ".claude/plans",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',d).get('command',''))\" 2>/dev/null || true); case \"$CMD\" in *grep*|*rg\\ *|*ripgrep*|*find\\ *|*fd\\ *|*ack\\ *|*ag\\ *)   [ -f graphify-out/graph.json ] &&   echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Tip: graphify query available. Use it instead of grep for orientation.\"}}'   || true ;; esac"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HIT=$(python3 -c \"import json,sys;d=json.load(sys.stdin);t=d.get('tool_input',d);fp=str(t.get('file_path') or '').lower().replace(chr(92),'/');sys.stdout.write('1' if 'graphify-out/' not in fp and any(fp.endswith(e) for e in ('.ts','.tsx','.js','.jsx','.py','.go','.rs','.java')) else '')\" 2>/dev/null || true); if [ \"$HIT\" = 1 ] && [ -f graphify-out/graph.json ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Reminder: Will you Edit this file? If not, use graphify explain/query instead of reading it.\"}}'; fi || true"
+          }
+        ]
+      }
+    ]
+  }
+}

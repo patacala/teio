@@ -1,0 +1,112 @@
+### Configuración
+@baseUrl = http://localhost:3001/api/v1
+@apiKey = crm_live_xxxxxxxxxxxx
+
+### 1. Enviar email con HTML simple
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "test@ejemplo.com",
+  "subject": "Email de prueba",
+  "html": "<h1>Hola</h1><p>Este es un email de prueba desde el CRM.</p>"
+}
+
+### 2. Enviar email con HTML y remitente personalizado
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "cliente@ejemplo.com",
+  "subject": "Bienvenido a nuestro servicio",
+  "html": "<div style='font-family: Arial, sans-serif;'><h1 style='color: #333;'>¡Bienvenido!</h1><p>Gracias por registrarte en nuestro servicio.</p><p>Saludos,<br>El equipo</p></div>",
+  "from": "soporte@tudominio.com"
+}
+
+### 3. Enviar email con adjuntos
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "cliente@ejemplo.com",
+  "subject": "Tu documento adjunto",
+  "html": "<p>Adjunto encontrarás el documento solicitado.</p>",
+  "attachments": [
+    {
+      "filename": "documento.txt",
+      "content": "SGVsbG8gV29ybGQh",
+      "contentType": "text/plain"
+    }
+  ]
+}
+
+### 4. Enviar email usando template ID (Resend/SendGrid)
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "cliente@ejemplo.com",
+  "templateId": "welcome_template_123",
+  "variables": {
+    "nombre": "Juan Pérez",
+    "empresa": "Acme Corp",
+    "fecha": "2026-06-18"
+  }
+}
+
+### 5. Enviar email con template y adjuntos
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "cliente@ejemplo.com",
+  "templateId": "invoice_template",
+  "variables": {
+    "invoice_number": "INV-2026-001",
+    "amount": "$1,234.56",
+    "due_date": "2026-07-18"
+  },
+  "attachments": [
+    {
+      "filename": "factura.pdf",
+      "content": "base64_encoded_pdf_content_here",
+      "contentType": "application/pdf"
+    }
+  ]
+}
+
+### 6. Error: Intentar enviar sin subject (debe fallar)
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "test@ejemplo.com",
+  "html": "<p>Email sin subject</p>"
+}
+
+### 7. Error: Intentar enviar sin API key (debe fallar con 401)
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+
+{
+  "to": "test@ejemplo.com",
+  "subject": "Test",
+  "html": "<p>Email sin autenticación</p>"
+}
+
+### 8. Error: Email inválido (debe fallar)
+POST {{baseUrl}}/mail/send
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "to": "email-invalido",
+  "subject": "Test",
+  "html": "<p>Email con destinatario inválido</p>"
+}

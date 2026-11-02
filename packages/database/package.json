@@ -1,0 +1,9 @@
+{
+  "name": "@crm/database",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "db:migrate": "psql $DATABASE_URL -f schemas/001_schemas.sql && psql $DATABASE_URL -f schemas/002_organizations.sql && psql $DATABASE_URL -f schemas/003_client_management.sql && psql $DATABASE_URL -f schemas/004_conversation_management.sql && psql $DATABASE_URL -f schemas/005_ai_agents.sql && psql $DATABASE_URL -f schemas/006_scheduling.sql && psql $DATABASE_URL -f schemas/007_integrations.sql && psql $DATABASE_URL -f schemas/008_analytics.sql",
+    "clean": "echo 'nothing to clean'"
+  }
+}

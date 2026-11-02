@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --border: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+  }
+
+  body {
+    @apply bg-surface text-gray-900 antialiased;
+  }
+}
+
+/* Subtle "breathing" pulse for hot funnel-lead cards — draws the eye without
+   being distracting. Plain CSS, not Framer Motion: Framer's motion.div claims
+   onDragStart/onDrag for its own pan-gesture API, which conflicts with the
+   native HTML5 draggable attribute the Kanban board relies on. */
+@keyframes card-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.animate-card-pulse {
+  animation: card-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes notification-badge-pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+.animate-notification-badge-pulse {
+  animation: notification-badge-pulse 2.2s ease-out infinite;
+}
+
+/* Thin, subtle scrollbar — matches the look Radix ScrollArea gave the inbox
+   thread before it switched to react-virtuoso's native scroller for
+   virtualization. Firefox uses `scrollbar-width`; everything else uses the
+   WebKit pseudo-elements. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.gray.300') transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: theme('colors.gray.300');
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: theme('colors.gray.400');
+}
+
+.virtuoso-viewport-fix [data-viewport-type="element"] {
+  width: auto !important;
+}

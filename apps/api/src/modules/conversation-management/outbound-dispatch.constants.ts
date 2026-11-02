@@ -1,0 +1,2 @@
+export const OUTBOUND_DISPATCH_QUEUE = 'OUTBOUND_DISPATCH_QUEUE';
+export const OUTBOUND_DISPATCH_QUEUE_NAME = 'outbound_dispatch';

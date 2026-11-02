@@ -1,0 +1,2 @@
+export const ACTION_EXECUTION_QUEUE = 'ACTION_EXECUTION_QUEUE';
+export const ACTION_EXECUTION_QUEUE_NAME = 'action_execution';

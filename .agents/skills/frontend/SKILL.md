@@ -1,0 +1,54 @@
+---
+description: |
+  Next.js frontend rules for the CRM web app. Auto-triggers when writing
+  pages, components, hooks, or services in apps/web/.
+paths: "apps/web/**"
+allowed-tools: Read Grep Glob Bash(graphify *) Bash(pnpm --filter @crm/web *)
+---
+
+# CRM Frontend — Rules
+
+Before writing frontend code, enforce every rule below. Violations are bugs.
+
+## Quick Reference
+
+- **Stack**: Next.js 15 App Router + Tailwind v3 + Radix UI + CVA + Framer Motion + TanStack Query v5
+- **Auth**: Supabase SSR + `authClient` from `@/lib/auth-client`
+- **Icons**: `lucide-react` only
+- **Theme**: Light-only. No `dark:` variants. Ever.
+
+## Color Tokens (STRICT)
+
+| Token | Value | Use |
+|-------|-------|-----|
+| Accent | `blue-600` | Actions, active states |
+| Surface | `bg-surface` | Page background |
+| Panel | `bg-panel` | Cards, modals, drawers |
+| Border | `border-border` | All borders |
+| Text | `gray-900` / `gray-500` / `gray-400` | Primary / secondary / muted |
+
+**Forbidden**: indigo, fuchsia, cyan, purple, custom hex.
+
+## Critical Rules
+
+1. **Radix over native**: If a component exists in `src/components/ui/`, use it. Never `<select>`, `<dialog>`, native.
+2. **Data flow**: Page → Hook → Service → authClient. Never call authClient from a component.
+3. **Toast**: `import { toast } from '@/hooks/useToast'`. Variant `'error'` not `'destructive'`.
+4. **Pagination**: `PaginatedResponse` uses `.items` field, never `.data`.
+5. **Enums**: Import from `@crm/shared`. Never hardcode `'whatsapp'` or `'admin'`.
+6. **Skeletons**: Every list/table shows `<Skeleton>` while loading. Always empty state too.
+7. **Cache**: After mutations, always `invalidateQueries({ queryKey: ['domain'] })`.
+8. **Responsive**: Grid with `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`.
+
+## Architecture Layers
+
+```
+Page (layout + orchestration, no logic)
+  → Hook useXxx (data fetching, mutations, cache)
+    → Service xxxService (HTTP via authClient, typed)
+      → authClient (token mgmt, error parsing)
+```
+
+For detailed patterns (component library, Framer Motion, avatar/badge patterns), see [references/](references/).
+
+$ARGUMENTS
