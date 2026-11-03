@@ -60,3 +60,6 @@ graphify-out/
 # Misc
 *.pem
 .vercel
+
+# Project export zips
+exports/

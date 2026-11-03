@@ -12,7 +12,8 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:migrate": "turbo run db:migrate",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "export:zip": "bash scripts/export-zip.sh"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
