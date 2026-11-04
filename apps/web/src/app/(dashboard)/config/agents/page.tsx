@@ -42,15 +42,15 @@ export default function ConfigAgentsPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Your agent</h1>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <h1 className="text-lg font-semibold text-primary">Your agent</h1>
+        <p className="text-xs text-secondary mt-0.5">
           Identity, personality, rules, strategies, and knowledge for the conversational agent.
         </p>
       </div>
 
       <MessageRoutingSection />
 
-      <div className="rounded-xl border border-border bg-panel p-5">
+      <div className="rounded-xl border border-subtle bg-surface p-5">
         {isLoading && (
           <div className="space-y-3">
             <Skeleton className="h-8 w-64" />
@@ -61,19 +61,19 @@ export default function ConfigAgentsPage() {
 
         {error && (
           <div className="flex flex-col items-center justify-center text-center py-12">
-            <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-3">
-              <Bot className="h-6 w-6 text-red-400" />
+            <div className="w-12 h-12 rounded-xl bg-danger/10 flex items-center justify-center mb-3">
+              <Bot className="h-6 w-6 text-danger" />
             </div>
-            <h3 className="font-medium text-gray-900 text-sm">You don't have an agent yet</h3>
-            <p className="text-xs text-gray-400 mt-1 max-w-sm mb-4">
+            <h3 className="font-medium text-primary text-sm">You don&apos;t have an agent yet</h3>
+            <p className="text-xs text-muted mt-1 max-w-sm mb-4">
               {(error as Error).message ||
                 "Create your organization's conversational agent — it configures itself."}
             </p>
-            <label className="text-xs font-medium text-gray-600 mb-1">Agent type</label>
+            <label className="text-xs font-medium text-secondary mb-1">Agent type</label>
             <select
               value={agentType}
               onChange={(e) => setAgentType(e.target.value as AgentType)}
-              className="rounded-md border border-border bg-white px-3 py-1.5 text-sm text-gray-800 mb-4"
+              className="rounded-md border border-subtle bg-surface-raised px-3 py-1.5 text-sm text-primary mb-4"
             >
               {AGENT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -82,7 +82,7 @@ export default function ConfigAgentsPage() {
             <Button
               onClick={handleProvision}
               disabled={provision.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-accent hover:bg-accent-hover text-on-accent"
             >
               {provision.isPending ? 'Creating…' : 'Create agent'}
             </Button>
@@ -91,7 +91,7 @@ export default function ConfigAgentsPage() {
 
         {config && (
           <Tabs defaultValue="brief">
-            <div className="flex items-center justify-between mb-5 gap-3">
+            <div className="flex flex-wrap items-center justify-between mb-5 gap-3">
               <TabsList>
                 <TabsTrigger value="brief">Brief</TabsTrigger>
                 <TabsTrigger value="identity">Identity</TabsTrigger>
@@ -104,7 +104,7 @@ export default function ConfigAgentsPage() {
               <button
                 type="button"
                 onClick={() => setExpertMode((v) => !v)}
-                className="shrink-0 text-xs font-medium text-gray-500 hover:text-gray-700"
+                className="shrink-0 text-xs font-medium text-secondary hover:text-primary"
               >
                 {expertMode ? 'Hide expert settings' : 'Expert mode'}
               </button>

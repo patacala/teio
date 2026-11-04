@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Sparkles } from 'lucide-react';
 import { useConfigureFromBrief } from '@/hooks/useAIAgents';
 import { toast } from '@/hooks/useToast';
@@ -36,17 +37,16 @@ export function BriefTab() {
   return (
     <div className="space-y-5 max-w-2xl">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+        <label className="block text-xs font-medium text-primary mb-1.5">
           Describe your business and selling style
         </label>
-        <textarea
+        <Textarea
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
           placeholder={PLACEHOLDER}
           rows={10}
-          className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
         />
-        <p className="text-xs text-gray-400 mt-1.5">
+        <p className="text-xs text-muted mt-1.5">
           This generates the full configuration automatically. You can fine-tune
           anything in the other tabs afterwards.
         </p>
@@ -56,7 +56,7 @@ export function BriefTab() {
         <Button
           onClick={handleGenerate}
           disabled={generate.isPending || !brief.trim()}
-          className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+          className="bg-accent hover:bg-accent-hover text-on-accent gap-1.5"
         >
           <Sparkles className="h-4 w-4" />
           {generate.isPending ? 'Generating…' : 'Generate configuration'}
@@ -75,7 +75,7 @@ function Chips({ items }: { items: string[] }) {
       {items.map((it, i) => (
         <span
           key={i}
-          className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+          className="rounded-md bg-surface-raised px-2 py-0.5 text-xs text-primary"
         >
           {it}
         </span>
@@ -87,7 +87,7 @@ function Chips({ items }: { items: string[] }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-secondary">{title}</h4>
       {children}
     </div>
   );
@@ -97,28 +97,28 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function BriefSummary({ result }: { result: BriefResult }) {
   const { identity, personality, rules, strategies } = result;
   return (
-    <div className="rounded-xl border border-border bg-gray-50/60 p-4 space-y-4">
-      <p className="text-xs text-gray-500">
-        Here's what your brief was turned into — this is now live. Edit any part
+    <div className="rounded-xl border border-subtle bg-surface-raised/60 p-4 space-y-4">
+      <p className="text-xs text-secondary">
+        Here&apos;s what your brief was turned into — this is now live. Edit any part
         in the tabs above.
       </p>
 
       <Section title="Identity">
-        <p className="text-sm font-medium text-gray-900">{identity.name}</p>
+        <p className="text-sm font-medium text-primary">{identity.name}</p>
         {identity.description && (
-          <p className="text-xs text-gray-600">{identity.description}</p>
+          <p className="text-xs text-secondary">{identity.description}</p>
         )}
         <Chips items={identity.principles} />
       </Section>
 
       <Section title="Personality">
-        <p className="text-xs text-gray-600">Tone: {personality.brand_tone}</p>
+        <p className="text-xs text-secondary">Tone: {personality.brand_tone}</p>
         <Chips items={personality.brand_traits} />
       </Section>
 
       {rules?.length > 0 && (
         <Section title={`Rules (${rules.length})`}>
-          <ul className="text-xs text-gray-600 space-y-0.5">
+          <ul className="text-xs text-secondary space-y-0.5">
             {rules.map((r, i) => (
               <li key={i}>
                 {r.intent ? `When ${r.intent} → ` : ''}
@@ -131,10 +131,10 @@ function BriefSummary({ result }: { result: BriefResult }) {
 
       {strategies?.length > 0 && (
         <Section title={`Strategies (${strategies.length})`}>
-          <ul className="text-xs text-gray-600 space-y-0.5">
+          <ul className="text-xs text-secondary space-y-0.5">
             {strategies.map((s, i) => (
               <li key={i}>
-                <span className="font-medium text-gray-800">{s.name}</span>
+                <span className="font-medium text-primary">{s.name}</span>
                 {s.description ? ` — ${s.description}` : ''}
               </li>
             ))}

@@ -17,7 +17,7 @@ export const DrawerOverlay = forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+      'fixed inset-0 z-50 bg-black/75 backdrop-blur-[2px]',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
@@ -29,14 +29,15 @@ DrawerOverlay.displayName = 'DrawerOverlay';
 
 export const DrawerContent = forwardRef<
   ElementRef<typeof DialogPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { side?: 'left' | 'right' }
+>(({ className, children, side = 'right', ...props }, ref) => (
   <DialogPrimitive.Portal>
     <DrawerOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed right-0 top-0 z-50 h-full w-full max-w-sm bg-white shadow-xl p-6',
+        'fixed top-0 z-50 h-full w-full max-w-sm border-subtle bg-surface p-6 text-primary shadow-menu',
+        side === 'right' ? 'right-0 border-l' : 'left-0 border-r',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
         'duration-300',
@@ -45,8 +46,9 @@ export const DrawerContent = forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg p-1 text-muted transition-colors hover:bg-surface-hover hover:text-primary">
         <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
@@ -58,18 +60,19 @@ export function DrawerHeader({ className, ...props }: HTMLAttributes<HTMLDivElem
 }
 DrawerHeader.displayName = 'DrawerHeader';
 
-export const DrawerTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h2 ref={ref} className={cn('text-base font-semibold text-gray-900', className)} {...props} />
-  ),
-);
+export const DrawerTitle = forwardRef<
+  ElementRef<typeof DialogPrimitive.Title>,
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title ref={ref} className={cn('text-base font-semibold text-primary', className)} {...props} />
+));
 DrawerTitle.displayName = 'DrawerTitle';
 
 export function DrawerFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'flex items-center gap-2 justify-end mt-6 pt-4 border-t border-border',
+        'flex items-center gap-2 justify-end mt-6 pt-4 border-t border-subtle',
         className,
       )}
       {...props}

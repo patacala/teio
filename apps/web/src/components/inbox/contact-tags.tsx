@@ -39,7 +39,7 @@ export function ContactTags({ contactId, tags }: ContactTagsProps) {
             {tag}
             <button
               onClick={() => removeTag.mutate({ contactId, tagId: tag })}
-              className="hover:text-red-500 transition-colors"
+              className="hover:text-danger transition-colors"
             >
               <X className="h-2.5 w-2.5" />
             </button>

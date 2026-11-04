@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { KNOWLEDGE_CATEGORIES } from './KnowledgeFilters';
 import type { KnowledgeEntry, CreateKnowledgeEntryBody, UpdateKnowledgeEntryBody } from '@/services/knowledge.service';
 
@@ -68,7 +69,7 @@ export function KnowledgeEditor({ open, entry, onOpenChange, onSave, isSaving }:
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-xs font-medium text-primary mb-1">Title</label>
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -79,7 +80,7 @@ export function KnowledgeEditor({ open, entry, onOpenChange, onSave, isSaving }:
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-xs font-medium text-primary mb-1">Category</label>
               <Select
                 value={form.category}
                 onValueChange={(v) => setForm({ ...form, category: v })}
@@ -98,7 +99,7 @@ export function KnowledgeEditor({ open, entry, onOpenChange, onSave, isSaving }:
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-xs font-medium text-primary mb-1">Status</label>
               <div className="flex gap-2 h-9 items-center">
                 {(['active', 'inactive'] as const).map((s) => (
                   <button
@@ -107,8 +108,8 @@ export function KnowledgeEditor({ open, entry, onOpenChange, onSave, isSaving }:
                     onClick={() => setForm({ ...form, status: s })}
                     className={`flex-1 h-8 rounded-lg text-xs font-medium border transition-colors capitalize ${
                       form.status === s
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-border hover:border-gray-300'
+                        ? 'bg-olive-dark text-accent border-accent/25'
+                        : 'bg-surface text-secondary border-subtle hover:border-strong'
                     }`}
                   >
                     {s}
@@ -119,14 +120,13 @@ export function KnowledgeEditor({ open, entry, onOpenChange, onSave, isSaving }:
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Content</label>
-            <textarea
+            <label className="block text-xs font-medium text-primary mb-1">Content</label>
+            <Textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
               placeholder="Write the knowledge base content here…"
               rows={10}
-              required
-              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required className="resize-y"
             />
           </div>
 

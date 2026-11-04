@@ -13,8 +13,8 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').rep
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse text-gray-400">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted">Loading…</div>
       </div>
     }>
       <ResetPasswordContent />
@@ -70,11 +70,11 @@ function ResetPasswordContent() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Invalid link</h1>
-          <p className="text-gray-500 text-sm mb-4">This password reset link is invalid or has expired.</p>
-          <Link href="/forgot-password" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="bg-surface rounded-2xl shadow-xs border border-subtle p-8 max-w-md w-full text-center">
+          <h1 className="text-xl font-bold text-primary mb-2">Invalid link</h1>
+          <p className="text-secondary text-sm mb-4">This password reset link is invalid or has expired.</p>
+          <Link href="/forgot-password" className="text-accent hover:text-accent-hover text-sm font-medium">
             Request a new link
           </Link>
         </div>
@@ -83,31 +83,31 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-surface rounded-2xl shadow-xs border border-subtle p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
-              <MessageSquare className="w-6 h-6 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-accent rounded-xl mb-4">
+              <MessageSquare className="w-6 h-6 text-on-accent" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
-            <p className="text-gray-500 mt-1">Enter your new password below</p>
+            <h1 className="text-2xl font-bold text-primary">Set new password</h1>
+            <p className="text-secondary mt-1">Enter your new password below</p>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-lg bg-danger/10 border border-danger/25 px-4 py-3 text-sm text-danger">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-primary mb-1">
                 New password
               </label>
               <Input
@@ -122,7 +122,7 @@ function ResetPasswordContent() {
             </div>
 
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-primary mb-1">
                 Confirm password
               </label>
               <Input
@@ -140,8 +140,8 @@ function ResetPasswordContent() {
               {loading ? 'Updating…' : 'Update password'}
             </Button>
 
-            <p className="text-center text-sm text-gray-500">
-              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+            <p className="text-center text-sm text-secondary">
+              <Link href="/login" className="text-accent hover:text-accent-hover font-medium">
                 Back to login
               </Link>
             </p>

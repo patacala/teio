@@ -32,7 +32,7 @@ export function FunnelKanbanView({ stages }: Props) {
         />
       ))}
       {sorted.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-sm text-muted">
           Add stages in the list view to use the Kanban board.
         </div>
       )}

@@ -1,56 +1,57 @@
 ---
 description: |
-  Verificacion pre-deploy. Corre builds, typecheck, revisa imports
-  problematicos y valida que Docker compilara correctamente.
+  Pre-deploy verification. Runs builds, typecheck, checks for problematic
+  imports, and validates that Docker will build correctly.
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Bash(pnpm *) Bash(graphify *) Bash(docker *)
 ---
 
 # Pre-Deploy Check
 
-## Verificaciones automaticas
+## Automatic checks
 
 ### 1. Build backend
 ```bash
 pnpm --filter @crm/api build
 ```
 
-### 2. Typecheck frontend
+### 2. Typecheck and lint frontend
 ```bash
 pnpm --filter @crm/web typecheck
+pnpm --filter @crm/web lint
 ```
 
-### 3. Imports peligrosos de express
+### 3. Dangerous express imports
 
-Busca value imports de express que causan `require('express')` en runtime
-(causa conocida de crash en Docker con pnpm):
+Look for value imports of express that cause `require('express')` at runtime
+(a known cause of crashes in Docker with pnpm):
 
 ```bash
-# Buscar: import { Request } from 'express'  (sin 'type')
-# Correcto: import type { Request } from 'express'
+# Look for: import { Request } from 'express'  (without 'type')
+# Correct:  import type { Request } from 'express'
 ```
 
-Si encuentras value imports en controllers con decorators, cambialos a `import type`.
+If you find value imports in controllers with decorators, change them to `import type`.
 
-### 4. Verificar migraciones pendientes
+### 4. Check pending migrations
 
-Revisa si hay cambios en entities que no tienen migracion SQL correspondiente.
+Check whether there are entity changes without a matching SQL migration.
 
-### 5. Variables de entorno
+### 5. Environment variables
 
-Verifica que las env vars necesarias estan documentadas:
+Verify that the required env vars are documented:
 - SUPABASE_JWT_SECRET
 - DATABASE_URL / REDIS_URL
-- STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET (si billing)
-- RETELL_API_KEY (si voice)
+- STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET (if billing)
+- RETELL_API_KEY (if voice)
 - NEXT_PUBLIC_API_URL / NEXT_PUBLIC_WEB_URL
 
-### 6. Resultado
+### 6. Result
 
-Reporta:
+Report:
 - Build status (pass/fail)
-- Imports peligrosos encontrados
-- Migraciones pendientes
-- Env vars faltantes
+- Dangerous imports found
+- Pending migrations
+- Missing env vars
 
 $ARGUMENTS

@@ -49,16 +49,16 @@ function StatCard({
   loading: boolean;
 }) {
   return (
-    <div className="bg-panel border border-border rounded-xl p-4 flex items-start gap-3">
+    <div className="bg-surface border border-subtle rounded-xl p-4 flex items-start gap-3">
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}>
         <Icon className="h-4 w-4" />
       </div>
       <div>
-        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+        <p className="text-xs text-secondary mb-0.5">{label}</p>
         {loading ? (
           <Skeleton className="h-6 w-16" />
         ) : (
-          <p className="text-xl font-bold text-gray-900">{value?.toLocaleString() ?? '—'}</p>
+          <p className="text-xl font-bold text-primary">{value?.toLocaleString() ?? '—'}</p>
         )}
       </div>
     </div>
@@ -128,10 +128,10 @@ export default function ContactsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Contacts</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
+          <h1 className="text-xl font-bold text-primary">Contacts</h1>
+          <p className="text-secondary text-sm mt-0.5">
             {stats?.total !== undefined
               ? `${stats.total.toLocaleString()} contacts`
               : 'Manage your customer contacts'}
@@ -144,7 +144,7 @@ export default function ContactsPage() {
           </Button>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            className="gap-2 bg-accent hover:bg-accent-hover text-on-accent"
           >
             <Plus className="h-4 w-4" />
             Add Contact
@@ -153,33 +153,33 @@ export default function ContactsPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Contacts"
           value={stats?.total}
           icon={Users}
-          iconClass="bg-gray-100 text-gray-600"
+          iconClass="bg-surface-raised text-secondary"
           loading={statsLoading}
         />
         <StatCard
           label="New This Month"
           value={stats?.new_this_month}
           icon={Calendar}
-          iconClass="bg-blue-50 text-blue-600"
+          iconClass="bg-olive-dark text-accent"
           loading={statsLoading}
         />
         <StatCard
           label="AI Handled"
           value={stats?.ai_handled}
           icon={Bot}
-          iconClass="bg-blue-50 text-blue-600"
+          iconClass="bg-olive-dark text-accent"
           loading={statsLoading}
         />
         <StatCard
           label="Human Handled"
           value={stats?.human_handled}
           icon={User}
-          iconClass="bg-gray-100 text-gray-600"
+          iconClass="bg-surface-raised text-secondary"
           loading={statsLoading}
         />
       </div>
@@ -187,9 +187,9 @@ export default function ContactsPage() {
       {/* Table card */}
       <Card>
         {/* Filters */}
-        <div className="p-4 border-b border-gray-100 flex gap-3 items-center">
+        <div className="p-4 border-b border-subtle flex gap-3 items-center">
           <div className="relative max-w-xs flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
             <Input
               placeholder="Search contacts…"
               value={search}
@@ -222,12 +222,12 @@ export default function ContactsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className="border-b border-subtle">
                 {['Name', 'Email', 'Phone', 'Stage', 'Score', 'Handled By', 'Last Activity'].map(
                   (h) => (
                     <th
                       key={h}
-                      className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-4 py-3"
+                      className="text-left text-[11px] font-semibold text-muted uppercase tracking-wider px-4 py-3"
                     >
                       {h}
                     </th>
@@ -238,7 +238,7 @@ export default function ContactsPage() {
             <tbody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
+                  <tr key={i} className="border-b border-subtle">
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <Skeleton className="h-4 w-24" />
@@ -250,13 +250,13 @@ export default function ContactsPage() {
                 <tr>
                   <td colSpan={7}>
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
-                        <Users className="h-5 w-5 text-gray-400" />
+                      <div className="w-12 h-12 rounded-2xl bg-surface-raised flex items-center justify-center mb-3">
+                        <Users className="h-5 w-5 text-muted" />
                       </div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-primary">
                         {debouncedSearch ? `No results for "${debouncedSearch}"` : 'No contacts yet'}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-muted mt-1">
                         {debouncedSearch
                           ? 'Try a different search term'
                           : 'Add your first contact to get started'}
@@ -284,54 +284,54 @@ export default function ContactsPage() {
                     <tr
                       key={contact.id}
                       onClick={() => router.push(`/contacts/${contact.id}`)}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="border-b border-subtle hover:bg-surface-raised transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-olive-dark text-accent flex items-center justify-center text-xs font-bold shrink-0">
                             {getInitials(fullName)}
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{fullName}</span>
+                          <span className="text-sm font-medium text-primary">{fullName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {contact.email ?? <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-sm text-secondary">
+                        {contact.email ?? <span className="text-muted">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {contact.phone ?? <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-sm text-secondary">
+                        {contact.phone ?? <span className="text-muted">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {stage ? (
-                          <span className="bg-gray-100 text-gray-700 text-[11px] rounded-full px-2 py-0.5 font-medium">
+                          <span className="bg-surface-raised text-primary text-[11px] rounded-full px-2 py-0.5 font-medium">
                             {stage.name}
                           </span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 min-w-[72px]">
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                          <div className="flex-1 bg-surface-raised rounded-full h-1.5">
                             <div
-                              className="bg-blue-600 h-1.5 rounded-full"
+                              className="bg-accent h-1.5 rounded-full"
                               style={{ width: `${score}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-500 w-6 text-right">{score}</span>
+                          <span className="text-xs text-secondary w-6 text-right">{score}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         {contact.handled_by === 'human' ? (
-                          <span className="bg-gray-100 text-gray-700 text-[11px] rounded-full px-2 py-0.5 font-medium">
+                          <span className="bg-surface-raised text-primary text-[11px] rounded-full px-2 py-0.5 font-medium">
                             Human
                           </span>
                         ) : (
-                          <span className="bg-blue-50 text-blue-700 text-[11px] rounded-full px-2 py-0.5 font-medium">
+                          <span className="bg-olive-dark text-accent text-[11px] rounded-full px-2 py-0.5 font-medium">
                             AI
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-400">
+                      <td className="px-4 py-3 text-xs text-muted">
                         {contact.last_contacted_at
                           ? formatRelativeTime(contact.last_contacted_at)
                           : contact.created_at
@@ -348,8 +348,8 @@ export default function ContactsPage() {
 
         {/* Pagination */}
         {data?.meta && data.meta.total_pages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-subtle">
+            <p className="text-xs text-secondary">
               Page {data.meta.page} of {data.meta.total_pages} ·{' '}
               {data.meta.total.toLocaleString()} contacts
             </p>
@@ -384,7 +384,7 @@ export default function ContactsPage() {
           <form onSubmit={handleCreate} className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">First name</label>
+                <label className="block text-xs font-medium text-primary mb-1.5">First name</label>
                 <Input
                   required
                   value={form.first_name}
@@ -393,7 +393,7 @@ export default function ContactsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Last name</label>
+                <label className="block text-xs font-medium text-primary mb-1.5">Last name</label>
                 <Input
                   required
                   value={form.last_name}
@@ -403,7 +403,7 @@ export default function ContactsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-primary mb-1.5">Email</label>
               <Input
                 type="email"
                 value={form.email}
@@ -412,7 +412,7 @@ export default function ContactsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone</label>
+              <label className="block text-xs font-medium text-primary mb-1.5">Phone</label>
               <Input
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -425,7 +425,7 @@ export default function ContactsPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-accent hover:bg-accent-hover text-on-accent"
                 disabled={createContact.isPending}
               >
                 {createContact.isPending ? 'Creating…' : 'Create Contact'}

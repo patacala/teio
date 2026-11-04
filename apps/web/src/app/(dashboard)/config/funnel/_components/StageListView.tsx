@@ -141,7 +141,7 @@ export function StageListView({ funnelId }: Props) {
     return (
       <div className="space-y-2 max-w-2xl">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-14 rounded-xl border border-border animate-pulse bg-panel" />
+          <div key={i} className="h-14 rounded-xl border border-subtle animate-pulse bg-surface" />
         ))}
       </div>
     );
@@ -150,7 +150,7 @@ export function StageListView({ funnelId }: Props) {
   return (
     <div className="space-y-2 max-w-2xl">
       {sorted.map((stage, index) => (
-        <div key={stage.id} className="bg-panel border border-border rounded-xl px-4 py-3">
+        <div key={stage.id} className="bg-surface border border-subtle rounded-xl px-4 py-3">
           {editingId === stage.id ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -162,12 +162,12 @@ export function StageListView({ funnelId }: Props) {
                 />
                 <button
                   onClick={() => saveEdit(stage.id)}
-                  className="text-green-600 hover:text-green-700"
+                  className="text-success hover:text-success"
                   disabled={updateStage.isPending}
                 >
                   <Check className="h-4 w-4" />
                 </button>
-                <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600">
+                <button onClick={cancelEdit} className="text-muted hover:text-secondary">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -175,38 +175,38 @@ export function StageListView({ funnelId }: Props) {
               <select
                 value={editForm.stage_type}
                 onChange={(e) => setEditForm((f) => ({ ...f, stage_type: e.target.value as StageType }))}
-                className="h-8 rounded-md border border-border bg-white px-2 text-xs w-full"
+                className="h-8 rounded-md border border-subtle bg-surface-raised px-2 text-xs w-full"
               >
                 {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <GripVertical className="h-4 w-4 text-gray-300 shrink-0" />
+              <GripVertical className="h-4 w-4 text-muted shrink-0" />
               <div
                 className="w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: stage.color ?? '#9CA3AF' }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-gray-900">{stage.name}</p>
+                  <p className="text-sm font-medium text-primary">{stage.name}</p>
                   {stage.stage_type && stage.stage_type !== 'custom' && (
                     <span
                       className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        stage.is_terminal ? 'bg-gray-800 text-white' : 'bg-blue-50 text-blue-600'
+                        stage.is_terminal ? 'bg-app text-primary' : 'bg-olive-dark text-accent'
                       }`}
                     >
                       {STAGE_TYPES.find((t) => t.value === stage.stage_type)?.label ?? stage.stage_type}
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-gray-400">Position {index + 1}</p>
+                <p className="text-[10px] text-muted">Position {index + 1}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => moveStage(index, -1)}
                   disabled={index === 0 || reorderStages.isPending}
-                  className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                  className="p-1 text-muted hover:text-primary disabled:opacity-30"
                   title="Move up"
                 >
                   ↑
@@ -214,21 +214,21 @@ export function StageListView({ funnelId }: Props) {
                 <button
                   onClick={() => moveStage(index, 1)}
                   disabled={index === sorted.length - 1 || reorderStages.isPending}
-                  className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                  className="p-1 text-muted hover:text-primary disabled:opacity-30"
                   title="Move down"
                 >
                   ↓
                 </button>
                 <button
                   onClick={() => startEdit(stage.id, stage.name, stage.color ?? STAGE_COLORS[0], stage.stage_type ?? 'custom')}
-                  className="p-1 text-gray-300 hover:text-blue-500 transition-colors"
+                  className="p-1 text-muted hover:text-accent transition-colors"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(stage.id)}
                   disabled={deleteStage.isPending}
-                  className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                  className="p-1 text-muted hover:text-danger transition-colors"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -239,7 +239,7 @@ export function StageListView({ funnelId }: Props) {
       ))}
 
       {/* Add form */}
-      <form onSubmit={handleAdd} className="bg-panel border border-dashed border-border rounded-xl px-4 py-3 space-y-2">
+      <form onSubmit={handleAdd} className="bg-surface border border-dashed border-subtle rounded-xl px-4 py-3 space-y-2">
         <div className="flex items-center gap-2">
           <Input
             value={addForm.name}
@@ -250,7 +250,7 @@ export function StageListView({ funnelId }: Props) {
           <select
             value={addForm.stage_type}
             onChange={(e) => setAddForm((f) => ({ ...f, stage_type: e.target.value as StageType }))}
-            className="h-8 rounded-md border border-border bg-white px-2 text-xs shrink-0"
+            className="h-8 rounded-md border border-subtle bg-surface-raised px-2 text-xs shrink-0"
           >
             {STAGE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
@@ -258,7 +258,7 @@ export function StageListView({ funnelId }: Props) {
             type="submit"
             size="sm"
             disabled={createStage.isPending || !addForm.name.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+            className="bg-accent hover:bg-accent-hover text-on-accent shrink-0"
           >
             {createStage.isPending ? '…' : 'Add'}
           </Button>

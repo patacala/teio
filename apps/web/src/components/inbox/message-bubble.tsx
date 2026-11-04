@@ -75,7 +75,7 @@ function MessageContent({ content, isOutbound }: { content: string; isOutbound: 
 
   // Nothing structured found — keep the original plain paragraph, unchanged.
   if (blocks.every((b) => b.kind === 'text')) {
-    return <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{content}</p>;
+    return <p className="whitespace-pre-wrap wrap-break-word wrap-anywhere">{content}</p>;
   }
 
   return (
@@ -83,29 +83,29 @@ function MessageContent({ content, isOutbound }: { content: string; isOutbound: 
       {blocks.map((block, idx) => {
         if (block.kind === 'text') {
           return (
-            <p key={idx} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            <p key={idx} className="whitespace-pre-wrap wrap-break-word wrap-anywhere">
               {block.text}
             </p>
           );
         }
         if (block.kind === 'fields') {
           return (
-            <div key={idx} className={cn('rounded-lg overflow-hidden', isOutbound ? 'bg-white/10' : 'bg-white')}>
+            <div key={idx} className={cn('rounded-lg overflow-hidden', isOutbound ? 'bg-black/20' : 'bg-surface')}>
               {block.items.map((it, i2) => (
                 <div
                   key={i2}
                   className={cn(
                     'flex items-baseline gap-3 px-2.5 py-1.5 text-xs min-w-0',
-                    i2 > 0 && (isOutbound ? 'border-t border-white/15' : 'border-t border-gray-200'),
+                    i2 > 0 && (isOutbound ? 'border-t border-surface/8' : 'border-t border-subtle'),
                   )}
                 >
-                  <span className={cn('shrink-0 font-medium', isOutbound ? 'text-blue-100' : 'text-gray-500')}>
+                  <span className={cn('shrink-0 font-medium', isOutbound ? 'text-accent/80' : 'text-secondary')}>
                     {it.label}
                   </span>
                   <span
                     className={cn(
-                      'text-right ml-auto min-w-0 break-words [overflow-wrap:anywhere]',
-                      isOutbound ? 'text-white' : 'text-gray-900',
+                      'text-right ml-auto min-w-0 wrap-break-word wrap-anywhere',
+                      'text-primary',
                     )}
                   >
                     {it.value}
@@ -123,21 +123,21 @@ function MessageContent({ content, isOutbound }: { content: string; isOutbound: 
                 key={i2}
                 className={cn(
                   'flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs min-w-0',
-                  isOutbound ? 'bg-white/10' : 'bg-white border border-gray-200',
+                  isOutbound ? 'bg-black/20' : 'bg-surface border border-subtle',
                 )}
               >
                 <span
                   className={cn(
                     'shrink-0 flex items-center justify-center h-4 w-4 rounded-full text-[10px] font-bold mt-px',
-                    isOutbound ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700',
+                    isOutbound ? 'bg-accent/15 text-accent' : 'bg-olive-dark text-accent',
                   )}
                 >
                   {i2 + 1}
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 break-words [overflow-wrap:anywhere]',
-                    isOutbound ? 'text-white' : 'text-gray-900',
+                    'min-w-0 wrap-break-word wrap-anywhere',
+                    'text-primary',
                   )}
                 >
                   {opt}
@@ -219,15 +219,15 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           className={cn(
             'rounded-xl px-3.5 py-2.5 text-sm w-fit max-w-full min-w-0 box-border',
             isOutbound
-              ? 'bg-blue-600 text-white rounded-br-sm'
-              : 'bg-gray-100 text-gray-900 rounded-bl-sm',
+              ? 'border border-accent/15 bg-olive-dark text-primary rounded-br-sm'
+              : 'border border-surface/6 bg-surface-raised text-primary rounded-bl-sm',
           )}
         >
           <MessageContent content={message.content} isOutbound={isOutbound} />
         </div>
 
         <div className={cn('flex items-center gap-1.5 min-w-0 max-w-full', isOutbound ? 'flex-row-reverse' : 'flex-row')}>
-          <span className="text-[10px] text-gray-400 truncate">
+          <span className="text-[10px] text-muted truncate">
             {formatRelativeTime(message.created_at)}
           </span>
           <ChannelBadge channel={message.channel} />

@@ -73,7 +73,7 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
             ...(draft.secret ? { secret: draft.secret } : {}),
           },
         });
-        toast({ title: 'Webhook actualizado', variant: 'default' });
+        toast({ title: 'Webhook updated', variant: 'default' });
       } else {
         await createWebhook.mutateAsync({
           name: draft.name,
@@ -81,11 +81,11 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
           events: draft.events,
           ...(draft.secret ? { secret: draft.secret } : {}),
         });
-        toast({ title: 'Webhook creado', variant: 'default' });
+        toast({ title: 'Webhook created', variant: 'default' });
       }
       onClose();
     } catch {
-      toast({ title: 'Error al guardar webhook', variant: 'error' });
+      toast({ title: 'Error saving webhook', variant: 'error' });
     }
   };
 
@@ -96,22 +96,22 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
     <Drawer open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DrawerContent className="max-w-md overflow-y-auto">
         <DrawerHeader>
-          <DrawerTitle>{isEdit ? 'Editar webhook' : 'Nuevo webhook'}</DrawerTitle>
+          <DrawerTitle>{isEdit ? 'Edit webhook' : 'New webhook'}</DrawerTitle>
         </DrawerHeader>
 
         <div className="space-y-4 px-0">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
+            <label className="block text-xs font-medium text-primary mb-1">Name</label>
             <Input
               required
               value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder="Notificaciones Slack"
+              placeholder="Slack notifications"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Target URL</label>
+            <label className="block text-xs font-medium text-primary mb-1">Target URL</label>
             <Input
               required
               type="url"
@@ -122,19 +122,19 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Secreto <span className="text-gray-400">(opcional)</span>
+            <label className="block text-xs font-medium text-primary mb-1">
+              Secret <span className="text-muted">(optional)</span>
             </label>
             <Input
               type="password"
               value={draft.secret}
               onChange={(e) => setDraft((d) => ({ ...d, secret: e.target.value }))}
-              placeholder={isEdit ? 'Dejar vacío para no cambiar' : 'Dejar vacío para sin firma HMAC'}
+              placeholder={isEdit ? 'Leave empty to keep it unchanged' : 'Leave empty for no HMAC signature'}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">Eventos</label>
+            <label className="block text-xs font-medium text-primary mb-2">Events</label>
             <div className="grid grid-cols-2 gap-1.5">
               {ALL_EVENTS.map((ev) => (
                 <button
@@ -143,8 +143,8 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
                   onClick={() => toggleEvent(ev)}
                   className={`text-left px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${
                     draft.events.includes(ev)
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-white text-gray-600 border-border hover:border-gray-300'
+                      ? 'bg-olive-dark text-accent border-accent/20'
+                      : 'bg-surface text-secondary border-subtle hover:border-strong'
                   }`}
                 >
                   {ev}
@@ -156,14 +156,14 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
 
         <DrawerFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancelar
+            Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving || !draft.name || !draft.url}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-accent hover:bg-accent-hover text-on-accent"
           >
-            {isSaving ? 'Guardando…' : 'Guardar'}
+            {isSaving ? 'Saving…' : 'Save'}
           </Button>
         </DrawerFooter>
       </DrawerContent>

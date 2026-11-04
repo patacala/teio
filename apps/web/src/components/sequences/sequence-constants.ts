@@ -2,11 +2,11 @@ import { MessageSquare, Phone, Mail, Bell, CheckSquare } from 'lucide-react';
 
 /** Actions a step can take. Must match ActionType in @crm/shared. */
 export const ACTIONS = [
-  { value: 'send_message', label: 'Mensaje', icon: MessageSquare },
-  { value: 'call', label: 'Llamada', icon: Phone },
+  { value: 'send_message', label: 'Message', icon: MessageSquare },
+  { value: 'call', label: 'Call', icon: Phone },
   { value: 'send_email', label: 'Email', icon: Mail },
-  { value: 'notify_agent', label: 'Avisar al agente', icon: Bell },
-  { value: 'create_task', label: 'Crear tarea', icon: CheckSquare },
+  { value: 'notify_agent', label: 'Notify agent', icon: Bell },
+  { value: 'create_task', label: 'Create task', icon: CheckSquare },
 ] as const;
 
 /**
@@ -17,19 +17,19 @@ export const ACTIONS = [
  * stated explicitly on the step.
  */
 export const CHANNEL_STRATEGIES = [
-  { value: 'auto', label: 'Automático', hint: 'Su último canal, luego la prioridad de la org' },
-  { value: 'same_channel', label: 'Mismo canal', hint: 'Solo el canal donde escribió' },
-  { value: 'whatsapp_only', label: 'Solo WhatsApp', hint: 'Cae a automático si no tiene' },
-  { value: 'sms_only', label: 'Solo SMS', hint: 'Cae a automático si no tiene' },
-  { value: 'email_only', label: 'Solo Email', hint: 'Cae a automático si no tiene' },
-  { value: 'voice_only', label: 'Solo Llamada', hint: 'Requiere teléfono' },
+  { value: 'auto', label: 'Automatic', hint: 'Their last channel, then the org priority' },
+  { value: 'same_channel', label: 'Same channel', hint: 'Only the channel they wrote from' },
+  { value: 'whatsapp_only', label: 'WhatsApp only', hint: 'Falls back to automatic if unavailable' },
+  { value: 'sms_only', label: 'SMS only', hint: 'Falls back to automatic if unavailable' },
+  { value: 'email_only', label: 'Email only', hint: 'Falls back to automatic if unavailable' },
+  { value: 'voice_only', label: 'Call only', hint: 'Requires a phone number' },
 ] as const;
 
 export const SEQUENCE_TYPE_LABELS: Record<string, string> = {
-  no_response: 'Sin respuesta',
-  reactivation: 'Reactivación',
-  post_service: 'Post-servicio',
-  appointment_reminder: 'Recordatorio de cita',
+  no_response: 'No response',
+  reactivation: 'Reactivation',
+  post_service: 'Post-service',
+  appointment_reminder: 'Appointment reminder',
   manual: 'Manual',
 };
 
@@ -41,9 +41,9 @@ export function strategyLabel(value: string): string {
   return CHANNEL_STRATEGIES.find((s) => s.value === value)?.label ?? value;
 }
 
-/** "2 h" · "1 día" · "3 días" */
+/** "2 h" · "1 day" · "3 days" */
 export function formatDelay(hours: number): string {
   if (hours < 24) return `${hours} h`;
   const days = Math.round(hours / 24);
-  return days === 1 ? '1 día' : `${days} días`;
+  return days === 1 ? '1 day' : `${days} days`;
 }

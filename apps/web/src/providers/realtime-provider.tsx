@@ -88,7 +88,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             {
               id: msg.id,
               type: 'message',
-              title: name ? `Nuevo mensaje de ${name}` : 'Nuevo mensaje',
+              title: name ? `New message from ${name}` : 'New message',
               description: msg.content?.slice(0, 100),
               href: `/inbox?conversationId=${msg.conversation_id}`,
               conversationId: msg.conversation_id,

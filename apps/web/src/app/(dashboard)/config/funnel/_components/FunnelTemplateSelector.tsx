@@ -144,7 +144,7 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted" />
       </div>
     );
   }
@@ -152,11 +152,11 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-3">
-          <GitBranch className="h-6 w-6 text-blue-600" />
+        <div className="w-12 h-12 rounded-xl bg-olive-dark flex items-center justify-center mx-auto mb-3">
+          <GitBranch className="h-6 w-6 text-accent" />
         </div>
-        <h2 className="text-lg font-semibold text-gray-900">Choose a template to get started</h2>
-        <p className="text-sm text-gray-500 mt-1">
+        <h2 className="text-lg font-semibold text-primary">Choose a template to get started</h2>
+        <p className="text-sm text-secondary mt-1">
           Select a predefined template or start with a blank funnel.
         </p>
       </div>
@@ -170,19 +170,19 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
           return (
             <div
               key={template.id}
-              className="bg-panel border border-border rounded-xl p-4 flex flex-col gap-3 relative"
+              className="bg-surface border border-subtle rounded-xl p-4 flex flex-col gap-3 relative"
             >
-              <span className="absolute top-3 right-3 text-[10px] font-medium bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+              <span className="absolute top-3 right-3 text-[10px] font-medium bg-surface-raised text-secondary px-2 py-0.5 rounded-full">
                 {CATEGORY_LABELS[template.category] ?? template.category}
               </span>
               <div>
-                <p className="text-sm font-semibold text-gray-900 pr-16">{template.name}</p>
+                <p className="text-sm font-semibold text-primary pr-16">{template.name}</p>
                 {template.description && (
-                  <p className="text-xs text-gray-500 mt-0.5">{template.description}</p>
+                  <p className="text-xs text-secondary mt-0.5">{template.description}</p>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">{sortedStages.length} stages</span>
+                <span className="text-xs text-muted">{sortedStages.length} stages</span>
                 <div className="flex gap-1">
                   {sortedStages.slice(0, 5).map((s) => (
                     <div
@@ -193,15 +193,16 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
                     />
                   ))}
                   {sortedStages.length > 5 && (
-                    <span className="text-[10px] text-gray-400">+{sortedStages.length - 5}</span>
+                    <span className="text-[10px] text-muted">+{sortedStages.length - 5}</span>
                   )}
                 </div>
               </div>
               <Button
+                variant="outline"
                 size="sm"
                 disabled={applyTemplate.isPending || createFunnel.isPending}
                 onClick={() => handleApply(template)}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-full mt-auto"
+                className="w-full mt-auto"
               >
                 {isPending ? (
                   <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Applying…</>
@@ -218,7 +219,7 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
         <button
           onClick={handleEmpty}
           disabled={createFunnel.isPending || applyTemplate.isPending}
-          className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+          className="text-sm text-accent hover:underline disabled:opacity-50"
         >
           {createFunnel.isPending ? 'Creating…' : 'Start with a blank funnel'}
         </button>

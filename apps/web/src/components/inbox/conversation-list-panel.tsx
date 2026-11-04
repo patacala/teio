@@ -28,7 +28,7 @@ interface ConversationListPanelProps {
 }
 
 export function ConversationListPanel({ selectedId, onSelect }: ConversationListPanelProps) {
-  const [order, setOrder] = useState<SortOrder>('newest');
+  const [order] = useState<SortOrder>('newest');
   const [search, setSearch] = useState('');
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [assignedTo, setAssignedTo] = useState<'ai' | 'human' | null>(null);
@@ -61,13 +61,13 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
   );
 
   return (
-    <div className="w-[320px] shrink-0 flex flex-col border-r border-border bg-white">
+    <div className="w-[320px] shrink-0 flex flex-col border-r border-subtle bg-surface">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
+      <div className="px-4 pt-4 pb-3 border-b border-subtle shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-gray-900">Inbox</h2>
+          <h2 className="text-sm font-bold text-primary">Inbox</h2>
           {data?.meta?.total !== undefined && (
-            <span className="text-[10px] text-gray-400 font-medium">
+            <span className="text-[10px] text-muted font-medium">
               {data.meta.total} conversations
             </span>
           )}
@@ -75,27 +75,27 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
 
         {/* Search */}
         <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted" />
           <Input
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-xs bg-gray-50 border-border"
+            className="pl-8 h-8 text-xs bg-surface-raised border-subtle"
           />
         </div>
 
         {/* Channel filters */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-              Canales
+            <span className="text-[10px] font-semibold text-muted uppercase tracking-wide">
+              Channels
             </span>
             {selectedChannel && (
               <button
                 onClick={() => setSelectedChannel(null)}
-                className="text-[10px] text-blue-600 hover:text-blue-700 font-medium"
+                className="text-[10px] text-accent hover:text-accent-hover font-medium"
               >
-                Ver todos
+                View all
               </button>
             )}
           </div>
@@ -109,8 +109,8 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
                   className={cn(
                     'inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',
                     isActive
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-transparent'
+                      ? 'bg-olive-dark text-accent border border-accent/20'
+                      : 'bg-surface-raised text-secondary hover:bg-surface-hover border border-transparent'
                   )}
                 >
                   {channel.label}
@@ -127,8 +127,8 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
             className={cn(
               'flex-1 inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',
               assignedTo === 'ai'
-                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-transparent'
+                ? 'bg-olive-dark text-accent border border-accent/20'
+                : 'bg-surface-raised text-secondary hover:bg-surface-hover border border-transparent'
             )}
           >
             AI Active
@@ -138,8 +138,8 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
             className={cn(
               'flex-1 inline-flex items-center justify-center px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',
               assignedTo === 'human'
-                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-transparent'
+                ? 'bg-warning/10 text-warning border border-warning/25'
+                : 'bg-surface-raised text-secondary hover:bg-surface-hover border border-transparent'
             )}
           >
             Human
@@ -164,14 +164,14 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
           </div>
         ) : data?.items?.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mb-3">
-              <Inbox className="h-4 w-4 text-gray-400" />
+            <div className="w-10 h-10 rounded-xl bg-surface-raised flex items-center justify-center mb-3">
+              <Inbox className="h-4 w-4 text-muted" />
             </div>
-            <p className="text-xs font-medium text-gray-500">
+            <p className="text-xs font-medium text-secondary">
               {search ? 'No conversations found' : 'No conversations yet'}
             </p>
             {search && (
-              <p className="text-[11px] text-gray-400 mt-1">Try a different search</p>
+              <p className="text-[11px] text-muted mt-1">Try a different search</p>
             )}
           </div>
         ) : (
@@ -179,8 +179,8 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
             {pinned.length > 0 && (
               <div>
                 <div className="flex items-center gap-1.5 px-4 pt-2.5 pb-1">
-                  <Pin className="h-3 w-3 text-gray-400" />
-                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                  <Pin className="h-3 w-3 text-muted" />
+                  <span className="text-[10px] font-semibold text-muted uppercase tracking-wide">
                     Pinned
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export function ConversationListPanel({ selectedId, onSelect }: ConversationList
             )}
             {pinned.length > 0 && rest.length > 0 && (
               <div className="px-4 pt-2.5 pb-1">
-                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                <span className="text-[10px] font-semibold text-muted uppercase tracking-wide">
                   All conversations
                 </span>
               </div>

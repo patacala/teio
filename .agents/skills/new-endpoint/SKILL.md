@@ -1,48 +1,48 @@
 ---
 description: |
-  Agrega un endpoint nuevo a un modulo backend existente.
-  Crea el metodo en servicio + controlador + actualiza el servicio frontend y hook.
-arguments: [modulo, accion]
+  Adds a new endpoint to an existing backend module.
+  Creates the method in service + controller and updates the frontend service and hook.
+arguments: [module, action]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Write Edit Bash(graphify *)
 ---
 
-# Nuevo Endpoint: $accion en $modulo
+# New Endpoint: $action in $module
 
-## Pasos
+## Steps
 
-### 1. Investigar modulo existente
+### 1. Investigate the existing module
 
 ```bash
-graphify query "$modulo controller service routes"
+graphify query "$module controller service routes"
 ```
 
-Lee el controller y service actuales para entender la estructura.
+Read the current controller and service to understand the structure.
 
-### 2. Agregar metodo al servicio
+### 2. Add the method to the service
 
-- En `apps/api/src/modules/$modulo/*.service.ts`
-- Scoped por `organization_id` siempre
-- Un metodo = una responsabilidad
+- In `apps/api/src/modules/$module/*.service.ts`
+- Always scoped by `organization_id`
+- One method = one responsibility
 
-### 3. Agregar ruta al controller
+### 3. Add the route to the controller
 
-- Ruta estatica ANTES de rutas `:id` si aplica
-- `@CurrentTenant()` para obtener org
-- `import type { Request } from 'express'` si necesitas Request
+- Static route BEFORE `:id` routes, if applicable
+- `@CurrentTenant()` to get the org
+- `import type { Request } from 'express'` if you need Request
 
-### 4. DTO si es necesario
+### 4. DTO if needed
 
-- Crea DTO con `class-validator` decorators
-- Granular: no reutilizar DTOs gordos
+- Create a DTO with `class-validator` decorators
+- Granular: don't reuse bloated DTOs
 
-### 5. Actualizar frontend
+### 5. Update the frontend
 
-- Agrega metodo en `apps/web/src/services/$modulo.service.ts`
-- Agrega/actualiza hook en `apps/web/src/hooks/`
-- `invalidateQueries` en mutations
+- Add the method in `apps/web/src/services/$module.service.ts`
+- Add/update the hook in `apps/web/src/hooks/`
+- `invalidateQueries` in mutations
 
-### 6. Verificar
+### 6. Verify
 
 - `pnpm --filter @crm/api build`
 - `graphify update .`

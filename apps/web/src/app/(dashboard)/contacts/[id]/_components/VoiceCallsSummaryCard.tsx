@@ -30,31 +30,31 @@ export function VoiceCallsSummaryCard({ contactId }: Props) {
   const latest = data?.calls[0];
 
   return (
-    <div className="bg-panel border border-border rounded-xl p-5">
+    <div className="bg-surface border border-subtle rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Phone className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-semibold text-gray-900">Voice Calls</h3>
+        <Phone className="h-4 w-4 text-muted" />
+        <h3 className="text-sm font-semibold text-primary">Voice Calls</h3>
       </div>
 
       {isLoading ? (
-        <div className="h-10 bg-gray-100 animate-pulse rounded" />
+        <div className="h-10 bg-surface-raised animate-pulse rounded-sm" />
       ) : (
         <>
-          <p className="text-2xl font-bold text-gray-900">{data?.total ?? 0}</p>
-          <p className="text-xs text-gray-500 mt-0.5">total calls</p>
+          <p className="text-2xl font-bold text-primary">{data?.total ?? 0}</p>
+          <p className="text-xs text-secondary mt-0.5">total calls</p>
           {latest && (
-            <div className="mt-3 text-xs text-gray-500 space-y-0.5">
+            <div className="mt-3 text-xs text-secondary space-y-0.5">
               {latest.duration_seconds !== undefined && (
                 <div>
                   Last duration:{' '}
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-primary">
                     {formatDuration(latest.duration_seconds)}
                   </span>
                 </div>
               )}
               <div>
                 Last call:{' '}
-                <span className="font-medium text-gray-700">
+                <span className="font-medium text-primary">
                   {timeAgo(latest.started_at ?? latest.created_at)}
                 </span>
               </div>
@@ -74,7 +74,7 @@ export function VoiceCallsSummaryCard({ contactId }: Props) {
               ) : (
                 <button
                   onClick={() => setPlaying(true)}
-                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700"
+                  className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover"
                 >
                   <Play className="h-3 w-3" />
                   Play latest recording
@@ -83,7 +83,7 @@ export function VoiceCallsSummaryCard({ contactId }: Props) {
             </div>
           )}
           {data?.total === 0 && (
-            <p className="mt-3 text-xs text-gray-400">No calls yet</p>
+            <p className="mt-3 text-xs text-muted">No calls yet</p>
           )}
         </>
       )}

@@ -117,7 +117,7 @@ export function notifyFromRealtime(
     description: payload.description,
     variant: type === 'ai' ? 'ai' : 'info',
     action: payload.href
-      ? { label: 'Ver', onClick: () => opts.navigate(payload.href!) }
+      ? { label: 'View', onClick: () => opts.navigate(payload.href!) }
       : undefined,
   });
 }

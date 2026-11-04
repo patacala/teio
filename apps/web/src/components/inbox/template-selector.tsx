@@ -46,16 +46,16 @@ export function TemplateSelector({ channel, onSelect }: TemplateSelectorProps) {
         />
         <div className="max-h-52 overflow-y-auto space-y-0.5">
           {filtered.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-3">No templates found</p>
+            <p className="text-xs text-muted text-center py-3">No templates found</p>
           ) : (
             filtered.map((t) => (
               <button
                 key={t.id}
                 onClick={() => handleSelect(t.content)}
-                className="w-full text-left rounded-md px-2 py-1.5 hover:bg-gray-50 transition-colors"
+                className="w-full text-left rounded-md px-2 py-1.5 hover:bg-surface-raised transition-colors"
               >
-                <p className="text-xs font-medium text-gray-800">{t.name}</p>
-                <p className="text-[11px] text-gray-400 truncate">{t.content}</p>
+                <p className="text-xs font-medium text-primary">{t.name}</p>
+                <p className="text-[11px] text-muted truncate">{t.content}</p>
               </button>
             ))
           )}

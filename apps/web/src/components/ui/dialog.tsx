@@ -4,7 +4,6 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { ComponentPropsWithoutRef, ElementRef, forwardRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
@@ -21,7 +20,7 @@ export const DialogOverlay = forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+      'fixed inset-0 z-50 bg-black/75 backdrop-blur-[2px]',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
@@ -41,7 +40,7 @@ export const DialogContent = forwardRef<
       ref={ref}
       className={cn(
         'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2',
-        'bg-white rounded-xl shadow-xl p-6',
+        'rounded-card border border-subtle bg-surface p-6 text-primary shadow-menu',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -53,9 +52,10 @@ export const DialogContent = forwardRef<
     >
       {children}
       <DialogPrimitive.Close
-        className={cn('absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity', closeClassName)}
+        className={cn('absolute right-4 top-4 rounded-lg p-1 text-muted transition-colors hover:bg-surface-hover hover:text-primary', closeClassName)}
       >
         <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -72,7 +72,7 @@ export const DialogTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold text-gray-900', className)}
+    className={cn('text-base font-semibold text-primary', className)}
     {...props}
   />
 ));
@@ -84,7 +84,7 @@ export const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-gray-500', className)}
+    className={cn('text-sm text-secondary', className)}
     {...props}
   />
 ));

@@ -8,7 +8,7 @@ function BlinkingCursor() {
     <motion.span
       animate={{ opacity: [1, 0, 1] }}
       transition={{ duration: 1, repeat: Infinity }}
-      className="inline-block w-0.5 h-4 bg-blue-300 ml-0.5 align-middle"
+      className="inline-block w-0.5 h-4 bg-accent/70 ml-0.5 align-middle"
     />
   );
 }
@@ -29,8 +29,8 @@ export function StreamingMessageBubble({ content }: StreamingMessageBubbleProps)
     >
       <div className="max-w-[70%] min-w-0 flex flex-col items-end space-y-1">
         <AIResponseIndicator />
-        <div className="rounded-xl rounded-br-sm px-3.5 py-2.5 text-sm bg-blue-600 text-white border-l-2 border-blue-300 w-fit max-w-full min-w-0 box-border">
-          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <div className="rounded-xl rounded-br-sm px-3.5 py-2.5 text-sm border border-accent/15 bg-olive-dark text-primary w-fit max-w-full min-w-0 box-border">
+          <p className="whitespace-pre-wrap wrap-break-word wrap-anywhere">
             {content}
             <BlinkingCursor />
           </p>

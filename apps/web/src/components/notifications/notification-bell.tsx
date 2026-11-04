@@ -20,12 +20,12 @@ export function NotificationBell() {
           size="icon"
           className={cn(
             'relative overflow-visible',
-            hasUnread && 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700',
+            hasUnread && 'text-primary',
           )}
           aria-label={
             hasUnread
-              ? `${unreadCount} notificación${unreadCount === 1 ? '' : 'es'} sin leer`
-              : 'Notificaciones'
+              ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
+              : 'Notifications'
           }
         >
           <motion.span
@@ -42,12 +42,12 @@ export function NotificationBell() {
                 : { duration: 0.15 }
             }
           >
-            <Bell className={cn('h-4 w-4', hasUnread && 'fill-blue-600')} />
+            <Bell className="h-[18px] w-[18px]" strokeWidth={1.9} />
           </motion.span>
           {hasUnread && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center">
-              <span className="absolute inset-0 animate-notification-badge-pulse rounded-full bg-red-400" />
-              <span className="relative flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white ring-2 ring-white">
+              <span className="absolute inset-0 animate-notification-badge-pulse rounded-full bg-danger" />
+              <span className="relative flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-0.5 text-[9px] font-bold leading-none text-app ring-2 ring-sidebar">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             </span>

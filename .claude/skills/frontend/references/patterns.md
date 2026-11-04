@@ -8,8 +8,9 @@
 | Dialog/DialogContent/DialogHeader/DialogTitle | `@/components/ui/dialog` | `<dialog>` |
 | Button | `@/components/ui/button` | `<button>` with manual classes |
 | Input | `@/components/ui/input` | `<input>` native |
-| Badge | `@/components/ui/badge` | manual `<span>` pills |
-| Card | `@/components/ui/card` | manual `<div>` with border |
+| Textarea | `@/components/ui/textarea` | `<textarea>` native |
+| Badge (`success`/`warning`/`destructive`/`info`/`secondary`) | `@/components/ui/badge` | manual `<span>` pills |
+| Card (`variant`: panel/metric/inset/action, `interactive`) | `@/components/ui/card` | manual `<div>` with border |
 | Skeleton | `@/components/ui/skeleton` | manual shimmer divs |
 | Drawer | `@/components/ui/drawer` | custom slide panels |
 | Tooltip | `@/components/ui/tooltip` | title attribute |
@@ -65,7 +66,7 @@ const itemVariants = {
 ## Avatar Pattern
 
 ```tsx
-<div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+<div className="w-8 h-8 rounded-full bg-olive-dark text-accent border border-accent/15 flex items-center justify-center text-xs font-semibold">
   {getInitials(fullName)}
 </div>
 ```

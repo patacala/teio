@@ -9,13 +9,13 @@ export function formatEventLabel(value: string): string {
 
 export function groupEvents(eventTypes: string[]): EventGroup[] {
   const groups: Record<string, EventGroup> = {
-    appointment: { label: 'Citas', events: [] },
-    contact: { label: 'Contactos', events: [] },
-    messaging: { label: 'Mensajes y conversaciones', events: [] },
-    voice: { label: 'Llamadas', events: [] },
-    billing: { label: 'Facturación', events: [] },
-    platform: { label: 'Plataforma', events: [] },
-    other: { label: 'Otros', events: [] },
+    appointment: { label: 'Appointments', events: [] },
+    contact: { label: 'Contacts', events: [] },
+    messaging: { label: 'Messages and conversations', events: [] },
+    voice: { label: 'Calls', events: [] },
+    billing: { label: 'Billing', events: [] },
+    platform: { label: 'Platform', events: [] },
+    other: { label: 'Other', events: [] },
   };
 
   for (const et of eventTypes) {

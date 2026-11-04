@@ -1,35 +1,35 @@
 # Start Feature Skill
 
-## Cuando usar
-Cuando el usuario pide implementar una feature, fix, o cambio nuevo.
+## When to use
+When the user asks to implement a feature, a fix, or any new change.
 
-## Proceso
+## Process
 
-### 1. Consultar skills disponibles
+### 1. Check the available skills
 ```bash
 find .claude/skills -name "SKILL.md" -not -path "*/start-feature/*"
 ```
 
-### 2. Identificar skill apropiada
-Basado en el tipo de trabajo:
-- **new-page** → Nueva página/ruta en el frontend
-- **new-endpoint** → Nuevo endpoint en el API
-- **new-module** → Nuevo módulo/servicio en el backend
-- **frontend** → Cambios solo en frontend (componentes, UI, etc)
-- **backend** → Cambios solo en backend (servicios, entidades, etc)
-- **fullstack** → Cambios que tocan frontend y backend
-- **fix** → Arreglar un bug o error
-- **review** → Revisar código por calidad/seguridad
-- **migrate** → Migración de datos o estructura
-- **deploy-check** → Verificar deployment
+### 2. Identify the right skill
+Based on the type of work:
+- **new-page** → New page/route in the frontend
+- **new-endpoint** → New endpoint in the API
+- **new-module** → New module/service in the backend
+- **frontend** → Frontend-only changes (components, UI, etc.)
+- **backend** → Backend-only changes (services, entities, etc.)
+- **fullstack** → Changes that touch both frontend and backend
+- **fix** → Fix a bug or error
+- **review** → Review code for quality/security
+- **migrate** → Data or schema migration
+- **deploy-check** → Verify a deployment
 
-### 3. Leer y aplicar la skill
-Si hay una skill que aplica, LÉELA con Read tool ANTES de empezar a codear.
+### 3. Read and apply the skill
+If a skill applies, READ IT with the Read tool BEFORE you start coding.
 
-### 4. Si no hay skill apropiada
-Continúa sin skill, pero usa graphify para orientación.
+### 4. If no skill applies
+Continue without a skill, but use graphify for orientation.
 
-## Importante
-- NO menciones al usuario que estás consultando skills
-- Solo lee la skill si aplica directamente
-- Las skills tienen las convenciones y patrones del proyecto
+## Important
+- DO NOT tell the user that you are checking skills
+- Only read a skill if it applies directly
+- Skills contain the project's conventions and patterns

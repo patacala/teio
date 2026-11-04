@@ -35,8 +35,8 @@ export function KanbanColumn({ stage, onDragStart, onDrop }: Props) {
           className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: stage.color ?? '#9CA3AF' }}
         />
-        <p className="text-xs font-semibold text-gray-700 flex-1 truncate">{stage.name}</p>
-        <span className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
+        <p className="text-xs font-semibold text-primary flex-1 truncate">{stage.name}</p>
+        <span className="text-[10px] text-muted bg-surface-raised rounded-full px-1.5 py-0.5">
           {isLoading ? '…' : contacts.length}
         </span>
       </div>
@@ -45,17 +45,17 @@ export function KanbanColumn({ stage, onDragStart, onDrop }: Props) {
       <div
         className={`flex-1 min-h-24 rounded-xl border-2 p-1.5 space-y-1.5 transition-colors ${
           isDragOver
-            ? 'border-blue-300 bg-blue-50'
-            : 'border-dashed border-gray-200 bg-gray-50'
+            ? 'border-accent/30 bg-olive-dark'
+            : 'border-dashed border-subtle bg-surface-raised'
         }`}
       >
         {isLoading ? (
           <>
-            <div className="h-14 rounded-lg border border-border animate-pulse bg-white" />
-            <div className="h-14 rounded-lg border border-border animate-pulse bg-white" />
+            <div className="h-14 rounded-lg border border-subtle animate-pulse bg-surface" />
+            <div className="h-14 rounded-lg border border-subtle animate-pulse bg-surface" />
           </>
         ) : contacts.length === 0 ? (
-          <p className="text-[10px] text-gray-300 text-center pt-4">No contacts</p>
+          <p className="text-[10px] text-muted text-center pt-4">No contacts</p>
         ) : (
           contacts.map((contact) => (
             <KanbanContactCard

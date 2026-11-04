@@ -12,22 +12,29 @@ Before writing frontend code, enforce every rule below. Violations are bugs.
 
 ## Quick Reference
 
-- **Stack**: Next.js 15 App Router + Tailwind v3 + Radix UI + CVA + Framer Motion + TanStack Query v5
+- **Stack**: Next.js 15 App Router + Tailwind v4 (CSS-first `@theme`) + Radix UI + CVA + Framer Motion + TanStack Query v5
 - **Auth**: Supabase SSR + `authClient` from `@/lib/auth-client`
 - **Icons**: `lucide-react` only
-- **Theme**: Light-only. No `dark:` variants. Ever.
+- **Theme**: Dark-only ("Premium Dark AI Dashboard"). Single theme, no `dark:` variants, no theme switcher.
 
 ## Color Tokens (STRICT)
 
-| Token | Value | Use |
-|-------|-------|-----|
-| Accent | `blue-600` | Actions, active states |
-| Surface | `bg-surface` | Page background |
-| Panel | `bg-panel` | Cards, modals, drawers |
-| Border | `border-border` | All borders |
-| Text | `gray-900` / `gray-500` / `gray-400` | Primary / secondary / muted |
+Defined once in `src/app/globals.css` (`@theme`). Never use raw hex, `gray-*`, `white` surfaces or `blue-*` in components.
 
-**Forbidden**: indigo, fuchsia, cyan, purple, custom hex.
+| Token | Class | Use |
+|-------|-------|-----|
+| App background | `bg-app` (body uses `app-canvas`) | Page canvas |
+| Surface | `bg-surface` / `panel-card` | Cards, panels, modals, drawers, sidebar |
+| Raised | `bg-surface-raised` / `inset-surface` | Inputs, rows, inset groups, menus |
+| Hover / pressed | `bg-surface-hover` / `bg-surface-pressed` | Interactive states |
+| Border | `border-subtle` / `border-strong` | Default borders / control borders |
+| Text | `text-primary` / `text-secondary` / `text-muted` | Primary / secondary / hints, axes, placeholders |
+| Accent | `bg-accent text-on-accent`, `text-accent` | Primary action, selection, active nav |
+| Olive | `bg-olive-dark`, `nav-item-active`, `icon-tile`, `action-surface` | Active/selected tints, icon containers, quick actions |
+| Status | `text-success` / `text-danger` / `text-warning` / `text-info` (+ `/10` bg, `/25` border) | Badges, trends, errors |
+| Charts | `chart-lime`, `chart-purple`, `chart-cyan`, `chart-pink`, `chart-yellow` | Data series only |
+
+**Forbidden**: blue/indigo/violet as brand or button color (data series only), saturated solid backgrounds, large glows, custom hex, `bg-white`.
 
 ## Critical Rules
 
@@ -39,6 +46,15 @@ Before writing frontend code, enforce every rule below. Violations are bugs.
 6. **Skeletons**: Every list/table shows `<Skeleton>` while loading. Always empty state too.
 7. **Cache**: After mutations, always `invalidateQueries({ queryKey: ['domain'] })`.
 8. **Responsive**: Grid with `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`.
+9. **Language: English, always.** Every user-facing string — labels, headings,
+   buttons, placeholders, toasts, empty states, error messages — is English.
+   No exceptions, no mixing, regardless of what any single existing page
+   happens to do (the app is inconsistent today; new/edited code must not be).
+   Confirmed 2026-09-28 after this got built in Spanish by mistake.
+10. **File uploads**: native `<input type="file">` is the one accepted
+    exception to rule 1 — there is no Radix alternative, browsers require the
+    real element to trigger the OS picker. Send it as `FormData` via
+    `authClient.uploadFile()` (added 2026-09-28), never JSON-encode a file.
 
 ## Architecture Layers
 

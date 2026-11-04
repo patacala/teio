@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Appointment } from '@/services/scheduling.service';
 
-const DAYS_HEADER = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DAYS_HEADER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface Props {
   appointments: Appointment[];
@@ -34,12 +34,12 @@ function sameDay(a: Date, b: Date) {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  scheduled: 'bg-amber-100 text-amber-700',
-  confirmed: 'bg-blue-100 text-blue-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-red-100 text-red-600 line-through',
-  no_show: 'bg-gray-100 text-gray-500',
+  pending: 'bg-warning/15 text-warning',
+  scheduled: 'bg-warning/15 text-warning',
+  confirmed: 'bg-olive-dark text-accent',
+  completed: 'bg-success/15 text-success',
+  cancelled: 'bg-danger/15 text-danger line-through',
+  no_show: 'bg-surface-raised text-secondary',
 };
 
 export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }: Props) {
@@ -62,11 +62,11 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
     appointments.filter((a) => sameDay(new Date(a.starts_at), day));
 
   return (
-    <div className="rounded-xl border border-border bg-white overflow-hidden">
+    <div className="rounded-xl border border-subtle bg-surface overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-        <span className="text-sm font-medium text-gray-700 capitalize">
-          {month.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-subtle">
+        <span className="text-sm font-medium text-primary capitalize">
+          {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={prevMonth}>
@@ -79,9 +79,9 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border">
+      <div className="grid grid-cols-7 border-b border-subtle">
         {DAYS_HEADER.map((d) => (
-          <div key={d} className="py-2 text-center text-xs font-medium text-gray-400">
+          <div key={d} className="py-2 text-center text-xs font-medium text-muted">
             {d}
           </div>
         ))}
@@ -92,7 +92,7 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
         {cells.map((day, idx) => {
           const isLastCol = (idx + 1) % 7 === 0;
           if (!day) {
-            return <div key={`blank-${idx}`} className={cn('min-h-[90px] border-b border-border bg-gray-50/50', !isLastCol && 'border-r')} />;
+            return <div key={`blank-${idx}`} className={cn('min-h-[90px] border-b border-subtle bg-surface-raised/50', !isLastCol && 'border-r')} />;
           }
           const dayAppts = apptsByDay(day);
           const isToday = sameDay(day, today);
@@ -104,9 +104,9 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
             <div
               key={day.toISOString()}
               className={cn(
-                'min-h-[90px] p-1 border-b border-border cursor-pointer hover:bg-blue-50/30 transition-colors',
+                'min-h-[90px] p-1 border-b border-subtle cursor-pointer hover:bg-olive-dark/30 transition-colors',
                 !isLastCol && 'border-r',
-                !isCurrentMonth && 'bg-gray-50/50',
+                !isCurrentMonth && 'bg-surface-raised/50',
               )}
               onClick={() => onDayClick(day)}
             >
@@ -114,10 +114,10 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
                 className={cn(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium mb-1',
                   isToday
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-accent text-on-accent'
                     : isCurrentMonth
-                    ? 'text-gray-700'
-                    : 'text-gray-300',
+                    ? 'text-primary'
+                    : 'text-muted',
                 )}
               >
                 {day.getDate()}
@@ -127,7 +127,7 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
                   <div
                     key={appt.id}
                     className={cn(
-                      'truncate rounded px-1 py-0.5 text-[10px] font-medium leading-tight',
+                      'truncate rounded-sm px-1 py-0.5 text-[10px] font-medium leading-tight',
                       statusColors[appt.status] ?? statusColors.scheduled,
                     )}
                     title={appt.title}
@@ -136,7 +136,7 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
                   </div>
                 ))}
                 {overflow > 0 && (
-                  <p className="text-[10px] text-blue-600 font-medium">+{overflow} más</p>
+                  <p className="text-[10px] text-accent font-medium">+{overflow} more</p>
                 )}
               </div>
             </div>

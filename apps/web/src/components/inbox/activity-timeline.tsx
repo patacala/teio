@@ -132,7 +132,7 @@ export function ActivityTimeline({ conversationId, contactId, typingUsers }: Act
           ))}
         </div>
       ) : sortedEvents.length === 0 ? (
-        <div className="flex-1 py-12 text-center text-sm text-gray-400">No activity yet</div>
+        <div className="flex-1 py-12 text-center text-sm text-muted">No activity yet</div>
       ) : (
         // Virtuoso only mounts what's actually visible (plus a small overscan
         // buffer) instead of every loaded event's full component tree —

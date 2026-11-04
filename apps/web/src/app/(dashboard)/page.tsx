@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, type DateRange } from '@/components/ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -34,81 +35,126 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import type { DashboardRange, CustomDateRange, FunnelStageCount } from '@/services/analytics.service';
+import {
+  CHART_COLORS,
+  CHART_MUTED,
+  CHART_SEGMENT_STROKE,
+  CHART_SERIES,
+  chartAxisProps,
+  chartGridProps,
+  chartTooltipCursor,
+  chartTooltipItemStyle,
+  chartTooltipLabelStyle,
+  chartTooltipStyle,
+} from '@/lib/chart-theme';
 
 // ── Shared chart style ───────────────────────────────────────────────────────
-const TOOLTIP_STYLE = {
-  backgroundColor: 'white',
-  border: '1px solid #E6E8EB',
-  borderRadius: '8px',
-  fontSize: '12px',
-  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+const TOOLTIP_PROPS = {
+  contentStyle: chartTooltipStyle,
+  labelStyle: chartTooltipLabelStyle,
+  itemStyle: chartTooltipItemStyle,
 };
 
-const CHANNEL_COLORS = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-const FUNNEL_BAR = ['bg-blue-700', 'bg-blue-600', 'bg-blue-500', 'bg-blue-400', 'bg-blue-300'];
-const AI_COLORS: Record<string, string> = { Resolved: '#2563eb', Escalated: '#60a5fa', Active: '#34d399' };
-const ICON_WELL = {
-  emerald: 'bg-emerald-50',
-  rose: 'bg-rose-50',
-  blue: 'bg-blue-50',
-  neutral: 'bg-gray-50',
-} as const;
+const AI_COLORS: Record<string, string> = {
+  Resolved: CHART_COLORS.lime,
+  Escalated: CHART_COLORS.yellow,
+  Active: CHART_COLORS.cyan,
+};
+
+const MESSAGING_SERIES = [
+  { key: 'messages', name: 'Messages', color: CHART_COLORS.lime },
+  { key: 'ai_handled', name: 'AI Handled', color: CHART_COLORS.purple },
+  { key: 'calls', name: 'Calls', color: CHART_COLORS.cyan },
+] as const;
+
+// ── Section header ───────────────────────────────────────────────────────────
+function SectionHeader({
+  icon, title, subtitle, badge, action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  badge?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-5">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="icon-tile">{icon}</span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="truncate text-[15px] font-semibold leading-6 text-primary">{title}</h2>
+            {badge}
+          </div>
+          {subtitle && <p className="truncate text-[11px] text-muted">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function HeaderLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-accent"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function EmptyChart({ height, children }: { height: number; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-center" style={{ height }}>
+      <p className="text-sm text-muted">{children}</p>
+    </div>
+  );
+}
 
 // ── Stat card ────────────────────────────────────────────────────────────────
 interface StatCardProps {
   label: string;
   value: string | number | undefined;
   icon: React.ReactNode;
-  tone?: keyof typeof ICON_WELL;
+  variant?: 'metric' | 'panel';
   trend?: number;
   suffix?: string;
   loading?: boolean;
   footer?: React.ReactNode;
 }
 
-function StatCard({ label, value, icon, tone = 'neutral', trend, suffix, loading, footer }: StatCardProps) {
+function StatCard({ label, value, icon, variant = 'panel', trend, suffix, loading, footer }: StatCardProps) {
   return (
-    <div className={cn(
-      'group relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300',
-      'hover:shadow-xl hover:shadow-gray-900/5 hover:-translate-y-1 hover:border-gray-300/60',
-    )}>
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 via-white to-blue-50/30" />
-      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/5 to-transparent blur-3xl" />
-      
-      <div className="relative flex h-full flex-col p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{label}</p>
-            {loading ? (
-              <Skeleton className="mt-3 h-9 w-24" />
-            ) : (
-              <p className="mt-3 text-[32px] font-bold leading-none tracking-tight text-gray-900">
-                {value ?? '—'}
-                {suffix && <span className="text-lg font-medium text-gray-400 ml-2">{suffix}</span>}
-              </p>
-            )}
-            <div className={cn(
-              'mt-3 flex min-h-5 items-center gap-1.5 text-xs font-semibold',
-              !loading && trend !== undefined
-                ? trend > 0 ? 'text-blue-600' : trend < 0 ? 'text-gray-600' : 'text-gray-400'
-                : 'text-transparent',
-            )}>
-              {trend !== undefined && trend > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : trend !== undefined && trend < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}
-              <span>{trend === undefined ? '—' : trend === 0 ? 'No change' : `${Math.abs(trend)}% vs prev period`}</span>
-            </div>
-          </div>
-          <div className={cn(
-            'rounded-2xl p-3.5 shadow-sm ring-1 ring-gray-900/5 transition-transform group-hover:scale-105',
-            ICON_WELL[tone]
-          )}>
-            {icon}
-          </div>
+    <Card variant={variant} className="flex h-full flex-col p-5">
+      <span className="icon-tile">{icon}</span>
+      <p className="mt-4 text-xs font-medium text-secondary">{label}</p>
+      {loading ? (
+        <Skeleton className="mt-2 h-8 w-28" />
+      ) : (
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+          <p className="text-[26px] font-semibold leading-8 tracking-tight text-primary">
+            {value ?? '—'}
+            {suffix && <span className="ml-1.5 text-base font-medium text-muted">{suffix}</span>}
+          </p>
+          {trend !== undefined && (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 text-xs font-medium',
+                trend > 0 ? 'text-success' : trend < 0 ? 'text-danger' : 'text-muted',
+              )}
+            >
+              {trend > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : trend < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}
+              {trend === 0 ? 'No change' : `${Math.abs(trend)}% vs prev period`}
+            </span>
+          )}
         </div>
-        <div className="mt-auto border-t border-gray-900/5 pt-3.5 text-xs font-semibold text-gray-500">
-          {!loading && footer}
-        </div>
+      )}
+      <div className="mt-auto pt-4">
+        <div className="border-t border-subtle pt-3 text-xs text-muted">{!loading && footer}</div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -127,7 +173,7 @@ function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
   const max = Math.max(...pipeline.map((stage) => stage.count), 1);
   
   if (pipeline.length === 0) {
-    return <p className="py-12 text-center text-sm text-gray-400">No funnel data yet</p>;
+    return <p className="py-12 text-center text-sm text-muted">No funnel data yet</p>;
   }
 
   const stageHeight = 56;
@@ -145,8 +191,8 @@ function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
         >
           <defs>
             <linearGradient id="funnelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{ stopColor: '#2563eb', stopOpacity: 1 }} />
-              <stop offset="100%" style={{ stopColor: '#3b82f6', stopOpacity: 0.85 }} />
+              <stop offset="0%" style={{ stopColor: CHART_COLORS.lime, stopOpacity: 0.7 }} />
+              <stop offset="100%" style={{ stopColor: 'var(--color-olive)', stopOpacity: 0.4 }} />
             </linearGradient>
           </defs>
           {pipeline.map((stage, index) => {
@@ -166,7 +212,7 @@ function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
                     L ${leftBottom} ${y + stageHeight} 
                     Z`}
                 fill="url(#funnelGradient)"
-                stroke="#1e40af"
+                stroke={CHART_SEGMENT_STROKE}
                 strokeWidth="0.5"
                 className="transition-all duration-300"
               />
@@ -182,19 +228,19 @@ function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
             return (
               <div
                 key={stage.stage}
-                className="flex h-14 items-center justify-between rounded-lg bg-gradient-to-r from-blue-50 to-transparent px-4"
+                className="flex h-14 items-center justify-between rounded-row border border-white/6 bg-surface-raised px-4"
               >
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{stage.stage}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-primary">{stage.stage}</p>
+                  <p className="text-xs text-muted">
                     {stage.count} leads
                     {conversion != null && (
-                      <span className="ml-2 font-medium text-blue-600">{conversion}% conversion</span>
+                      <span className="ml-2 font-medium text-accent">{conversion}% conversion</span>
                     )}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-blue-600">{stage.count}</p>
+                  <p className="text-[22px] font-semibold text-primary">{stage.count}</p>
                 </div>
               </div>
             );
@@ -203,15 +249,15 @@ function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
       </div>
 
       {(wonCount > 0 || lostCount > 0) && (
-        <div className="mt-6 flex items-center justify-center gap-8 rounded-lg bg-gradient-to-r from-emerald-50 via-blue-50 to-rose-50 py-4">
+        <div className="mt-4 flex items-center justify-center gap-8 rounded-row border border-white/6 bg-surface-raised py-4">
           <div className="text-center">
-            <p className="text-xs font-medium uppercase tracking-wider text-emerald-700">Won</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{wonCount}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-success">Won</p>
+            <p className="mt-1 text-[22px] font-semibold text-primary">{wonCount}</p>
           </div>
-          <div className="h-8 w-px bg-gray-200" />
+          <div className="h-8 w-px bg-divider" />
           <div className="text-center">
-            <p className="text-xs font-medium uppercase tracking-wider text-rose-700">Lost</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{lostCount}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-danger">Lost</p>
+            <p className="mt-1 text-[22px] font-semibold text-primary">{lostCount}</p>
           </div>
         </div>
       )}
@@ -248,8 +294,8 @@ function formatMoney(cents: number | undefined, currency: string = 'usd'): strin
 
 // ── Needs Attention urgency → icon/color ─────────────────────────────────────
 const ATTENTION_STYLE: Record<'critical' | 'warning', { icon: React.ReactNode; ring: string; bg: string }> = {
-  critical: { icon: <Flame className="h-4 w-4" />, ring: 'text-rose-600', bg: 'bg-rose-50' },
-  warning: { icon: <CalendarClock className="h-4 w-4" />, ring: 'text-amber-600', bg: 'bg-amber-50' },
+  critical: { icon: <Flame className="h-4 w-4" />, ring: 'text-danger', bg: 'bg-danger/12' },
+  warning: { icon: <CalendarClock className="h-4 w-4" />, ring: 'text-warning', bg: 'bg-warning/12' },
 };
 
 // ── Range selector ───────────────────────────────────────────────────────────
@@ -259,16 +305,17 @@ function RangeSelector({
   value, onChange, isCustom,
 }: { value: DashboardRange; onChange: (r: DashboardRange) => void; isCustom: boolean }) {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+    <div className="flex h-9 items-center gap-0.5 rounded-control border border-subtle bg-surface p-1">
       {RANGES.map((r) => (
         <button
           key={r}
           onClick={() => onChange(r)}
+          aria-pressed={!isCustom && value === r}
           className={cn(
-            'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+            'h-full rounded-lg border px-3 text-xs font-medium transition-colors',
             !isCustom && value === r
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700',
+              ? 'border-accent/12 bg-olive-dark text-primary'
+              : 'border-transparent text-secondary hover:text-primary',
           )}
         >
           {r}
@@ -318,16 +365,16 @@ function CustomRangePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {active ? (
-        <div className="flex items-center gap-1 bg-blue-50 rounded-lg pl-1 pr-1 py-1">
+        <div className="flex h-9 items-center gap-0.5 rounded-control border border-accent/15 bg-olive-dark p-1">
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 pl-2 pr-2 py-0.5 rounded-md text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors">
+            <button className="flex h-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-accent transition-colors hover:bg-white/5">
               <CalendarRange className="h-3.5 w-3.5" />
               {formatDateShort(active.from)} → {formatDateShort(active.to)}
             </button>
           </PopoverTrigger>
           <button
             onClick={() => { onClear(); setOpen(false); }}
-            className="p-1 rounded-md text-blue-700 hover:bg-blue-100"
+            className="rounded-lg p-1 text-accent transition-colors hover:bg-white/5"
             aria-label="Clear custom range"
           >
             <X className="h-3.5 w-3.5" />
@@ -335,7 +382,7 @@ function CustomRangePicker({
         </div>
       ) : (
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-xs font-medium text-gray-500 hover:text-gray-700 transition-all">
+          <button className="flex h-9 items-center gap-1.5 rounded-control border border-subtle bg-surface px-3 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary">
             <CalendarRange className="h-3.5 w-3.5" />
             Custom
           </button>
@@ -344,13 +391,14 @@ function CustomRangePicker({
 
       <PopoverContent align="end" className="w-[280px] p-3">
         <Calendar selected={draft} onSelect={setDraft} maxDate={new Date()} />
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-          <span className="text-xs text-gray-500">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-subtle">
+          <span className="text-xs text-muted">
             {draft.from ? formatDateShort(toISODate(draft.from)) : 'From'}
             {' → '}
             {draft.to ? formatDateShort(toISODate(draft.to)) : 'To'}
           </span>
-          <button
+          <Button
+            size="sm"
             onClick={() => {
               if (draft.from && draft.to) {
                 onApply({ from: toISODate(draft.from), to: toISODate(draft.to) });
@@ -358,10 +406,9 @@ function CustomRangePicker({
               }
             }}
             disabled={!canApply}
-            className="h-8 px-3 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Apply
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -377,12 +424,12 @@ export default function DashboardPage() {
   const trends = stats?.trends;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Overview of your CRM activity</p>
+          <h1 className="text-lg font-semibold tracking-tight text-primary">Dashboard</h1>
+          <p className="text-muted text-xs mt-0.5">Overview of your CRM activity</p>
         </div>
         <div className="flex items-center gap-2">
           <RangeSelector
@@ -399,16 +446,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
+          variant="metric"
           label="Revenue Collected"
           value={formatMoney(stats?.revenue.paid_amount, stats?.revenue.currency)}
-          icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
-          tone="emerald"
+          icon={<DollarSign className="h-4 w-4 text-accent" />}
           trend={stats?.revenue.trend.percentage}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {formatMoney(stats?.revenue.pending_amount, stats?.revenue.currency)} pending
               {' · '}
               {formatMoney(stats?.revenue.ai_assisted_amount, stats?.revenue.currency)} AI assisted
@@ -416,55 +463,55 @@ export default function DashboardPage() {
           }
         />
         <StatCard
+          variant="metric"
           label="Revenue at Risk"
           value={formatMoney(stats?.revenue.at_risk_amount, stats?.revenue.currency)}
-          icon={<AlertTriangle className="h-4 w-4 text-rose-500" />}
-          tone="rose"
+          icon={<AlertTriangle className="h-4 w-4 text-danger" />}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.revenue.at_risk_count ?? 0} stale checkouts
               {(stats?.revenue.lost_count ?? 0) > 0 && (
-                <span className="text-rose-600"> · {formatMoney(stats?.revenue.lost_amount, stats?.revenue.currency)} lost</span>
+                <span className="text-danger"> · {formatMoney(stats?.revenue.lost_amount, stats?.revenue.currency)} lost</span>
               )}
             </p>
           }
         />
         <StatCard
+          variant="metric"
           label="Booking Conversion"
           value={stats ? `${stats.booking_conversion_rate}%` : undefined}
-          icon={<CalendarCheck className="h-4 w-4 text-blue-600" />}
-          tone="blue"
+          icon={<CalendarCheck className="h-4 w-4" />}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.appointments_upcoming.count ?? 0} upcoming · {stats?.show_rate ?? 0}% show rate
             </p>
           }
         />
         <StatCard
+          variant="metric"
           label="Response Health"
           value={formatResponseTime(stats?.avg_response_time_seconds ?? null)}
-          icon={<MessageCircle className="h-4 w-4 text-blue-600" />}
-          tone="blue"
+          icon={<MessageCircle className="h-4 w-4" />}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.unanswered_leads ?? 0} unanswered leads
             </p>
           }
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Contacts"
           value={stats?.total_contacts?.toLocaleString()}
-          icon={<Users className="h-4 w-4 text-gray-400" />}
+          icon={<Users className="h-4 w-4" />}
           trend={trends?.contacts.percentage}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.new_contacts_period ?? 0} new this period
             </p>
           }
@@ -472,11 +519,11 @@ export default function DashboardPage() {
         <StatCard
           label="Calls"
           value={stats?.calls_period?.toLocaleString()}
-          icon={<Phone className="h-4 w-4 text-gray-400" />}
+          icon={<Phone className="h-4 w-4" />}
           trend={trends?.calls.percentage}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.open_conversations ?? 0} open conversations
             </p>
           }
@@ -484,11 +531,10 @@ export default function DashboardPage() {
         <StatCard
           label="AI Assisted Revenue"
           value={formatMoney(stats?.revenue.ai_assisted_amount, stats?.revenue.currency)}
-          icon={<Bot className="h-4 w-4 text-blue-600" />}
-          tone="blue"
+          icon={<Bot className="h-4 w-4" />}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.revenue.ai_assisted_count ?? 0} paid AI-assisted checkouts
             </p>
           }
@@ -496,10 +542,10 @@ export default function DashboardPage() {
         <StatCard
           label="Show Rate"
           value={stats ? `${stats.show_rate}%` : undefined}
-          icon={<CalendarClock className="h-4 w-4 text-gray-400" />}
+          icon={<CalendarClock className="h-4 w-4" />}
           loading={statsLoading}
           footer={
-            <p className="truncate border-t border-gray-50 pt-2">
+            <p className="truncate">
               {stats?.appointment_cancellation_rate ?? 0}% cancelled · {stats?.appointments_with_deposit_rate ?? 0}% with deposit
             </p>
           }
@@ -508,35 +554,28 @@ export default function DashboardPage() {
 
       {/* Needs Attention Today + Upcoming Appointments — paired so neither
           card sits alone stretched across the full row. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-orange-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-orange-500/10 to-orange-500/5 p-3 shadow-sm ring-1 ring-orange-900/5">
-                  <Flame className="h-4 w-4 text-orange-600" />
-                </div>
-                <h2 className="text-sm font-bold tracking-tight text-gray-900">Needs Attention Today</h2>
-                {!statsLoading && !!stats?.needs_attention.length && (
-                  <span className="rounded-full bg-gradient-to-br from-orange-500 to-orange-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                    {stats.needs_attention.length}
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-4">
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<Flame className="h-4 w-4" />}
+            title="Needs Attention Today"
+            badge={!statsLoading && !!stats?.needs_attention.length && (
+              <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold leading-4 text-warning">
+                {stats.needs_attention.length}
+              </span>
+            )}
+          />
+          <CardContent className="pt-0">
             {statsLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  <Skeleton key={i} className="h-14 w-full rounded-row" />
                 ))}
               </div>
             ) : stats?.needs_attention.length === 0 ? (
               <div className="py-8 text-center">
-                <CheckCircle2 className="h-8 w-8 text-emerald-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Nothing needs attention right now</p>
+                <CheckCircle2 className="h-8 w-8 text-success/60 mx-auto mb-2" />
+                <p className="text-sm text-muted">Nothing needs attention right now</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -547,29 +586,31 @@ export default function DashboardPage() {
                     <Link
                       key={item.contact_id}
                       href={`/contacts/${item.contact_id}`}
-                      className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50/60 transition-colors"
+                      className="flex items-center gap-3 rounded-row border border-white/6 bg-surface-raised p-2.5 transition-colors hover:border-strong hover:bg-surface-hover"
                     >
-                      <div className={cn('p-2 rounded-lg shrink-0', style.bg, style.ring)}>
+                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', style.bg, style.ring)}>
                         {style.icon}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{item.contact_name}</p>
+                          <p className="text-sm font-medium text-primary truncate">{item.contact_name}</p>
                           {item.interested_service && (
-                            <span className="text-[11px] font-medium text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 shrink-0">
+                            <span className="shrink-0 rounded-full border border-subtle bg-white/5 px-2 py-0.5 text-[11px] font-medium leading-4 text-secondary">
                               {item.interested_service}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 truncate">{subtitle}</p>
+                        <p className="text-xs text-muted truncate">{subtitle}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {item.reasons.map((r, i) => (
                           <span
                             key={i}
                             className={cn(
-                              'text-xs font-semibold px-2 py-0.5 rounded-md',
-                              item.urgency === 'critical' ? 'text-rose-700 bg-rose-50' : 'text-amber-700 bg-amber-50',
+                              'rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4',
+                              item.urgency === 'critical'
+                                ? 'border-danger/20 bg-danger/10 text-danger'
+                                : 'border-warning/20 bg-warning/10 text-warning',
                             )}
                           >
                             {r.badge}
@@ -582,63 +623,48 @@ export default function DashboardPage() {
               </div>
             )}
           </CardContent>
-          </div>
-        </div>
+        </Card>
 
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-blue-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 shadow-sm ring-1 ring-blue-900/5">
-                    <CalendarClock className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <h2 className="text-sm font-bold tracking-tight text-gray-900">Upcoming Appointments</h2>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Next 7 days</span>
-                </div>
-              <Link
-                href="/schedule"
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-              >
-                View <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-            <CardContent className="pt-0">
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<CalendarClock className="h-4 w-4" />}
+            title="Upcoming Appointments"
+            subtitle="Next 7 days"
+            action={<HeaderLink href="/schedule">View <ArrowRight className="h-3 w-3" /></HeaderLink>}
+          />
+          <CardContent className="pt-0">
             {statsLoading ? (
               <Skeleton className="h-16 w-24" />
             ) : (
               <>
-                <p className="text-3xl font-bold text-gray-900">{stats?.appointments_upcoming.count ?? 0}</p>
+                <p className="text-[26px] font-semibold leading-8 tracking-tight text-primary">{stats?.appointments_upcoming.count ?? 0}</p>
 
-                <div className="mt-3 pt-3 border-t border-gray-50 grid grid-cols-2 gap-3">
+                <div className="mt-3 pt-3 border-t border-subtle grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[11px] text-gray-400 mb-0.5">Cancelled</p>
+                    <p className="text-[11px] text-muted mb-0.5">Cancelled</p>
                     <p className={cn(
                       'text-sm font-semibold',
-                      (stats?.appointment_cancellation_rate ?? 0) >= 25 ? 'text-rose-600' : 'text-gray-900',
+                      (stats?.appointment_cancellation_rate ?? 0) >= 25 ? 'text-danger' : 'text-primary',
                     )}>
                       {stats ? `${stats.appointment_cancellation_rate}%` : '—'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-gray-400 mb-0.5">With deposit</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-[11px] text-muted mb-0.5">With deposit</p>
+                    <p className="text-sm font-semibold text-primary">
                       {stats ? `${stats.appointments_with_deposit_rate}%` : '—'}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-50">
+                <div className="mt-3 pt-3 border-t border-subtle">
                   {stats?.appointments_upcoming.next ? (
-                    <>
-                      <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Next up</p>
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                    <div className="rounded-row border border-white/6 bg-surface-raised p-3">
+                      <p className="text-[11px] font-medium text-muted uppercase tracking-wide mb-1">Next up</p>
+                      <p className="text-sm font-medium text-primary truncate">
                         {stats.appointments_upcoming.next.contact_name}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-secondary">
                         {/* Explicit timeZone — without it this falls back to
                             whatever timezone the viewing browser is in, which
                             silently shows the wrong time for anyone not in
@@ -648,71 +674,47 @@ export default function DashboardPage() {
                           timeZone: stats.appointments_upcoming.next.timezone ?? undefined,
                         })}
                       </p>
-                    </>
+                    </div>
                   ) : (
-                    <p className="text-sm text-gray-400">Nothing scheduled</p>
+                    <p className="text-sm text-muted">Nothing scheduled</p>
                   )}
                 </div>
               </>
             )}
           </CardContent>
-          </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-white to-white" />
-        <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-gradient-to-br from-blue-500/5 to-transparent blur-3xl" />
-        <div className="relative">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 shadow-sm ring-1 ring-blue-900/5">
-                  <Users className="h-4 w-4 text-blue-600" />
-                </div>
-                <h2 className="text-sm font-bold tracking-tight text-gray-900">Funnel Conversion</h2>
-              </div>
-              <p className="hidden text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:block">Conversion rate between stages</p>
-            </div>
-          </CardHeader>
-        <CardContent>
+      <Card className="overflow-hidden">
+        <SectionHeader
+          icon={<Users className="h-4 w-4" />}
+          title="Funnel Conversion"
+          subtitle="Conversion rate between stages"
+        />
+        <CardContent className="pt-0">
           {statsLoading ? (
-            <Skeleton className="h-[180px] w-full rounded" />
+            <Skeleton className="h-[180px] w-full rounded-row" />
           ) : stats?.funnel_conversion?.length ? (
             <FunnelPipeline stages={stats.funnel_conversion} />
           ) : (
-            <div className="h-[180px] flex items-center justify-center">
-              <p className="text-sm text-gray-400">No funnel data yet</p>
-            </div>
+            <EmptyChart height={180}>No funnel data yet</EmptyChart>
           )}
         </CardContent>
-        </div>
-      </div>
+      </Card>
 
       {/* Breakdowns of similar density sit side by side so neither card leaves a hole. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-purple-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 p-3 shadow-sm ring-1 ring-purple-900/5">
-                  <MessageSquare className="h-4 w-4 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold tracking-tight text-gray-900">Service Needed</h2>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-0.5">What contacts are looking for</p>
-                </div>
-              </div>
-            </CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<MessageSquare className="h-4 w-4" />}
+            title="Service Needed"
+            subtitle="What contacts are looking for"
+          />
           <CardContent className="pt-0">
             {statsLoading ? (
-              <Skeleton className="h-[180px] w-full rounded" />
+              <Skeleton className="h-[180px] w-full rounded-row" />
             ) : !stats?.contact_reasons.length ? (
-              <div className="h-[180px] flex items-center justify-center">
-                <p className="text-sm text-gray-400">No data yet</p>
-              </div>
+              <EmptyChart height={180}>No data yet</EmptyChart>
             ) : (
               <div className="space-y-3 py-1">
                 {(() => {
@@ -722,15 +724,15 @@ export default function DashboardPage() {
                     const isUncaptured = r.reason === 'Not captured';
                     return (
                       <div key={r.reason}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className={isUncaptured ? 'text-gray-400 italic' : 'text-gray-700 font-medium'}>
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span className={isUncaptured ? 'text-muted italic' : 'text-primary font-medium'}>
                             {r.reason}
                           </span>
-                          <span className="text-gray-500">{r.count} · {Math.round((r.count / total) * 100)}%</span>
+                          <span className="text-muted">{r.count} · {Math.round((r.count / total) * 100)}%</span>
                         </div>
-                        <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden">
                           <div
-                            className={cn('h-full rounded-full', isUncaptured ? 'bg-gray-300' : 'bg-blue-600')}
+                            className={cn('h-full rounded-full', isUncaptured ? 'bg-surface-pressed' : 'bg-chart-lime')}
                             style={{ width: `${(r.count / maxCount) * 100}%` }}
                           />
                         </div>
@@ -740,106 +742,89 @@ export default function DashboardPage() {
                 })()}
               </div>
             )}
-            </CardContent>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-3 shadow-sm ring-1 ring-emerald-900/5">
-                    <DollarSign className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold tracking-tight text-gray-900">Channel ROI</h2>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-0.5">Revenue tied to the conversation channel</p>
-                  </div>
-                </div>
-              <Link
-                href="/inbox"
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-              >
-                Open inbox <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<DollarSign className="h-4 w-4" />}
+            title="Channel ROI"
+            subtitle="Revenue tied to the conversation channel"
+            action={<HeaderLink href="/inbox">Open inbox <ArrowRight className="h-3 w-3" /></HeaderLink>}
+          />
+          <CardContent className="pt-0">
             {statsLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full rounded" />
+                  <Skeleton key={i} className="h-10 w-full rounded-sm" />
                 ))}
               </div>
             ) : !stats?.channel_roi.length ? (
-              <div className="h-[120px] flex items-center justify-center">
-                <p className="text-sm text-gray-400">No channel revenue yet</p>
-              </div>
+              <EmptyChart height={120}>No channel revenue yet</EmptyChart>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-gray-100">
-                <div className="grid grid-cols-4 gap-3 bg-gray-50 px-3 py-2 text-[11px] font-medium text-gray-500">
+              <div className="overflow-hidden rounded-row border border-subtle">
+                <div className="grid grid-cols-4 gap-3 px-3 py-2 text-[11px] font-medium text-muted">
                   <span>Channel</span>
                   <span className="text-right">Conversations</span>
                   <span className="text-right">Revenue</span>
                   <span className="text-right">Avg Payment</span>
                 </div>
                 {stats.channel_roi.map((item) => (
-                  <div key={item.channel} className="grid grid-cols-4 gap-3 px-3 py-2 text-xs border-t border-gray-50">
-                    <span className="font-medium text-gray-900 capitalize">{item.channel}</span>
-                    <span className="text-right text-gray-500">{item.conversations.toLocaleString()}</span>
-                    <span className="text-right font-semibold text-gray-900">
+                  <div key={item.channel} className="grid grid-cols-4 gap-3 border-t border-subtle px-3 py-2.5 text-xs transition-colors hover:bg-surface-raised">
+                    <span className="font-medium text-primary capitalize">{item.channel}</span>
+                    <span className="text-right text-secondary">{item.conversations.toLocaleString()}</span>
+                    <span className="text-right font-semibold text-primary">
                       {formatMoney(item.paid_amount, stats.revenue.currency)}
                     </span>
-                    <span className="text-right text-gray-500">
+                    <span className="text-right text-secondary">
                       {formatMoney(item.avg_payment_amount, stats.revenue.currency)}
                     </span>
                   </div>
                 ))}
               </div>
             )}
-            </CardContent>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts row 1: Messaging Volume + Channel Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300 lg:col-span-2">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-blue-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 shadow-sm ring-1 ring-blue-900/5">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                </div>
-                <h2 className="text-sm font-bold tracking-tight text-gray-900">Messaging Volume</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-4">
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<TrendingUp className="h-4 w-4" />}
+            title="Messaging Volume"
+            action={
+              <div className="hidden items-center gap-3 pt-1.5 sm:flex">
+                {MESSAGING_SERIES.map((series) => (
+                  <span key={series.key} className="flex items-center gap-1.5 text-[11px] text-secondary">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: series.color }} />
+                    {series.name}
+                  </span>
+                ))}
               </div>
-            </CardHeader>
-          <CardContent>
+            }
+          />
+          <CardContent className="pt-0">
             {statsLoading ? (
-              <Skeleton className="h-[220px] w-full rounded" />
+              <Skeleton className="h-[240px] w-full rounded-row" />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={stats?.messaging_volume ?? []}>
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={stats?.messaging_volume ?? []} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gMessages" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      <stop offset="5%" stopColor={CHART_COLORS.lime} stopOpacity={0.22} />
+                      <stop offset="95%" stopColor={CHART_COLORS.lime} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gAI" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
+                      <stop offset="5%" stopColor={CHART_COLORS.purple} stopOpacity={0.18} />
+                      <stop offset="95%" stopColor={CHART_COLORS.purple} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E8EB" />
+                  <CartesianGrid {...chartGridProps} />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 10 }}
-                    stroke="#94a3b8"
+                    {...chartAxisProps}
+                    minTickGap={16}
                     tickFormatter={(d: string) => {
                       // fromISODate, not new Date(d) — d is a date-only
                       // "YYYY-MM-DD" string, which Date parses as UTC
@@ -852,166 +837,142 @@ export default function DashboardPage() {
                       return `${dt.getDate()}/${dt.getMonth() + 1}`;
                     }}
                   />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                  <YAxis {...chartAxisProps} />
                   <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
+                    {...TOOLTIP_PROPS}
+                    cursor={chartTooltipCursor}
                     labelFormatter={(d: string) => formatDateShort(d)}
                   />
-                  <Area type="monotone" dataKey="messages" stroke="#2563eb" strokeWidth={2} fill="url(#gMessages)" name="Messages" />
-                  <Area type="monotone" dataKey="ai_handled" stroke="#60a5fa" strokeWidth={2} fill="url(#gAI)" name="AI Handled" />
-                  <Area type="monotone" dataKey="calls" stroke="#93c5fd" strokeWidth={1.5} fill="none" name="Calls" />
+                  <Area type="monotone" dataKey="messages" stroke={CHART_COLORS.lime} strokeWidth={2.5} fill="url(#gMessages)" name="Messages" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="ai_handled" stroke={CHART_COLORS.purple} strokeWidth={2.5} fill="url(#gAI)" name="AI Handled" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="calls" stroke={CHART_COLORS.cyan} strokeWidth={1.5} fill="none" name="Calls" dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
             )}
-            </CardContent>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 p-3 shadow-sm ring-1 ring-indigo-900/5">
-                    <Radio className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <h2 className="text-sm font-bold tracking-tight text-gray-900">Channel Distribution</h2>
-                </div>
-              <Link
-                href="/inbox"
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-              >
-                {stats?.open_conversations ?? 0} open <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
+        <Card className="h-full overflow-hidden">
+          <SectionHeader
+            icon={<Radio className="h-4 w-4" />}
+            title="Channel Distribution"
+            action={<HeaderLink href="/inbox">{stats?.open_conversations ?? 0} open <ArrowRight className="h-3 w-3" /></HeaderLink>}
+          />
+          <CardContent className="pt-0">
             {statsLoading ? (
-              <Skeleton className="h-[220px] w-full rounded" />
+              <Skeleton className="h-[240px] w-full rounded-row" />
             ) : stats?.channel_distribution?.length ? (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie
                     data={stats.channel_distribution}
-                    cx="50%"
+                    cx="40%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
+                    innerRadius={58}
+                    outerRadius={86}
+                    paddingAngle={2}
                     dataKey="count"
                     nameKey="channel"
+                    stroke={CHART_SEGMENT_STROKE}
+                    strokeWidth={2}
                   >
                     {stats.channel_distribution.map((_, i) => (
-                      <Cell key={i} fill={CHANNEL_COLORS[i % CHANNEL_COLORS.length]} />
+                      <Cell key={i} fill={CHART_SERIES[i % CHART_SERIES.length]} />
                     ))}
                   </Pie>
-                  <Legend formatter={(v: string) => <span className="text-xs text-gray-600">{v}</span>} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Legend
+                    layout="vertical"
+                    align="right"
+                    verticalAlign="middle"
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(v: string) => <span className="text-xs text-secondary">{v}</span>}
+                  />
+                  <Tooltip {...TOOLTIP_PROPS} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[220px] flex items-center justify-center">
-                <p className="text-sm text-gray-400">No channel data yet</p>
-              </div>
+              <EmptyChart height={240}>No channel data yet</EmptyChart>
             )}
-            </CardContent>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts row 2: AI Performance + Response Time */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-cyan-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 p-3 shadow-sm ring-1 ring-cyan-900/5">
-                  <Bot className="h-4 w-4 text-cyan-600" />
-                </div>
-                <h2 className="text-sm font-bold tracking-tight text-gray-900">AI Performance</h2>
-              </div>
-            </CardHeader>
-          <CardContent>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="h-full overflow-hidden">
+          <SectionHeader icon={<Bot className="h-4 w-4" />} title="AI Performance" />
+          <CardContent className="pt-0">
             {statsLoading ? (
-              <Skeleton className="h-[200px] w-full rounded" />
+              <Skeleton className="h-[200px] w-full rounded-row" />
             ) : (
-              <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart>
-                    <Pie
-                      data={stats?.ai_performance ?? []}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={60}
-                      dataKey="value"
-                      nameKey="metric"
-                    >
-                      {(stats?.ai_performance ?? []).map((entry) => (
-                        <Cell key={entry.metric} fill={AI_COLORS[entry.metric] ?? '#cbd5e1'} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5">
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
+                <div className="h-[180px] w-full sm:w-1/2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats?.ai_performance ?? []}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={48}
+                        outerRadius={74}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="metric"
+                        stroke={CHART_SEGMENT_STROKE}
+                        strokeWidth={2}
+                      >
+                        {(stats?.ai_performance ?? []).map((entry) => (
+                          <Cell key={entry.metric} fill={AI_COLORS[entry.metric] ?? CHART_MUTED} />
+                        ))}
+                      </Pie>
+                      <Tooltip {...TOOLTIP_PROPS} formatter={(v: number) => `${v}%`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full space-y-2 sm:w-1/2">
                   {(stats?.ai_performance ?? []).map((item) => (
-                    <div key={item.metric} className="flex items-center justify-between text-xs">
+                    <div key={item.metric} className="flex items-center justify-between rounded-lg border border-white/6 bg-surface-raised px-3 py-2 text-xs">
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: AI_COLORS[item.metric] ?? '#cbd5e1' }}
+                          style={{ backgroundColor: AI_COLORS[item.metric] ?? CHART_MUTED }}
                         />
-                        <span className="text-gray-600">{item.metric}</span>
+                        <span className="text-secondary">{item.metric}</span>
                       </div>
-                      <span className="font-medium text-gray-900">{item.value}%</span>
+                      <span className="font-medium text-primary">{item.value}%</span>
                     </div>
                   ))}
                 </div>
-              </>
-            )}
-            </CardContent>
-          </div>
-        </div>
-
-        <div className="relative h-full overflow-hidden rounded-3xl border border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:shadow-gray-900/5 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-50/20 via-white to-white" />
-          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-amber-500/5 to-transparent blur-3xl" />
-          <div className="relative">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-3 shadow-sm ring-1 ring-amber-900/5">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                </div>
-                <h2 className="text-sm font-bold tracking-tight text-gray-900">Response Time by Hour</h2>
               </div>
-            </CardHeader>
-          <CardContent>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="h-full overflow-hidden">
+          <SectionHeader icon={<Clock className="h-4 w-4" />} title="Response Time by Hour" />
+          <CardContent className="pt-0">
             {statsLoading ? (
-              <Skeleton className="h-[200px] w-full rounded" />
+              <Skeleton className="h-[200px] w-full rounded-row" />
             ) : stats?.response_time_by_hour?.length ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={stats.response_time_by_hour}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E8EB" />
-                  <XAxis dataKey="hour" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={stats.response_time_by_hour} margin={{ top: 8, right: 4, left: -12, bottom: 0 }}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="hour" {...chartAxisProps} />
+                  <YAxis {...chartAxisProps} />
                   <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
+                    {...TOOLTIP_PROPS}
+                    cursor={chartTooltipCursor}
                     formatter={(v: number) => [formatResponseTimeMinutes(v), 'Avg response']}
                   />
-                  <Line type="monotone" dataKey="avg" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#2563eb', r: 3 }} />
+                  <Line type="monotone" dataKey="avg" stroke={CHART_COLORS.purple} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[240px] flex items-center justify-center">
-                <p className="text-sm text-gray-400">No response data yet</p>
-              </div>
+              <EmptyChart height={220}>No response data yet</EmptyChart>
             )}
-            </CardContent>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
     </div>

@@ -3,14 +3,13 @@
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { AppointmentStatusBadge } from './appointment-status-badge';
 import type { Appointment } from '@/services/scheduling.service';
 
 const CELL_HEIGHT = 48; // px per hour
 const START_HOUR = 0;
 const END_HOUR = 24;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
-const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface Props {
   appointments: Appointment[];
@@ -38,16 +37,16 @@ function formatDayHeader(d: Date) {
 }
 
 function formatMonthYear(d: Date) {
-  return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-amber-100 border-amber-400 text-amber-800',
-  scheduled: 'bg-amber-100 border-amber-400 text-amber-800',
-  confirmed: 'bg-blue-100 border-blue-400 text-blue-800',
-  completed: 'bg-emerald-100 border-emerald-400 text-emerald-800',
-  cancelled: 'bg-red-100 border-red-400 text-red-500',
-  no_show: 'bg-gray-100 border-gray-300 text-gray-500',
+  pending: 'bg-warning/15 border-warning/50 text-warning',
+  scheduled: 'bg-warning/15 border-warning/50 text-warning',
+  confirmed: 'bg-olive-dark border-accent/50 text-accent',
+  completed: 'bg-success/15 border-success/50 text-success',
+  cancelled: 'bg-danger/15 border-danger/50 text-danger',
+  no_show: 'bg-surface-raised border-strong text-secondary',
 };
 
 export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointmentClick }: Props) {
@@ -74,10 +73,10 @@ export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointm
   };
 
   return (
-    <div className="rounded-xl border border-border bg-white overflow-hidden h-full flex flex-col">
+    <div className="rounded-xl border border-subtle bg-surface overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-        <span className="text-sm font-medium text-gray-700 capitalize">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-subtle">
+        <span className="text-sm font-medium text-primary capitalize">
           {formatMonthYear(weekStart)}
         </span>
         <div className="flex items-center gap-1">
@@ -93,12 +92,12 @@ export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointm
       <div ref={scrollRef} className="overflow-auto flex-1 min-h-0">
         <div className="flex">
           {/* Hour labels */}
-          <div className="w-14 shrink-0 border-r border-border">
-            <div className="h-10 border-b border-border" />
+          <div className="w-14 shrink-0 border-r border-subtle">
+            <div className="h-10 border-b border-subtle" />
             {HOURS.map((h) => (
               <div
                 key={h}
-                className="flex items-start justify-end pr-2 text-[10px] text-gray-400"
+                className="flex items-start justify-end pr-2 text-[10px] text-muted"
                 style={{ height: CELL_HEIGHT }}
               >
                 <span className="-mt-2">{h % 12 || 12}:00 {h >= 12 ? 'PM' : 'AM'}</span>
@@ -113,16 +112,16 @@ export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointm
               const dayAppts = appointments.filter((a) => sameDay(new Date(a.starts_at), day));
 
               return (
-                <div key={di} className="relative border-r border-border last:border-r-0">
+                <div key={di} className="relative border-r border-subtle last:border-r-0">
                   {/* Day header */}
                   <div
-                    className={`h-10 flex flex-col items-center justify-center border-b border-border text-xs ${
-                      isToday ? 'bg-blue-50' : ''
+                    className={`h-10 flex flex-col items-center justify-center border-b border-subtle text-xs ${
+                      isToday ? 'bg-olive-dark' : ''
                     }`}
                   >
-                    <span className="text-gray-400">{DAYS[di]}</span>
+                    <span className="text-muted">{DAYS[di]}</span>
                     <span
-                      className={`font-semibold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}
+                      className={`font-semibold ${isToday ? 'text-accent' : 'text-primary'}`}
                     >
                       {formatDayHeader(day)}
                     </span>
@@ -132,7 +131,7 @@ export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointm
                   {HOURS.map((h) => (
                     <div
                       key={h}
-                      className="border-b border-dashed border-gray-100"
+                      className="border-b border-dashed border-subtle"
                       style={{ height: CELL_HEIGHT }}
                     />
                   ))}
@@ -156,7 +155,7 @@ export function WeekCalendar({ appointments, weekStart, onWeekChange, onAppointm
                       <button
                         key={appt.id}
                         onClick={() => onAppointmentClick(appt)}
-                        className={`absolute left-0.5 right-0.5 rounded border-l-2 px-1 py-0.5 text-left overflow-hidden ${colorClass}`}
+                        className={`absolute left-0.5 right-0.5 rounded-sm border-l-2 px-1 py-0.5 text-left overflow-hidden ${colorClass}`}
                         style={{ top, height }}
                       >
                         <p className="text-[10px] font-medium leading-tight truncate">{appt.title}</p>

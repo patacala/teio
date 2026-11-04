@@ -6,7 +6,7 @@ export function AIResponseIndicator({ className }: { className?: string }) {
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-        'bg-blue-100 text-blue-300',
+        'bg-olive-dark text-accent/75',
         className,
       )}
     >

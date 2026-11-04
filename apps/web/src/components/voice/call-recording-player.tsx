@@ -27,7 +27,7 @@ export function CallRecordingPlayer({
     return (
       <button
         onClick={() => setPlaying(true)}
-        className={`flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 ${className ?? ''}`}
+        className={`flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover ${className ?? ''}`}
       >
         <Play className="h-3 w-3" />
         Play recording

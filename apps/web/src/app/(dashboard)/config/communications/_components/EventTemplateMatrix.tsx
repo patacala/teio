@@ -64,21 +64,21 @@ export function EventTemplateMatrix() {
       {/* Stats bar */}
       <div className="flex items-center gap-6 mb-5">
         <div className="flex items-center gap-4">
-          <StatPill icon={Zap} label="Eventos" value={stats.total} color="text-blue-600 bg-blue-50" />
-          <StatPill icon={Mail} label="Email" value={stats.configuredEmail} suffix={`/${stats.total}`} color="text-emerald-600 bg-emerald-50" />
-          <StatPill icon={MessageSquare} label="SMS" value={stats.configuredSms} suffix={`/${stats.total}`} color="text-emerald-600 bg-emerald-50" />
-          <div className="h-5 w-px bg-border" />
-          <span className={`text-xs font-semibold ${stats.coverage === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {stats.coverage}% cobertura
+          <StatPill icon={Zap} label="Events" value={stats.total} color="text-accent bg-olive-dark" />
+          <StatPill icon={Mail} label="Email" value={stats.configuredEmail} suffix={`/${stats.total}`} color="text-success bg-success/10" />
+          <StatPill icon={MessageSquare} label="SMS" value={stats.configuredSms} suffix={`/${stats.total}`} color="text-success bg-success/10" />
+          <div className="h-5 w-px bg-divider" />
+          <span className={`text-xs font-semibold ${stats.coverage === 100 ? 'text-success' : 'text-warning'}`}>
+            {stats.coverage}% coverage
           </span>
         </div>
         <div className="flex-1" />
         <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar evento..."
+            placeholder="Search event..."
             className="h-8 pl-9 text-[13px]"
           />
         </div>
@@ -89,10 +89,10 @@ export function EventTemplateMatrix() {
         {filteredGroups.map((group) => (
           <section key={group.label}>
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">
+              <h2 className="text-[11px] uppercase tracking-widest text-muted font-semibold">
                 {group.label}
               </h2>
-              <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] text-muted bg-surface-raised px-1.5 py-0.5 rounded-full">
                 {group.events.length}
               </span>
             </div>
@@ -115,8 +115,8 @@ export function EventTemplateMatrix() {
 
         {filteredGroups.length === 0 && (
           <div className="flex flex-col items-center py-12">
-            <Search className="h-8 w-8 text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">Sin resultados para "{search}"</p>
+            <Search className="h-8 w-8 text-muted mb-3" />
+            <p className="text-sm text-secondary">No results for &quot;{search}&quot;</p>
           </div>
         )}
       </div>
@@ -167,9 +167,9 @@ function StatPill({
         <Icon className="w-3 h-3" />
       </div>
       <div className="flex items-baseline gap-1">
-        <span className="text-sm font-bold text-gray-900">{value}</span>
-        {suffix && <span className="text-[11px] text-gray-400">{suffix}</span>}
-        <span className="text-[11px] text-gray-400">{label}</span>
+        <span className="text-sm font-bold text-primary">{value}</span>
+        {suffix && <span className="text-[11px] text-muted">{suffix}</span>}
+        <span className="text-[11px] text-muted">{label}</span>
       </div>
     </div>
   );
@@ -193,23 +193,23 @@ function EventCard({
 
   return (
     <div className={`
-      bg-panel border rounded-xl p-4 transition-all
+      bg-surface border rounded-xl p-4 transition-all
       ${isFullyConfigured
-        ? 'border-emerald-200 bg-emerald-50/20'
+        ? 'border-success/25 bg-success/10'
         : isPartial
-          ? 'border-amber-200 bg-amber-50/10'
-          : 'border-border hover:border-gray-300'}
+          ? 'border-warning/25 bg-warning/10'
+          : 'border-subtle hover:border-strong'}
     `}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-[13px] font-medium text-gray-900 truncate">
+          <h3 className="text-[13px] font-medium text-primary truncate">
             {formatEventLabel(event)}
           </h3>
         </div>
         {isFullyConfigured && (
-          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 ml-2">
-            <Check className="w-3 h-3 text-emerald-600" />
+          <div className="w-5 h-5 rounded-full bg-success/15 flex items-center justify-center shrink-0 ml-2">
+            <Check className="w-3 h-3 text-success" />
           </div>
         )}
       </div>
@@ -252,8 +252,8 @@ function ChannelButton({
       className={`
         flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all
         ${configured
-          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-          : 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300'}
+          ? 'bg-success/10 text-success border border-success/25 hover:bg-success/15'
+          : 'bg-surface-raised text-muted border border-dashed border-strong hover:bg-olive-dark hover:text-accent-hover hover:border-accent/30'}
       `}
     >
       <Icon className="w-3.5 h-3.5 shrink-0" />

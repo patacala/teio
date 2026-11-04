@@ -41,9 +41,9 @@ export default function ConfigWebhooksPage() {
   const handleDelete = async (id: string) => {
     try {
       await deleteWebhook.mutateAsync(id);
-      toast({ title: 'Webhook eliminado', variant: 'default' });
+      toast({ title: 'Webhook deleted', variant: 'default' });
     } catch {
-      toast({ title: 'Error al eliminar', variant: 'error' });
+      toast({ title: 'Error deleting', variant: 'error' });
     }
   };
 
@@ -52,12 +52,12 @@ export default function ConfigWebhooksPage() {
     try {
       const result = await testWebhook.mutateAsync(id);
       if (result.success) {
-        toast({ title: `Test exitoso — HTTP ${result.status_code}`, variant: 'default' });
+        toast({ title: `Test succeeded — HTTP ${result.status_code}`, variant: 'default' });
       } else {
-        toast({ title: `Test fallido — ${result.error ?? `HTTP ${result.status_code}`}`, variant: 'error' });
+        toast({ title: `Test failed — ${result.error ?? `HTTP ${result.status_code}`}`, variant: 'error' });
       }
     } catch {
-      toast({ title: 'Error al enviar test', variant: 'error' });
+      toast({ title: 'Error sending test', variant: 'error' });
     } finally {
       setTestingId(null);
     }
@@ -67,55 +67,55 @@ export default function ConfigWebhooksPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Webhooks</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Configura eventos para integrar el CRM con sistemas externos.
+          <h1 className="text-lg font-semibold text-primary">Webhooks</h1>
+          <p className="text-xs text-secondary mt-0.5">
+            Configure events to integrate the CRM with external systems.
           </p>
         </div>
-        <Button size="sm" onClick={openCreate} className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus className="h-3.5 w-3.5" /> Crear webhook
+        <Button size="sm" onClick={openCreate} className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent">
+          <Plus className="h-3.5 w-3.5" /> Create webhook
         </Button>
       </div>
 
       {isLoading ? (
         <div className="space-y-2 max-w-5xl">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-14 rounded-xl border border-border animate-pulse bg-panel" />
+            <div key={i} className="h-14 rounded-xl border border-subtle animate-pulse bg-surface" />
           ))}
         </div>
       ) : !webhooks?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-20 text-center">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <Zap className="h-6 w-6 text-blue-500" />
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-subtle py-20 text-center">
+          <div className="w-12 h-12 rounded-xl bg-olive-dark flex items-center justify-center mb-3">
+            <Zap className="h-6 w-6 text-accent" />
           </div>
-          <h3 className="font-medium text-gray-900 text-sm">Sin webhooks</h3>
-          <p className="text-xs text-gray-500 mt-1">Conecta tu sistema externo con eventos del CRM.</p>
-          <Button size="sm" onClick={openCreate} className="mt-4 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="h-3.5 w-3.5" /> Crear webhook
+          <h3 className="font-medium text-primary text-sm">No webhooks</h3>
+          <p className="text-xs text-secondary mt-1">Connect your external system to CRM events.</p>
+          <Button size="sm" onClick={openCreate} className="mt-4 gap-1.5 bg-accent hover:bg-accent-hover text-on-accent">
+            <Plus className="h-3.5 w-3.5" /> Create webhook
           </Button>
         </div>
       ) : (
-        <div className="max-w-5xl rounded-xl border border-border overflow-hidden">
+        <div className="max-w-5xl rounded-xl border border-subtle overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-surface border-b border-border">
+            <thead className="bg-surface-raised border-b border-subtle">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Nombre</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Eventos</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">URL</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">Estado</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-secondary">Name</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-secondary">Events</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-secondary">URL</th>
+                <th className="text-left px-4 py-2.5 text-xs font-medium text-secondary">Status</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border bg-panel">
+            <tbody className="divide-y divide-subtle bg-surface">
               {webhooks.map((wh) => {
                 const visibleEvents = wh.events.slice(0, MAX_EVENT_PILLS);
                 const extraCount = wh.events.length - MAX_EVENT_PILLS;
                 const isTesting = testingId === wh.id;
 
                 return (
-                  <tr key={wh.id} className="hover:bg-surface transition-colors">
+                  <tr key={wh.id} className="hover:bg-surface-raised transition-colors">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{wh.name}</span>
+                      <span className="font-medium text-primary">{wh.name}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -125,26 +125,26 @@ export default function ConfigWebhooksPage() {
                           </Badge>
                         ))}
                         {extraCount > 0 && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-gray-400">
-                            +{extraCount} más
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted">
+                            +{extraCount} more
                           </Badge>
                         )}
                         {wh.events.length === 0 && (
-                          <span className="text-xs text-gray-400">Sin eventos</span>
+                          <span className="text-xs text-muted">No events</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3 max-w-xs">
-                      <span className="text-xs text-gray-500 font-mono truncate block">{wh.url}</span>
+                      <span className="text-xs text-secondary font-mono truncate block">{wh.url}</span>
                     </td>
                     <td className="px-4 py-3">
                       {wh.is_active ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Activo
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
-                          <XCircle className="h-3.5 w-3.5" /> Inactivo
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted">
+                          <XCircle className="h-3.5 w-3.5" /> Inactive
                         </span>
                       )}
                     </td>
@@ -152,34 +152,34 @@ export default function ConfigWebhooksPage() {
                       <div className="flex items-center gap-0.5 justify-end">
                         <button
                           onClick={() => openEdit(wh)}
-                          title="Editar"
-                          className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="Edit"
+                          className="p-1.5 rounded-sm text-muted hover:text-primary hover:bg-surface-hover transition-colors"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleTest(wh.id)}
                           disabled={isTesting}
-                          title="Enviar test"
-                          className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40"
+                          title="Send test"
+                          className="p-1.5 rounded-sm text-muted hover:text-accent-hover hover:bg-olive-dark transition-colors disabled:opacity-40"
                         >
                           {isTesting ? (
-                            <span className="h-3.5 w-3.5 block border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="h-3.5 w-3.5 block border-2 border-accent/50 border-t-transparent rounded-full animate-spin" />
                           ) : (
                             <Zap className="h-3.5 w-3.5" />
                           )}
                         </button>
                         <button
                           onClick={() => openLogs(wh)}
-                          title="Ver logs"
-                          className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          title="View logs"
+                          className="p-1.5 rounded-sm text-muted hover:text-primary hover:bg-surface-hover transition-colors"
                         >
                           <List className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(wh.id)}
-                          title="Eliminar"
-                          className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                          className="p-1.5 rounded-sm text-muted hover:text-danger hover:bg-danger/10 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

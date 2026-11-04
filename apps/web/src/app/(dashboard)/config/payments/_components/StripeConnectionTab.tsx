@@ -39,47 +39,46 @@ export function StripeConnectionTab() {
       if (form.stripe_webhook_secret.trim()) body.stripe_webhook_secret = form.stripe_webhook_secret.trim();
       await update.mutateAsync(body);
       setForm((f) => ({ ...f, stripe_secret_key: '', stripe_webhook_secret: '' }));
-      toast({ title: 'Configuración de Stripe guardada', variant: 'default' });
+      toast({ title: 'Stripe settings saved', variant: 'default' });
     } catch {
-      toast({ title: 'Error al guardar la configuración', variant: 'error' });
+      toast({ title: 'Error saving the settings', variant: 'error' });
     }
   };
 
   if (isLoading) {
-    return <div className="h-64 rounded-xl border border-border animate-pulse bg-panel max-w-xl" />;
+    return <div className="h-64 rounded-xl border border-subtle animate-pulse bg-surface max-w-xl" />;
   }
 
   return (
     <div className="space-y-5 max-w-xl">
       <div
         className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
-          settings?.is_connected ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+          settings?.is_connected ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
         }`}
       >
         {settings?.is_connected ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />}
-        {settings?.is_connected ? 'Stripe conectado' : 'Stripe no configurado todavía'}
+        {settings?.is_connected ? 'Stripe connected' : 'Stripe not configured yet'}
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">Secret Key de Stripe</label>
+        <label className="block text-xs font-medium text-primary mb-1.5">Stripe Secret Key</label>
         <Input
           type="password"
           value={form.stripe_secret_key}
           onChange={(e) => setForm((f) => ({ ...f, stripe_secret_key: e.target.value }))}
           placeholder={settings?.stripe_secret_key ?? 'sk_live_...'}
         />
-        <p className="text-[11px] text-gray-400 mt-1">
-          La encuentras en tu propio Dashboard de Stripe → Developers → API keys. Solo se guarda en el servidor,
-          nunca se vuelve a mostrar completa.
+        <p className="text-[11px] text-muted mt-1">
+          You&apos;ll find it in your own Stripe Dashboard → Developers → API keys. It&apos;s only stored on the server and is never shown in full again.
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">Moneda</label>
+        <label className="block text-xs font-medium text-primary mb-1.5">Currency</label>
         <select
           value={form.currency}
           onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-          className="w-full h-9 rounded-md border border-border bg-white px-3 text-sm uppercase focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full h-9 rounded-md border border-subtle bg-surface-raised px-3 text-sm uppercase focus:outline-hidden focus:ring-1 focus:ring-accent/40"
         >
           {CURRENCIES.map((c) => (
             <option key={c} value={c}>{c.toUpperCase()}</option>
@@ -87,15 +86,15 @@ export function StripeConnectionTab() {
         </select>
       </div>
 
-      <div className="border-t border-border pt-4">
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-          1. Registra este webhook en tu Dashboard de Stripe
+      <div className="border-t border-subtle pt-4">
+        <label className="block text-xs font-medium text-primary mb-1.5">
+          1. Register this webhook in your Stripe Dashboard
         </label>
         <div className="flex items-center gap-2">
           <Input
             readOnly
             value={webhookUrl}
-            className={`text-xs font-mono ${!webhookUrlReady ? 'border-red-300 text-red-600' : ''}`}
+            className={`text-xs font-mono ${!webhookUrlReady ? 'border-danger/25 text-danger' : ''}`}
           />
           <Button
             type="button"
@@ -109,19 +108,19 @@ export function StripeConnectionTab() {
           </Button>
         </div>
         {webhookUrlReady ? (
-          <p className="text-[11px] text-gray-400 mt-1">
-            Developers → Webhooks → Add endpoint. Escucha el evento <code>checkout.session.completed</code>.
+          <p className="text-[11px] text-muted mt-1">
+            Developers → Webhooks → Add endpoint. Listen for the event <code>checkout.session.completed</code>.
           </p>
         ) : (
-          <p className="text-[11px] text-red-500 mt-1">
-            No se pudo generar la URL del webhook. Recarga la página; si el problema persiste, contacta a soporte.
+          <p className="text-[11px] text-danger mt-1">
+            Could not generate the webhook URL. Reload the page; if the problem persists, contact support.
           </p>
         )}
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-          2. Pega aquí el Signing Secret que te da Stripe
+        <label className="block text-xs font-medium text-primary mb-1.5">
+          2. Paste the Signing Secret Stripe gives you here
         </label>
         <Input
           type="password"
@@ -135,9 +134,9 @@ export function StripeConnectionTab() {
         <Button
           onClick={handleSave}
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
-          {update.isPending ? 'Guardando…' : 'Guardar'}
+          {update.isPending ? 'Saving…' : 'Save'}
         </Button>
       </div>
     </div>

@@ -44,8 +44,8 @@ export function ChipMultiSelect({
               onClick={() => toggle(option)}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 selected
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-border hover:border-gray-400'
+                  ? 'bg-olive-dark text-accent border-accent/25'
+                  : 'bg-surface text-secondary border-subtle hover:border-strong'
               }`}
             >
               {option}
@@ -57,7 +57,7 @@ export function ChipMultiSelect({
             key={option}
             type="button"
             onClick={() => toggle(option)}
-            className="text-xs px-2.5 py-1 rounded-full border bg-blue-600 text-white border-blue-600"
+            className="text-xs px-2.5 py-1 rounded-full border bg-olive-dark text-accent border-accent/25"
           >
             {option} ×
           </button>
@@ -79,7 +79,7 @@ export function ChipMultiSelect({
         <button
           type="button"
           onClick={addCustom}
-          className="h-8 px-2 rounded-lg border border-border text-gray-500 hover:bg-gray-50 transition-colors"
+          className="h-8 px-2 rounded-lg border border-subtle text-secondary hover:bg-surface-raised transition-colors"
           aria-label="Add"
         >
           <Plus className="h-3.5 w-3.5" />

@@ -61,7 +61,7 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">Name</label>
+        <label className="block text-xs font-medium text-primary mb-1.5">Name</label>
         <Input
           required
           value={form.name}
@@ -71,8 +71,8 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-          Short description <span className="text-gray-400 font-normal">(optional)</span>
+        <label className="block text-xs font-medium text-primary mb-1.5">
+          Short description <span className="text-muted font-normal">(optional)</span>
         </label>
         <Input
           value={form.description}
@@ -82,7 +82,7 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+        <label className="block text-xs font-medium text-primary mb-1.5">
           What matters most when talking to customers?
         </label>
         <ChipMultiSelect
@@ -93,8 +93,8 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-          Words or phrases it should never say <span className="text-gray-400 font-normal">(optional)</span>
+        <label className="block text-xs font-medium text-primary mb-1.5">
+          Words or phrases it should never say <span className="text-muted font-normal">(optional)</span>
         </label>
         <LinesField
           label=""
@@ -105,13 +105,13 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
       </div>
 
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-        <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700">
+        <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
           Advanced
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Communication style</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Communication style</label>
             <Input
               value={form.communication_style}
               onChange={(e) => setForm((f) => ({ ...f, communication_style: e.target.value }))}
@@ -119,7 +119,7 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Compliance notes</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Compliance notes</label>
             <Input
               value={form.compliance_notes}
               onChange={(e) => setForm((f) => ({ ...f, compliance_notes: e.target.value }))}
@@ -147,7 +147,7 @@ export function IdentityTab({ identity }: { identity: Identity | null }) {
         <Button
           type="submit"
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </Button>

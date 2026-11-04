@@ -31,7 +31,7 @@ export default function ContactProfilePage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted" />
       </div>
     );
   }
@@ -39,10 +39,10 @@ export default function ContactProfilePage() {
   if (isError || !contact) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <p className="text-sm text-gray-500">Contact not found</p>
+        <p className="text-sm text-secondary">Contact not found</p>
         <button
           onClick={() => router.push('/contacts')}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-accent hover:underline"
         >
           Back to contacts
         </button>
@@ -51,11 +51,11 @@ export default function ContactProfilePage() {
   }
 
   return (
-    <div className="max-w-none px-6 py-6 space-y-6">
+    <div className="max-w-none space-y-6">
       {/* Back nav */}
       <button
         onClick={() => router.push('/contacts')}
-        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
+        className="flex items-center gap-1.5 text-sm text-secondary hover:text-primary"
       >
         <ArrowLeft className="h-4 w-4" />
         Contacts

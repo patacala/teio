@@ -73,12 +73,12 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
     <div className="flex flex-col h-full p-3 gap-1">
       {/* Header */}
       <div className="flex items-center justify-between px-1 mb-1">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <span className="text-xs font-semibold text-muted uppercase tracking-wide">
           Calendars
         </span>
         <button
           onClick={() => setCreating((v) => !v)}
-          className="text-gray-400 hover:text-blue-600 transition-colors"
+          className="text-muted hover:text-accent-hover transition-colors"
           title="Add calendar"
         >
           <Plus className="h-4 w-4" />
@@ -91,8 +91,8 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
           key={cal.id}
           className={`group flex items-start gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${
             selectedId === cal.id
-              ? 'bg-blue-50 text-blue-700'
-              : 'text-gray-700 hover:bg-gray-50'
+              ? 'bg-olive-dark text-accent'
+              : 'text-primary hover:bg-surface-raised'
           }`}
           onClick={() => onChange(cal.id)}
         >
@@ -105,16 +105,16 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
           <div className="flex-1 min-w-0">
             <span className="block text-sm truncate">{cal.name}</span>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[10px] text-gray-400 font-mono truncate">
+              <span className="text-[10px] text-muted font-mono truncate">
                 {cal.id.slice(0, 8)}…
               </span>
               <button
                 onClick={(e) => handleCopyId(e, cal.id)}
-                className="shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+                className="shrink-0 text-muted hover:text-accent-hover transition-colors"
                 title={`Copy ID: ${cal.id}`}
               >
                 {copiedId === cal.id
-                  ? <Check className="h-3 w-3 text-green-600" />
+                  ? <Check className="h-3 w-3 text-success" />
                   : <Copy className="h-3 w-3" />
                 }
               </button>
@@ -128,8 +128,8 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
             }}
             className={`shrink-0 mt-0.5 transition-opacity ${
               selectedId === cal.id
-                ? 'opacity-60 hover:opacity-100 text-blue-600'
-                : 'opacity-0 group-hover:opacity-60 hover:!opacity-100 text-gray-500'
+                ? 'opacity-60 hover:opacity-100 text-accent'
+                : 'opacity-0 group-hover:opacity-60 hover:opacity-100! text-secondary'
             }`}
             title="Configure"
           >
@@ -140,14 +140,14 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
 
       {/* Inline create form */}
       {creating && (
-        <div className="mt-1 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 p-2.5 space-y-2">
+        <div className="mt-1 rounded-lg border border-dashed border-accent/30 bg-olive-dark/50 p-2.5 space-y-2">
           <Input
             placeholder="Calendar name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             autoFocus
-            className="h-7 text-xs bg-white"
+            className="h-7 text-xs bg-surface"
           />
           {/* Color swatches */}
           <div className="flex gap-1.5">
@@ -159,7 +159,7 @@ export function CalendarSidebar({ selectedId, onChange }: CalendarSidebarProps) 
                 onClick={() => setNewColor(swatch.value)}
                 className={`w-5 h-5 rounded-full border-2 transition-all ${
                   newColor === swatch.value
-                    ? 'border-gray-900 scale-110'
+                    ? 'border-strong scale-110'
                     : 'border-transparent hover:scale-105'
                 }`}
                 style={{ backgroundColor: swatch.value }}

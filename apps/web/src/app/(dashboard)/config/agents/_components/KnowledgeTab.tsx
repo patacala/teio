@@ -133,7 +133,7 @@ export function KnowledgeTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <p className="min-w-0 text-xs text-gray-500">
+        <p className="min-w-0 text-xs text-secondary">
           Applies to all agents in your organization (not exclusive to this one).
         </p>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

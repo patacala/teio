@@ -23,11 +23,11 @@ export function AIResponseBubble({ content, timestamp, channel, className }: AIR
     >
       <div className="max-w-[70%] min-w-0 flex flex-col items-start space-y-1">
         <AIResponseIndicator />
-        <div className="rounded-xl rounded-bl-sm border-l-2 border-blue-300 bg-gray-100 px-3.5 py-2.5 text-sm text-gray-900 w-fit max-w-full min-w-0 box-border">
-          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{content}</p>
+        <div className="rounded-xl rounded-bl-sm border-l-2 border-accent/30 bg-surface-raised px-3.5 py-2.5 text-sm text-primary w-fit max-w-full min-w-0 box-border">
+          <p className="whitespace-pre-wrap wrap-break-word wrap-anywhere">{content}</p>
         </div>
         <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-          <span className="text-[10px] text-gray-400 truncate">{formatRelativeTime(timestamp)}</span>
+          <span className="text-[10px] text-muted truncate">{formatRelativeTime(timestamp)}</span>
           <ChannelBadge channel={channel} />
         </div>
       </div>

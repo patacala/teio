@@ -5,16 +5,7 @@ import { Settings, Radio, Power, Trash2, Loader2 } from 'lucide-react';
 import { useUpdateChannel, useDeleteChannel, useTestChannelConnection } from '@/hooks/useChannels';
 import type { Channel, TestConnectionResult } from '@/services/channels.service';
 import { toast } from '@/hooks/useToast';
-
-const CHANNEL_EMOJI: Record<string, string> = {
-  whatsapp: '💬',
-  facebook: '📘',
-  instagram: '📷',
-  sms: '📱',
-  email: '📧',
-  webchat: '🌐',
-  voice: '🎙️',
-};
+import { ChannelIcon } from '@/components/channel-icon';
 
 interface Props {
   channel: Channel;
@@ -32,12 +23,12 @@ export function ChannelCard({ channel, onConfigure }: Props) {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('¿Eliminar este canal?')) return;
+    if (!window.confirm('Delete this channel?')) return;
     try {
       await deleteChannel.mutateAsync(channel.id);
-      toast({ title: 'Canal eliminado' });
+      toast({ title: 'Channel deleted' });
     } catch {
-      toast({ title: 'Error al eliminar canal', variant: 'error' });
+      toast({ title: 'Error deleting channel', variant: 'error' });
     }
   };
 
@@ -58,41 +49,41 @@ export function ChannelCard({ channel, onConfigure }: Props) {
     channel.type === 'whatsapp'
       ? phoneNumber
         ? `+${phoneNumber}`
-        : 'Sin número vinculado'
+        : 'No number linked'
       : channel.external_identifier;
 
   return (
-    <div className="bg-panel border border-border rounded-xl overflow-hidden flex flex-col">
+    <div className="bg-surface border border-subtle rounded-xl overflow-hidden flex flex-col">
       {/* Card body */}
       <div className="px-4 py-3 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-xl shrink-0">
-          {CHANNEL_EMOJI[channel.type] ?? '🔌'}
+        <div className="w-9 h-9 rounded-tile border border-subtle bg-surface-raised flex items-center justify-center shrink-0">
+          <ChannelIcon type={channel.type} className="h-[18px] w-[18px]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-gray-900 capitalize">{channel.type}</p>
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded capitalize">
+            <p className="text-sm font-semibold text-primary capitalize">{channel.type}</p>
+            <span className="text-[10px] bg-surface-raised text-secondary px-1.5 py-0.5 rounded-sm capitalize">
               {channel.provider}
             </span>
             <span
               className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
                 channel.is_active
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-gray-100 text-gray-500'
+                  ? 'bg-success/10 text-success'
+                  : 'bg-surface-raised text-secondary'
               }`}
             >
               {channel.is_active ? 'Active' : 'Inactive'}
             </span>
           </div>
-          <p className="text-xs text-gray-400 truncate mt-0.5">{subtitle}</p>
+          <p className="text-xs text-muted truncate mt-0.5">{subtitle}</p>
         </div>
       </div>
 
       {/* Action bar */}
-      <div className="border-t border-border px-3 py-1.5 flex items-center gap-0.5">
+      <div className="border-t border-subtle px-3 py-1.5 flex items-center gap-0.5">
         <button
           onClick={onConfigure}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+          className="flex items-center gap-1 text-xs text-secondary hover:text-accent-hover px-2 py-1 rounded-sm hover:bg-olive-dark transition-colors"
         >
           <Settings className="h-3.5 w-3.5" />
           <span>Configure</span>
@@ -101,7 +92,7 @@ export function ChannelCard({ channel, onConfigure }: Props) {
         <button
           onClick={handleTest}
           disabled={testConnection.isPending}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+          className="flex items-center gap-1 text-xs text-secondary hover:text-accent-hover px-2 py-1 rounded-sm hover:bg-olive-dark transition-colors"
         >
           {testConnection.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -116,8 +107,8 @@ export function ChannelCard({ channel, onConfigure }: Props) {
           disabled={updateChannel.isPending}
           className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
             channel.is_active
-              ? 'text-gray-500 hover:text-orange-600 hover:bg-orange-50'
-              : 'text-gray-500 hover:text-emerald-600 hover:bg-emerald-50'
+              ? 'text-secondary hover:text-warning hover:bg-warning/10'
+              : 'text-secondary hover:text-success hover:bg-success/10'
           }`}
         >
           <Power className="h-3.5 w-3.5" />
@@ -127,7 +118,7 @@ export function ChannelCard({ channel, onConfigure }: Props) {
         <button
           onClick={handleDelete}
           disabled={deleteChannel.isPending}
-          className="ml-auto p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          className="ml-auto p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded-sm transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -138,8 +129,8 @@ export function ChannelCard({ channel, onConfigure }: Props) {
         <div
           className={`px-4 py-2 text-xs border-t ${
             testResult.success
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-              : 'bg-red-50 text-red-700 border-red-100'
+              ? 'bg-success/10 text-success border-success/25'
+              : 'bg-danger/10 text-danger border-danger/25'
           }`}
         >
           {testResult.success ? '✓' : '✗'} {testResult.message}

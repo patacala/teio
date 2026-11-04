@@ -42,12 +42,12 @@ export function fieldLabel(key: string, labels?: Record<string, string>): string
 }
 
 const SENTIMENT_LABELS: Record<string, string> = {
-  positive: 'Positivo',
-  positivo: 'Positivo',
-  negative: 'Negativo',
-  negativo: 'Negativo',
-  neutral: 'Neutro',
-  neutro: 'Neutro',
+  positive: 'Positive',
+  positivo: 'Positive',
+  negative: 'Negative',
+  negativo: 'Negative',
+  neutral: 'Neutral',
+  neutro: 'Neutral',
 };
 
 export function prettifySentiment(value?: string): string {
@@ -104,20 +104,20 @@ export function recommendedAction(contact: Contact): RecommendedAction | null {
   if (hot && contact.phone && minsSinceActivity !== null && minsSinceActivity < 60) {
     return {
       channel: 'call',
-      title: 'Llamar ahora',
-      description: `Respondió ${relativeTime(contact.last_activity!)} y mostró alta intención${buying ? ' de comprar' : ' de agendar'}.`,
+      title: 'Call now',
+      description: `Replied ${relativeTime(contact.last_activity!)} and showed strong intent${buying ? ' to buy' : ' to book'}.`,
     };
   }
   if (contact.email) {
     return {
       channel: 'email',
-      title: 'Enviar información',
-      description: 'Puede necesitar más detalles antes de agendar.',
+      title: 'Send information',
+      description: 'May need more details before booking.',
     };
   }
   return {
     channel: contact.phone ? 'call' : 'whatsapp',
-    title: 'Dar seguimiento',
-    description: 'Continuar la conversación para avanzar el proceso.',
+    title: 'Follow up',
+    description: 'Continue the conversation to move the process forward.',
   };
 }

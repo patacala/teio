@@ -47,8 +47,8 @@ export function AppointmentsTable({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border bg-white overflow-hidden">
-        <div className="divide-y divide-border">
+      <div className="rounded-xl border border-subtle bg-surface overflow-hidden">
+        <div className="divide-y divide-subtle">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-4 py-3">
               <Skeleton className="h-4 w-32" />
@@ -67,45 +67,45 @@ export function AppointmentsTable({
 
   if (appointments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border bg-white">
-        <Calendar className="h-10 w-10 text-gray-300 mb-3" />
-        <p className="text-sm font-medium text-gray-500">No appointments scheduled</p>
-        <p className="text-xs text-gray-400 mt-1">Create a new appointment with the button above.</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-subtle bg-surface">
+        <Calendar className="h-10 w-10 text-muted mb-3" />
+        <p className="text-sm font-medium text-secondary">No appointments scheduled</p>
+        <p className="text-xs text-muted mt-1">Create a new appointment with the button above.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-white overflow-hidden h-full flex flex-col">
+    <div className="rounded-xl border border-subtle bg-surface overflow-hidden h-full flex flex-col">
       <div className="overflow-auto flex-1 min-h-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-gray-50 text-left">
-              <th className="px-4 py-2.5 font-medium text-gray-500 whitespace-nowrap sticky top-0 bg-gray-50 z-10">Date/Time</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 sticky top-0 bg-gray-50 z-10">Contact</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 sticky top-0 bg-gray-50 z-10">Title</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 whitespace-nowrap sticky top-0 bg-gray-50 z-10">Duration</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 sticky top-0 bg-gray-50 z-10">Status</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 sticky top-0 bg-gray-50 z-10">Origin</th>
-              <th className="px-4 py-2.5 font-medium text-gray-500 sticky top-0 bg-gray-50 z-10">Actions</th>
+            <tr className="border-b border-subtle bg-surface-raised text-left">
+              <th className="px-4 py-2.5 font-medium text-secondary whitespace-nowrap sticky top-0 bg-surface-raised z-10">Date/Time</th>
+              <th className="px-4 py-2.5 font-medium text-secondary sticky top-0 bg-surface-raised z-10">Contact</th>
+              <th className="px-4 py-2.5 font-medium text-secondary sticky top-0 bg-surface-raised z-10">Title</th>
+              <th className="px-4 py-2.5 font-medium text-secondary whitespace-nowrap sticky top-0 bg-surface-raised z-10">Duration</th>
+              <th className="px-4 py-2.5 font-medium text-secondary sticky top-0 bg-surface-raised z-10">Status</th>
+              <th className="px-4 py-2.5 font-medium text-secondary sticky top-0 bg-surface-raised z-10">Origin</th>
+              <th className="px-4 py-2.5 font-medium text-secondary sticky top-0 bg-surface-raised z-10">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-subtle">
             {appointments.map((appt) => {
               const contactName = appt.contact
                 ? `${appt.contact.first_name} ${appt.contact.last_name ?? ''}`.trim()
                 : appt.contact_id;
               const doneOrCancelled = appt.status === 'completed' || appt.status === 'cancelled';
               return (
-                <tr key={appt.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700">
+                <tr key={appt.id} className="hover:bg-surface-raised transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap text-primary">
                     {formatDate(appt.starts_at)}
                   </td>
-                  <td className="px-4 py-3 text-gray-900 font-medium max-w-[140px] truncate">
+                  <td className="px-4 py-3 text-primary font-medium max-w-[140px] truncate">
                     {contactName}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 max-w-[200px] truncate">{appt.title}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-500">
+                  <td className="px-4 py-3 text-primary max-w-[200px] truncate">{appt.title}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-secondary">
                     {getDurationMin(appt)} min
                   </td>
                   <td className="px-4 py-3">
@@ -132,7 +132,7 @@ export function AppointmentsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700"
+                          className="h-7 w-7 p-0 text-success hover:text-success"
                           onClick={() => onComplete(appt.id)}
                           title="Complete"
                         >
@@ -142,7 +142,7 @@ export function AppointmentsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
+                        className="h-7 w-7 p-0 text-danger hover:text-danger"
                         onClick={() => {
                           if (confirm('Delete this appointment?')) onDelete(appt.id);
                         }}

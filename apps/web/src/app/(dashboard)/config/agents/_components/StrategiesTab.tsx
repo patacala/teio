@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useUpdateStrategies } from '@/hooks/useAIAgents';
 import { toast } from '@/hooks/useToast';
 import type { Strategy, Tactic } from '@/services/ai-agents.service';
@@ -42,7 +43,7 @@ function TacticRow({
   onMoveDown: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-border/60 p-2.5 space-y-1.5">
+    <div className="rounded-lg border border-subtle/60 p-2.5 space-y-1.5">
       <div className="flex items-center gap-2">
         <Input
           value={tactic.name}
@@ -50,22 +51,21 @@ function TacticRow({
           placeholder="Tactic name"
           className="text-xs"
         />
-        <button onClick={onMoveUp} className="text-gray-400 hover:text-gray-700" aria-label="Move up">
+        <button onClick={onMoveUp} className="text-muted hover:text-primary" aria-label="Move up">
           <ChevronUp className="h-3.5 w-3.5" />
         </button>
-        <button onClick={onMoveDown} className="text-gray-400 hover:text-gray-700" aria-label="Move down">
+        <button onClick={onMoveDown} className="text-muted hover:text-primary" aria-label="Move down">
           <ChevronDown className="h-3.5 w-3.5" />
         </button>
-        <button onClick={onDelete} className="text-gray-400 hover:text-red-600" aria-label="Delete">
+        <button onClick={onDelete} className="text-muted hover:text-danger" aria-label="Delete">
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
-      <textarea
+      <Textarea
         rows={2}
         value={tactic.prompt_instruction}
         onChange={(e) => onChange({ ...tactic, prompt_instruction: e.target.value })}
-        placeholder="Instruction for the model when this tactic applies…"
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="Instruction for the model when this tactic applies…" className="min-h-0 px-2 py-1.5 text-xs"
       />
     </div>
   );
@@ -91,7 +91,7 @@ function StrategyCard({
     onChange({ ...strategy, tactics: tactics.map((t, i) => ({ ...t, position: i })) });
 
   return (
-    <div className="rounded-lg border border-border p-3 space-y-3">
+    <div className="rounded-lg border border-subtle p-3 space-y-3">
       <div className="flex items-center justify-between">
         <Input
           value={strategy.name}
@@ -101,7 +101,7 @@ function StrategyCard({
         />
         <button
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-600 transition-colors"
+          className="text-muted hover:text-danger transition-colors"
           aria-label="Delete strategy"
         >
           <Trash2 className="h-4 w-4" />
@@ -110,7 +110,7 @@ function StrategyCard({
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">strategy_type</label>
+          <label className="block text-[11px] text-secondary mb-1">strategy_type</label>
           <Input
             value={strategy.strategy_type}
             onChange={(e) => onChange({ ...strategy, strategy_type: e.target.value })}
@@ -119,7 +119,7 @@ function StrategyCard({
           />
         </div>
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Priority</label>
+          <label className="block text-[11px] text-secondary mb-1">Priority</label>
           <Input
             type="number"
             value={strategy.priority}
@@ -127,7 +127,7 @@ function StrategyCard({
           />
         </div>
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Cooldown (seconds)</label>
+          <label className="block text-[11px] text-secondary mb-1">Cooldown (seconds)</label>
           <Input
             type="number"
             value={strategy.cooldown_seconds}
@@ -139,7 +139,7 @@ function StrategyCard({
       </div>
 
       <div>
-        <label className="block text-[11px] text-gray-500 mb-1">Description</label>
+        <label className="block text-[11px] text-secondary mb-1">Description</label>
         <Input
           value={strategy.description}
           onChange={(e) => onChange({ ...strategy, description: e.target.value })}
@@ -147,17 +147,17 @@ function StrategyCard({
       </div>
 
       <div>
-        <label className="block text-[11px] text-gray-500 mb-1">Fires when the detected intent is…</label>
+        <label className="block text-[11px] text-secondary mb-1">Fires when the detected intent is…</label>
         <div className="flex flex-wrap gap-1.5 items-center">
           {triggerIntents.map((intent, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
+              className="inline-flex items-center gap-1 text-[11px] bg-olive-dark text-accent px-2 py-0.5 rounded-full"
             >
               {intent}
               <button
                 onClick={() => setTriggerIntents(triggerIntents.filter((_, idx) => idx !== i))}
-                className="hover:text-blue-900"
+                className="hover:text-accent-hover"
               >
                 ×
               </button>
@@ -184,7 +184,7 @@ function StrategyCard({
       </div>
 
       <div>
-        <label className="block text-[11px] text-gray-500 mb-1.5">
+        <label className="block text-[11px] text-secondary mb-1.5">
           Tactics (in order — advances one per turn while the same strategy keeps applying)
         </label>
         <div className="space-y-1.5">
@@ -247,8 +247,8 @@ export function StrategiesTab({ strategies }: { strategies: Strategy[] }) {
 
   return (
     <div className="space-y-3 max-w-2xl">
-      <p className="text-xs text-gray-500">
-        Replaces the agent's whole strategy set. Each one fires on an intent and advances through
+      <p className="text-xs text-secondary">
+        Replaces the agent&apos;s whole strategy set. Each one fires on an intent and advances through
         its tactics while the conversation keeps going that direction.
       </p>
 
@@ -274,7 +274,7 @@ export function StrategiesTab({ strategies }: { strategies: Strategy[] }) {
         <Button
           onClick={handleSave}
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </Button>

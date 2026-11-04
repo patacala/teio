@@ -22,7 +22,7 @@ export function PresenceIndicators({ conversationId }: PresenceIndicatorsProps) 
           {visible.map((u) => (
             <Tooltip key={u.userId}>
               <TooltipTrigger asChild>
-                <div className="w-6 h-6 rounded-full bg-blue-200 border-2 border-white flex items-center justify-center text-[9px] font-bold text-blue-700 cursor-default">
+                <div className="w-6 h-6 rounded-full bg-accent/20 border-2 border-surface flex items-center justify-center text-[9px] font-bold text-accent cursor-default">
                   {getInitials(u.userName)}
                 </div>
               </TooltipTrigger>
@@ -30,12 +30,12 @@ export function PresenceIndicators({ conversationId }: PresenceIndicatorsProps) 
             </Tooltip>
           ))}
           {overflow > 0 && (
-            <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[9px] font-bold text-gray-600">
+            <div className="w-6 h-6 rounded-full bg-surface-hover border-2 border-surface flex items-center justify-center text-[9px] font-bold text-secondary">
               +{overflow}
             </div>
           )}
         </div>
-        <span className="text-xs text-gray-400">viewing</span>
+        <span className="text-xs text-muted">viewing</span>
       </div>
     </TooltipProvider>
   );

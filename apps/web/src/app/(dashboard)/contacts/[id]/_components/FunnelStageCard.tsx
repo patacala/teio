@@ -30,13 +30,13 @@ export function FunnelStageCard({ contact }: Props) {
   };
 
   return (
-    <div className="bg-panel border border-border rounded-xl p-5">
+    <div className="bg-surface border border-subtle rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <GitBranch className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-semibold text-gray-900">Funnel Stage</h3>
+        <GitBranch className="h-4 w-4 text-muted" />
+        <h3 className="text-sm font-semibold text-primary">Funnel Stage</h3>
       </div>
       {stages.length === 0 ? (
-        <p className="text-sm text-gray-400">No stages configured</p>
+        <p className="text-sm text-muted">No stages configured</p>
       ) : (
         <Select
           value={contact.lead_stage ?? ''}

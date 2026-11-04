@@ -11,15 +11,15 @@ function UsageBar({ used, limit, label }: { used: number; limit: number; label: 
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs">
-        <span className="text-gray-600 font-medium">{label}</span>
-        <span className="text-gray-400">
+        <span className="text-secondary font-medium">{label}</span>
+        <span className="text-muted">
           {used.toLocaleString()} / {isUnlimited ? '∞' : limit.toLocaleString()}
         </span>
       </div>
       {!isUnlimited && (
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-yellow-400' : 'bg-blue-500'}`}
+            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-danger' : pct >= 70 ? 'bg-warning' : 'bg-accent'}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -37,7 +37,7 @@ export default function AdminBillingPage() {
       const { url } = await createPortal.mutateAsync(window.location.href);
       window.location.href = url;
     } catch {
-      toast({ title: 'Error al abrir portal de facturación', variant: 'error' });
+      toast({ title: 'Error opening the billing portal', variant: 'error' });
     }
   };
 
@@ -49,44 +49,44 @@ export default function AdminBillingPage() {
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Billing</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Plan y uso de la plataforma.</p>
+          <h1 className="text-lg font-semibold text-primary">Billing</h1>
+          <p className="text-xs text-secondary mt-0.5">Plan and platform usage.</p>
         </div>
         <Button
           size="sm"
           onClick={handleManage}
           disabled={createPortal.isPending}
-          className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+          className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          {createPortal.isPending ? 'Abriendo…' : 'Portal de facturación'}
+          {createPortal.isPending ? 'Opening…' : 'Billing portal'}
         </Button>
       </div>
 
       {/* Subscription card */}
-      <div className="bg-panel border border-border rounded-xl p-5 space-y-4">
+      <div className="bg-surface border border-subtle rounded-xl p-5 space-y-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-olive-dark flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-accent" />
             </div>
             <div>
               {isLoading ? (
                 <div className="space-y-1">
-                  <div className="h-5 w-24 bg-gray-100 rounded animate-pulse" />
-                  <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-5 w-24 bg-surface-raised rounded-sm animate-pulse" />
+                  <div className="h-3 w-16 bg-surface-raised rounded-sm animate-pulse" />
                 </div>
               ) : (
                 <>
-                  <p className="font-semibold text-gray-900 capitalize">{sub?.plan?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400 capitalize">{sub?.billing_period ?? '—'} · {sub?.status ?? '—'}</p>
+                  <p className="font-semibold text-primary capitalize">{sub?.plan?.name ?? '—'}</p>
+                  <p className="text-xs text-muted capitalize">{sub?.billing_period ?? '—'} · {sub?.status ?? '—'}</p>
                 </>
               )}
             </div>
           </div>
           {sub?.status === 'active' && (
-            <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              <CheckCircle className="h-3 w-3" /> Activo
+            <span className="flex items-center gap-1 text-xs text-accent bg-olive-dark px-2 py-0.5 rounded-full">
+              <CheckCircle className="h-3 w-3" /> Active
             </span>
           )}
         </div>
@@ -94,8 +94,8 @@ export default function AdminBillingPage() {
         {sub?.plan?.features && sub.plan.features.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             {sub.plan.features.map((f) => (
-              <div key={f} className="flex items-center gap-1.5 text-xs text-gray-600">
-                <CheckCircle className="h-3 w-3 text-blue-400 shrink-0" />
+              <div key={f} className="flex items-center gap-1.5 text-xs text-secondary">
+                <CheckCircle className="h-3 w-3 text-accent/75 shrink-0" />
                 {f}
               </div>
             ))}
@@ -105,21 +105,21 @@ export default function AdminBillingPage() {
 
       {/* Usage card */}
       {(usage || isLoading) && (
-        <div className="bg-panel border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-subtle rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Uso este mes</h2>
+            <TrendingUp className="h-4 w-4 text-accent" />
+            <h2 className="text-sm font-semibold text-primary">Usage this month</h2>
           </div>
           {isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-surface-raised rounded-sm animate-pulse" />)}
             </div>
           ) : (
             <div className="space-y-4">
-              <UsageBar used={usage?.conversations ?? 0} limit={limits?.conversations ?? -1} label="Conversaciones" />
-              <UsageBar used={usage?.messages ?? 0} limit={limits?.messages ?? -1} label="Mensajes" />
-              <UsageBar used={usage?.ai_calls ?? 0} limit={limits?.ai_calls ?? -1} label="Llamadas IA" />
-              <UsageBar used={usage?.voice_minutes ?? 0} limit={limits?.voice_minutes ?? -1} label="Minutos de voz" />
+              <UsageBar used={usage?.conversations ?? 0} limit={limits?.conversations ?? -1} label="Conversations" />
+              <UsageBar used={usage?.messages ?? 0} limit={limits?.messages ?? -1} label="Messages" />
+              <UsageBar used={usage?.ai_calls ?? 0} limit={limits?.ai_calls ?? -1} label="AI calls" />
+              <UsageBar used={usage?.voice_minutes ?? 0} limit={limits?.voice_minutes ?? -1} label="Voice minutes" />
             </div>
           )}
         </div>

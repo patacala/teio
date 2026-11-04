@@ -7,7 +7,7 @@ interface TypingIndicatorProps {
 }
 
 export function TypingIndicator({ senderType = 'agent' }: TypingIndicatorProps) {
-  const color = senderType === 'ai' ? 'bg-blue-300' : 'bg-gray-400';
+  const color = senderType === 'ai' ? 'bg-accent/70' : 'bg-surface-pressed';
   const label = senderType === 'ai' ? 'AI is typing…' : 'Agent is typing…';
 
   return (
@@ -25,8 +25,8 @@ export function TypingIndicator({ senderType = 'agent' }: TypingIndicatorProps) 
       <span
         className={`text-xs ${
           senderType === 'ai'
-            ? 'text-blue-300'
-            : 'text-gray-500'
+            ? 'text-accent/75'
+            : 'text-secondary'
         }`}
       >
         {label}

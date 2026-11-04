@@ -15,16 +15,16 @@ const views: { value: AgendaViewType; label: string }[] = [
 
 export function AgendaViewSwitcher({ view, onChange }: Props) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-white p-1">
+    <div className="inline-flex items-center gap-1 rounded-lg border border-subtle bg-surface p-1">
       {views.map((v) => (
         <button
           key={v.value}
           onClick={() => onChange(v.value)}
           className={cn(
-            'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+            'rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
             view === v.value
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-900',
+              ? 'border-accent/12 bg-olive-dark text-primary'
+              : 'border-transparent text-secondary hover:text-primary',
           )}
         >
           {v.label}

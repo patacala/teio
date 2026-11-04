@@ -7,7 +7,7 @@ import { usePayments } from '@/hooks/usePayments';
 import type { Payment, PaymentContact } from '@/services/payments.service';
 
 function formatMoney(cents: number, currency: string): string {
-  return new Intl.NumberFormat('es', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: (currency || 'usd').toUpperCase(),
   }).format(cents / 100);
@@ -15,7 +15,7 @@ function formatMoney(cents: number, currency: string): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Intl.DateTimeFormat('es', {
+  return new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -25,25 +25,25 @@ function formatDate(iso: string | null): string {
 }
 
 function contactName(contact?: PaymentContact | null): string {
-  if (!contact) return 'Contacto desconocido';
-  return [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Sin nombre';
+  if (!contact) return 'Unknown contact';
+  return [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unnamed';
 }
 
 const STATUS_META: Record<
   Payment['status'],
   { label: string; variant: 'success' | 'warn' | 'default' | 'destructive' }
 > = {
-  paid: { label: 'Pagado', variant: 'success' },
-  pending: { label: 'Pendiente', variant: 'warn' },
-  expired: { label: 'Expirado', variant: 'default' },
-  canceled: { label: 'Cancelado', variant: 'default' },
-  failed: { label: 'Fallido', variant: 'destructive' },
+  paid: { label: 'Paid', variant: 'success' },
+  pending: { label: 'Pending', variant: 'warn' },
+  expired: { label: 'Expired', variant: 'default' },
+  canceled: { label: 'Cancelled', variant: 'default' },
+  failed: { label: 'Failed', variant: 'destructive' },
 };
 
 const FILTERS: { value: 'all' | Payment['status']; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'paid', label: 'Pagados' },
-  { value: 'pending', label: 'Pendientes' },
+  { value: 'all', label: 'All' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'pending', label: 'Pending' },
 ];
 
 export function TransactionsTab() {
@@ -59,7 +59,7 @@ export function TransactionsTab() {
     return (
       <div className="space-y-2 max-w-4xl">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-14 rounded-xl border border-border animate-pulse bg-panel" />
+          <div key={i} className="h-14 rounded-xl border border-subtle animate-pulse bg-surface" />
         ))}
       </div>
     );
@@ -74,8 +74,8 @@ export function TransactionsTab() {
             onClick={() => setFilter(f.value)}
             className={
               filter === f.value
-                ? 'px-3 py-1 rounded-full text-xs font-medium bg-blue-600 text-white'
-                : 'px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'px-3 py-1 rounded-full border border-accent/20 text-xs font-medium bg-olive-dark text-accent'
+                : 'px-3 py-1 rounded-full border border-subtle text-xs font-medium bg-surface-raised text-secondary hover:bg-surface-hover hover:text-primary'
             }
           >
             {f.label}
@@ -84,22 +84,22 @@ export function TransactionsTab() {
       </div>
 
       {!filtered.length ? (
-        <div className="rounded-xl border-2 border-dashed border-border py-10 text-center">
-          <p className="text-sm text-gray-500">
-            {filter === 'all' ? 'Todavía no hay pagos registrados.' : 'No hay pagos con este estado.'}
+        <div className="rounded-xl border-2 border-dashed border-subtle py-10 text-center">
+          <p className="text-sm text-secondary">
+            {filter === 'all' ? 'No payments recorded yet.' : 'No payments with this status.'}
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div className="overflow-x-auto rounded-xl border border-subtle">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-panel text-left text-xs text-gray-500">
-                <th className="px-4 py-2.5 font-medium">Contacto</th>
-                <th className="px-4 py-2.5 font-medium">Servicio</th>
-                <th className="px-4 py-2.5 font-medium">Monto</th>
-                <th className="px-4 py-2.5 font-medium">Estado</th>
-                <th className="px-4 py-2.5 font-medium">Fecha de pago</th>
-                <th className="px-4 py-2.5 font-medium">Creado</th>
+              <tr className="border-b border-subtle bg-surface text-left text-xs text-secondary">
+                <th className="px-4 py-2.5 font-medium">Contact</th>
+                <th className="px-4 py-2.5 font-medium">Service</th>
+                <th className="px-4 py-2.5 font-medium">Amount</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium">Payment date</th>
+                <th className="px-4 py-2.5 font-medium">Created</th>
                 <th className="px-4 py-2.5 font-medium"></th>
               </tr>
             </thead>
@@ -107,30 +107,30 @@ export function TransactionsTab() {
               {filtered.map((p) => {
                 const meta = STATUS_META[p.status] ?? STATUS_META.pending;
                 return (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-gray-50">
+                  <tr key={p.id} className="border-b border-subtle last:border-0 hover:bg-surface-raised">
                     <td className="px-4 py-2.5">
-                      <p className="font-medium text-gray-900">{contactName(p.contact)}</p>
+                      <p className="font-medium text-primary">{contactName(p.contact)}</p>
                       {p.contact?.email && (
-                        <p className="text-xs text-gray-400 truncate">{p.contact.email}</p>
+                        <p className="text-xs text-muted truncate">{p.contact.email}</p>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-gray-700">{p.service?.name ?? '—'}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-900 whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-primary">{p.service?.name ?? '—'}</td>
+                    <td className="px-4 py-2.5 font-semibold text-primary whitespace-nowrap">
                       {formatMoney(p.amount, p.currency)}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge variant={meta.variant}>{meta.label}</Badge>
                     </td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(p.paid_at)}</td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{formatDate(p.created_at)}</td>
+                    <td className="px-4 py-2.5 text-secondary whitespace-nowrap">{formatDate(p.paid_at)}</td>
+                    <td className="px-4 py-2.5 text-secondary whitespace-nowrap">{formatDate(p.created_at)}</td>
                     <td className="px-4 py-2.5">
                       {p.status === 'pending' && p.checkout_url && (
                         <a
                           href={p.checkout_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                          title="Abrir link de pago"
+                          className="inline-flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+                          title="Open payment link"
                         >
                           Link <ExternalLink className="h-3 w-3" />
                         </a>

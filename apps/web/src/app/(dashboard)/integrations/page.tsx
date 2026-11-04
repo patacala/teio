@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   MessageSquare, Phone, Globe, Instagram, Video, Zap, Webhook,
@@ -33,7 +32,7 @@ const integrations: Integration[] = [
     icon: <MessageSquare className="h-5 w-5" />,
     status: 'available',
     category: 'messaging',
-    color: 'bg-emerald-500',
+    color: 'text-success',
   },
   {
     id: 'sms',
@@ -42,7 +41,7 @@ const integrations: Integration[] = [
     icon: <Phone className="h-5 w-5" />,
     status: 'connected',
     category: 'messaging',
-    color: 'bg-red-500',
+    color: 'text-danger',
   },
   {
     id: 'facebook',
@@ -51,7 +50,7 @@ const integrations: Integration[] = [
     icon: <MessageSquare className="h-5 w-5" />,
     status: 'available',
     category: 'messaging',
-    color: 'bg-blue-500',
+    color: 'text-accent',
   },
   {
     id: 'instagram',
@@ -60,7 +59,7 @@ const integrations: Integration[] = [
     icon: <Instagram className="h-5 w-5" />,
     status: 'available',
     category: 'messaging',
-    color: 'bg-pink-500',
+    color: 'text-chart-pink',
   },
   {
     id: 'webchat',
@@ -69,7 +68,7 @@ const integrations: Integration[] = [
     icon: <Globe className="h-5 w-5" />,
     status: 'connected',
     category: 'messaging',
-    color: 'bg-blue-500',
+    color: 'text-accent',
   },
   // Voice
   {
@@ -79,7 +78,7 @@ const integrations: Integration[] = [
     icon: <Video className="h-5 w-5" />,
     status: 'connected',
     category: 'voice',
-    color: 'bg-blue-400',
+    color: 'text-accent',
   },
   // Automation
   {
@@ -89,7 +88,7 @@ const integrations: Integration[] = [
     icon: <Zap className="h-5 w-5" />,
     status: 'available',
     category: 'automation',
-    color: 'bg-orange-500',
+    color: 'text-warning',
   },
   {
     id: 'webhooks',
@@ -98,7 +97,7 @@ const integrations: Integration[] = [
     icon: <Webhook className="h-5 w-5" />,
     status: 'connected',
     category: 'automation',
-    color: 'bg-violet-500',
+    color: 'text-chart-purple',
   },
 ];
 
@@ -113,17 +112,17 @@ const STATUS_CONFIG: Record<IntegrationStatus, { label: string; icon: React.Reac
   connected: {
     label: 'Connected',
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    className: 'bg-success/10 text-success border-success/25',
   },
   available: {
     label: 'Available',
     icon: <Circle className="h-3.5 w-3.5" />,
-    className: 'bg-gray-50 text-gray-600 border-border',
+    className: 'bg-surface-raised text-secondary border-subtle',
   },
   coming_soon: {
     label: 'Coming Soon',
     icon: <Circle className="h-3.5 w-3.5" />,
-    className: 'bg-amber-50 text-amber-600 border-amber-200',
+    className: 'bg-warning/10 text-warning border-warning/25',
   },
 };
 
@@ -139,12 +138,12 @@ function IntegrationCard({ integration, index }: { integration: Integration; ind
     >
       <Card className={cn(
         'group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5',
-        isConnected && 'ring-1 ring-emerald-200',
+        isConnected && 'ring-1 ring-success/30',
       )}>
         <CardContent className="p-5">
           <div className="flex items-start justify-between mb-3">
             <div className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0',
+              'w-10 h-10 rounded-tile border border-subtle bg-surface-raised flex items-center justify-center shrink-0',
               integration.color,
             )}>
               {integration.icon}
@@ -158,10 +157,10 @@ function IntegrationCard({ integration, index }: { integration: Integration; ind
             </span>
           </div>
 
-          <h3 className="font-semibold text-gray-900 text-sm mb-1">
+          <h3 className="font-semibold text-primary text-sm mb-1">
             {integration.name}
           </h3>
-          <p className="text-xs text-gray-500 leading-relaxed mb-4">
+          <p className="text-xs text-secondary leading-relaxed mb-4">
             {integration.description}
           </p>
 
@@ -173,13 +172,14 @@ function IntegrationCard({ integration, index }: { integration: Integration; ind
                   Configure
                 </Button>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
+                  <ExternalLink className="h-3.5 w-3.5 text-muted" />
                 </Button>
               </>
             ) : (
               <Button
+                variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                className="gap-1.5 text-xs flex-1"
                 disabled={integration.status === 'coming_soon'}
               >
                 Connect
@@ -210,8 +210,8 @@ export default function IntegrationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Integrations</h1>
-          <p className="text-gray-500 text-sm mt-0.5">
+          <h1 className="text-xl font-bold text-primary">Integrations</h1>
+          <p className="text-secondary text-sm mt-0.5">
             {connectedCount} of {integrations.length} integrations active
           </p>
         </div>
@@ -220,7 +220,7 @@ export default function IntegrationsPage() {
       {/* Search + Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
           <Input
             placeholder="Search integrations..."
             value={search}
@@ -228,7 +228,7 @@ export default function IntegrationsPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-surface-raised rounded-lg p-0.5">
           {categories.map((cat) => (
             <button
               key={cat.id}
@@ -236,8 +236,8 @@ export default function IntegrationsPage() {
               className={cn(
                 'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
                 activeCategory === cat.id
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700',
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-secondary hover:text-primary',
               )}
             >
               {cat.label}
@@ -249,18 +249,18 @@ export default function IntegrationsPage() {
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-            <Zap className="h-5 w-5 text-gray-400" />
+          <div className="w-12 h-12 rounded-2xl bg-surface-raised flex items-center justify-center mb-4">
+            <Zap className="h-5 w-5 text-muted" />
           </div>
-          <p className="text-sm font-medium text-gray-900">No integrations found</p>
-          <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filter</p>
+          <p className="text-sm font-medium text-primary">No integrations found</p>
+          <p className="text-xs text-muted mt-1">Try adjusting your search or filter</p>
         </div>
       ) : (
         <>
           {(activeCategory === 'all' || activeCategory === 'messaging') && filtered.filter(i => i.category === 'messaging').length > 0 && (
             <section>
               {activeCategory === 'all' && (
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
                   Messaging
                 </h2>
               )}
@@ -275,7 +275,7 @@ export default function IntegrationsPage() {
           {(activeCategory === 'all' || activeCategory === 'voice') && filtered.filter(i => i.category === 'voice').length > 0 && (
             <section>
               {activeCategory === 'all' && (
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-2">
+                <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 mt-2">
                   Voice
                 </h2>
               )}
@@ -290,7 +290,7 @@ export default function IntegrationsPage() {
           {(activeCategory === 'all' || activeCategory === 'automation') && filtered.filter(i => i.category === 'automation').length > 0 && (
             <section>
               {activeCategory === 'all' && (
-                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-2">
+                <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 mt-2">
                   Automation
                 </h2>
               )}

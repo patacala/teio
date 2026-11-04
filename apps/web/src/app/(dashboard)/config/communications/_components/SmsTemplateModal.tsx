@@ -19,6 +19,7 @@ import {
   SelectGroup,
   SelectLabel,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/useToast';
 import {
   useCreateSystemTemplate,
@@ -121,7 +122,7 @@ export function SmsTemplateModal({
 
   const handleSave = async () => {
     if (!eventType || !smsBody.trim()) {
-      toast({ title: 'El texto del SMS es requerido', variant: 'error' });
+      toast({ title: 'The SMS text is required', variant: 'error' });
       return;
     }
 
@@ -141,23 +142,23 @@ export function SmsTemplateModal({
       } else {
         await createMutation.mutateAsync(body);
       }
-      toast({ title: isEdit ? 'Plantilla actualizada' : 'Plantilla creada' });
+      toast({ title: isEdit ? 'Template updated' : 'Template created' });
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'error' });
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'error' });
     }
   };
 
   const handleDelete = async () => {
-    if (!template || !confirm('¿Eliminar esta plantilla?')) return;
+    if (!template || !confirm('Delete this template?')) return;
     try {
       await deleteMutation.mutateAsync(template.id);
-      toast({ title: 'Plantilla eliminada' });
+      toast({ title: 'Template deleted' });
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'error' });
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'error' });
     }
   };
 
@@ -165,9 +166,9 @@ export function SmsTemplateModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Editar plantilla SMS' : 'Nueva plantilla SMS'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit SMS template' : 'New SMS template'}</DialogTitle>
           <DialogDescription>
-            Texto plano con variables. Preview en tiempo real.
+            Plain text with variables. Live preview.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,10 +176,10 @@ export function SmsTemplateModal({
           {/* Left column — editor */}
           <div className="flex-1 space-y-4 min-w-0">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Evento</label>
+              <label className="block text-xs font-medium text-primary mb-1.5">Event</label>
               <Select value={eventType} onValueChange={setEventType} disabled={!!event}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar evento..." />
+                  <SelectValue placeholder="Select event..." />
                 </SelectTrigger>
                 <SelectContent>
                   {eventGroups.map((group) => (
@@ -196,36 +197,35 @@ export function SmsTemplateModal({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Texto del SMS <span className="text-red-500">*</span>
+              <label className="block text-xs font-medium text-primary mb-1.5">
+                SMS text <span className="text-danger">*</span>
               </label>
-              <textarea
+              <Textarea
                 ref={textareaRef}
                 value={smsBody}
                 onChange={(e) => setSmsBody(e.target.value)}
-                rows={6}
-                className="w-full text-[13px] leading-relaxed p-3 rounded-lg border border-border resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                placeholder="Hola {{contact_name}}, te recordamos tu cita..."
+                rows={6} className="resize-none text-[13px]"
+                placeholder="Hi {{contact_name}}, this is a reminder of your appointment..."
               />
               <div className="flex items-center justify-between mt-1.5">
-                <span className={`text-[11px] font-mono ${charCount > 160 ? 'text-amber-600' : 'text-gray-400'}`}>
+                <span className={`text-[11px] font-mono ${charCount > 160 ? 'text-warning' : 'text-muted'}`}>
                   {charCount} chars
                 </span>
-                <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] text-muted bg-surface-raised px-2 py-0.5 rounded-full">
                   {segments} {segments === 1 ? 'segmento' : 'segmentos'}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Variables</label>
+              <label className="block text-xs font-medium text-secondary mb-1.5">Variables</label>
               <div className="flex flex-wrap gap-1.5">
                 {VARIABLES.map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => insertVariable(v)}
-                    className="px-2 py-1 rounded-md text-[11px] font-mono bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                    className="px-2 py-1 rounded-md text-[11px] font-mono bg-olive-dark text-accent border border-accent/20 hover:bg-accent/15 transition-colors"
                   >
                     {v}
                   </button>
@@ -234,17 +234,17 @@ export function SmsTemplateModal({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Nombre</label>
+              <label className="block text-xs font-medium text-primary mb-1.5">Name</label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Nombre descriptivo (opcional)"
+                placeholder="Descriptive name (optional)"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Prioridad</label>
+                <label className="block text-xs font-medium text-primary mb-1.5">Priority</label>
                 <Input
                   type="number"
                   value={priority}
@@ -257,9 +257,9 @@ export function SmsTemplateModal({
                     type="checkbox"
                     checked={isActive}
                     onChange={(e) => setIsActive(e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded-sm border-strong"
                   />
-                  <span className="text-sm text-gray-700">Activa</span>
+                  <span className="text-sm text-primary">Active</span>
                 </label>
               </div>
             </div>
@@ -267,32 +267,32 @@ export function SmsTemplateModal({
 
           {/* Right column — preview */}
           <div className="w-[340px] shrink-0 flex flex-col items-center">
-            <p className="text-[11px] font-medium text-gray-500 mb-3 self-start">Preview</p>
-            <SmsPreview message={renderedPreview || 'Escribe tu mensaje...'} orgName={SAMPLE_DATA.organization_name} />
+            <p className="text-[11px] font-medium text-secondary mb-3 self-start">Preview</p>
+            <SmsPreview message={renderedPreview || 'Write your message...'} orgName={SAMPLE_DATA.organization_name} />
           </div>
         </div>
 
-        <div className="flex gap-2 pt-4 border-t border-border mt-4">
+        <div className="flex gap-2 pt-4 border-t border-subtle mt-4">
           {isEdit && (
             <Button
               variant="outline"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="text-danger hover:text-danger hover:bg-danger/10 border-danger/25"
             >
-              Eliminar
+              Delete
             </Button>
           )}
           <div className="flex-1" />
           <Button variant="outline" onClick={onClose}>
-            Cancelar
+            Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-accent hover:bg-accent-hover text-on-accent"
           >
-            {saving ? 'Guardando...' : isEdit ? 'Actualizar' : 'Crear'}
+            {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
           </Button>
         </div>
       </DialogContent>

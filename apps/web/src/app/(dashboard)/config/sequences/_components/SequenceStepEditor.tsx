@@ -74,7 +74,7 @@ export function SequenceStepEditor({ template, open, onClose }: Props) {
         await updateTemplate.mutateAsync({ id: template.id, body: { name } });
       }
       await replaceSteps.mutateAsync({ id: template.id, steps });
-      toast({ title: 'Secuencia guardada' });
+      toast({ title: 'Sequence saved' });
       onClose();
     } catch (err) {
       toast({ title: (err as Error).message, variant: 'error' });
@@ -87,34 +87,33 @@ export function SequenceStepEditor({ template, open, onClose }: Props) {
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
       <DrawerContent className="flex flex-col sm:max-w-lg">
         <DrawerHeader className="shrink-0 pr-8">
-          <DrawerTitle>{readOnly ? template.name : 'Editar secuencia'}</DrawerTitle>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <DrawerTitle>{readOnly ? template.name : 'Edit sequence'}</DrawerTitle>
+          <p className="mt-0.5 text-xs text-secondary">
             {SEQUENCE_TYPE_LABELS[template.sequence_type] ?? template.sequence_type}
           </p>
         </DrawerHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {readOnly && (
-            <div className="flex items-start gap-2 rounded-xl border border-border bg-gray-50 px-3 py-2.5">
-              <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
-              <p className="text-xs text-gray-500">
-                Plantilla de la plataforma, compartida por todas las organizaciones.
-                Duplicala para obtener una copia editable.
+            <div className="flex items-start gap-2 rounded-xl border border-subtle bg-surface-raised px-3 py-2.5">
+              <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" />
+              <p className="text-xs text-secondary">
+                Platform template, shared by all organizations. Duplicate it to get an editable copy.
               </p>
             </div>
           )}
 
           {!readOnly && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Nombre</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-white" />
+              <label className="mb-1 block text-xs font-medium text-primary">Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-surface" />
             </div>
           )}
 
           {/* Steps */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">
-              Pasos ({steps.length})
+            <label className="block text-xs font-medium text-primary">
+              Steps ({steps.length})
             </label>
             {steps.map((step, i) => (
               <SequenceStepRow
@@ -138,15 +137,15 @@ export function SequenceStepEditor({ template, open, onClose }: Props) {
                 className="w-full gap-1.5"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Agregar paso
+                Add step
               </Button>
             )}
           </div>
 
           {/* Preview */}
           {steps.length > 0 && (
-            <div className="rounded-xl border border-border bg-surface p-3">
-              <p className="mb-3 text-xs font-medium text-gray-700">Vista previa</p>
+            <div className="rounded-xl border border-subtle bg-surface-raised p-3">
+              <p className="mb-3 text-xs font-medium text-primary">Preview</p>
               <SequenceTimelinePreview steps={steps} />
             </div>
           )}
@@ -154,17 +153,17 @@ export function SequenceStepEditor({ template, open, onClose }: Props) {
 
         <DrawerFooter className="shrink-0">
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            {readOnly ? 'Cerrar' : 'Cancelar'}
+            {readOnly ? 'Close' : 'Cancel'}
           </Button>
           {!readOnly && (
             <Button
               size="sm"
               onClick={handleSave}
               disabled={saving}
-              className="gap-1.5 bg-blue-600 text-white hover:bg-blue-700"
+              className="gap-1.5 bg-accent text-on-accent hover:bg-accent-hover"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Guardar cambios
+              Save changes
             </Button>
           )}
         </DrawerFooter>

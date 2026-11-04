@@ -23,8 +23,8 @@ function formatDate(iso: string | null): string {
 
 function contactName(call: VoiceCall): string {
   const c = call.contact;
-  if (!c) return 'Contacto desconocido';
-  return [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sin nombre';
+  if (!c) return 'Unknown contact';
+  return [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Unnamed';
 }
 
 /** The counterparty number: on outbound calls that's who we dialed (phone_to), on inbound who dialed us (phone_from). */
@@ -33,15 +33,15 @@ function counterpartyPhone(call: VoiceCall): string {
 }
 
 const STATUS_CLASSES: Record<VoiceCallStatus, string> = {
-  in_progress: 'bg-emerald-100 text-emerald-700',
-  completed: 'bg-blue-100 text-blue-700',
-  failed: 'bg-red-100 text-red-600',
-  initiated: 'bg-gray-100 text-gray-600',
+  in_progress: 'bg-success/15 text-success',
+  completed: 'bg-olive-dark text-accent',
+  failed: 'bg-danger/15 text-danger',
+  initiated: 'bg-surface-raised text-secondary',
 };
 
 function StatusBadge({ status }: { status: VoiceCallStatus }) {
   return (
-    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_CLASSES[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_CLASSES[status] ?? 'bg-surface-raised text-secondary'}`}>
       {status.replace('_', ' ')}
     </span>
   );
@@ -64,11 +64,11 @@ export default function VoicePage() {
   const avgDuration = formatDuration(stats?.avg_duration_seconds ?? null);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Voice</h1>
-        <p className="text-sm text-gray-500 mt-0.5">AI-powered voice calls and live transcripts.</p>
+        <h1 className="text-lg font-semibold text-primary">Voice</h1>
+        <p className="text-sm text-secondary mt-0.5">AI-powered voice calls and live transcripts.</p>
       </div>
 
       {/* Stats */}
@@ -78,20 +78,20 @@ export default function VoicePage() {
           { label: 'Active Now', value: String(activeCalls) },
           { label: 'Avg Duration', value: avgDuration },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-panel border border-border rounded-xl p-4">
-            <p className="text-xs text-gray-500">{label}</p>
-            <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
+          <div key={label} className="bg-surface border border-subtle rounded-xl p-4">
+            <p className="text-xs text-secondary">{label}</p>
+            <p className="text-2xl font-semibold text-primary mt-1">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-panel border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-subtle rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-surface">
-              {['Call ID', 'Contacto', 'Dirección', 'Status', 'Duration', 'Started'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">
+            <tr className="border-b border-subtle bg-surface-raised">
+              {['Call ID', 'Contact', 'Direction', 'Status', 'Duration', 'Started'].map((h) => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-secondary">
                   {h}
                 </th>
               ))}
@@ -100,10 +100,10 @@ export default function VoicePage() {
           <tbody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-border">
+                <tr key={i} className="border-b border-subtle">
                   {Array.from({ length: 6 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-24" />
+                      <div className="h-4 bg-surface-raised rounded-sm animate-pulse w-24" />
                     </td>
                   ))}
                 </tr>
@@ -111,42 +111,42 @@ export default function VoicePage() {
             ) : calls.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-16 text-center">
-                  <Phone className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">No calls yet</p>
+                  <Phone className="w-8 h-8 text-muted mx-auto mb-2" />
+                  <p className="text-sm text-muted">No calls yet</p>
                 </td>
               </tr>
             ) : (
               calls.map((call) => (
                 <tr
                   key={call.id}
-                  className="border-b border-border last:border-0 hover:bg-surface cursor-pointer transition-colors"
+                  className="border-b border-subtle last:border-0 hover:bg-surface-raised cursor-pointer transition-colors"
                   onClick={() => router.push(`/voice/${call.id}`)}
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                  <td className="px-4 py-3 font-mono text-xs text-secondary">
                     {call.external_call_id.length > 12
                       ? call.external_call_id.slice(0, 12) + '…'
                       : call.external_call_id}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-gray-800 font-medium">{contactName(call)}</p>
-                    <p className="text-xs text-gray-400">{counterpartyPhone(call)}</p>
+                    <p className="text-primary font-medium">{contactName(call)}</p>
+                    <p className="text-xs text-muted">{counterpartyPhone(call)}</p>
                   </td>
                   <td className="px-4 py-3">
                     {call.direction === 'outbound' ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-blue-600">
-                        <PhoneOutgoing className="w-3.5 h-3.5" /> Saliente
+                      <span className="inline-flex items-center gap-1 text-xs text-accent">
+                        <PhoneOutgoing className="w-3.5 h-3.5" /> Outbound
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-                        <PhoneIncoming className="w-3.5 h-3.5" /> Entrante
+                      <span className="inline-flex items-center gap-1 text-xs text-success">
+                        <PhoneIncoming className="w-3.5 h-3.5" /> Inbound
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={call.status} />
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{formatDuration(call.duration_seconds)}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(call.started_at)}</td>
+                  <td className="px-4 py-3 text-secondary">{formatDuration(call.duration_seconds)}</td>
+                  <td className="px-4 py-3 text-secondary">{formatDate(call.started_at)}</td>
                 </tr>
               ))
             )}

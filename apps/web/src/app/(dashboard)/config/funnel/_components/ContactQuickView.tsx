@@ -42,48 +42,48 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
   const copyPhone = () => {
     if (!contact.phone) return;
     navigator.clipboard.writeText(contact.phone);
-    toast({ title: 'Teléfono copiado' });
+    toast({ title: 'Phone copied' });
   };
 
   const handleCall = async () => {
     if (!contact.phone) return;
     try {
       await voiceService.startCall({ contact_id: contact.id });
-      toast({ title: 'Llamada iniciada', description: 'El agente está llamando al contacto.' });
+      toast({ title: 'Call started', description: 'The agent is calling the contact.' });
     } catch {
-      toast({ title: 'No se pudo iniciar la llamada' });
+      toast({ title: 'Could not start the call' });
     }
   };
 
-  const accent = hot ? 'text-orange-600' : 'text-blue-600';
-  const tint = hot ? 'bg-orange-50' : 'bg-blue-50';
+  const accent = hot ? 'text-warning' : 'text-accent';
+  const tint = hot ? 'bg-warning/10' : 'bg-olive-dark';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden rounded-3xl border-0" closeClassName="text-white opacity-90 hover:opacity-100">
+      <DialogContent className="max-w-3xl p-0 overflow-hidden rounded-3xl border-0" closeClassName="text-primary opacity-90 hover:opacity-100">
         <DialogTitle className="sr-only">{name}</DialogTitle>
 
-        <div className={hot ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 'bg-gradient-to-br from-slate-700 to-slate-800'}>
+        <div className={hot ? 'bg-linear-to-br from-warning to-warning' : 'bg-linear-to-br from-app to-app'}>
           {/* Header */}
           <div className="px-7 pt-7 pb-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
-                  <div className="w-[92px] h-[92px] rounded-full border-[3px] border-white flex items-center justify-center text-white text-2xl font-bold">
+                  <div className="w-[92px] h-[92px] rounded-full border-[3px] border-surface flex items-center justify-center text-primary text-2xl font-bold">
                     {initialsOf(contact)}
                   </div>
-                  <div className="absolute -top-1.5 -right-1.5 w-9 h-9 rounded-full bg-white flex items-center justify-center shadow">
+                  <div className="absolute -top-1.5 -right-1.5 w-9 h-9 rounded-full bg-surface flex items-center justify-center shadow-sm">
                     {hot
-                      ? <FireIcon className="h-5 w-5 text-orange-600" />
-                      : <BarChart3 className="h-5 w-5 text-slate-700" strokeWidth={STROKE} />}
+                      ? <FireIcon className="h-5 w-5 text-warning" />
+                      : <BarChart3 className="h-5 w-5 text-primary" strokeWidth={STROKE} />}
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-extrabold text-white leading-tight">{name}</h2>
+                  <h2 className="text-3xl font-extrabold text-primary leading-tight">{name}</h2>
                   {contact.phone && (
                     <button
                       onClick={copyPhone}
-                      className="flex items-center gap-2 text-white/90 hover:text-white mt-1 text-base rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                      className="flex items-center gap-2 text-primary/90 hover:text-primary mt-1 text-base rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-surface/60"
                     >
                       <Phone className="h-[18px] w-[18px]" strokeWidth={STROKE} />
                       {contact.phone}
@@ -94,15 +94,15 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
               </div>
 
               <div className="text-right shrink-0">
-                <p className="text-4xl font-extrabold text-white leading-none">
+                <p className="text-4xl font-extrabold text-primary leading-none">
                   {score}
-                  <span className="text-lg font-semibold text-white/60">/100</span>
+                  <span className="text-lg font-semibold text-primary/60">/100</span>
                 </p>
-                <p className="text-sm text-white/70 mt-1">Lead Score</p>
+                <p className="text-sm text-primary/70 mt-1">Lead Score</p>
                 <button
                   type="button"
-                  className="text-white/60 hover:text-white/90 mt-2 inline-block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                  aria-label="Más opciones"
+                  className="text-primary/60 hover:text-primary/90 mt-2 inline-block rounded-md outline-hidden focus-visible:ring-2 focus-visible:ring-surface/60"
+                  aria-label="More options"
                 >
                   <MoreHorizontal className="h-5 w-5" strokeWidth={STROKE} />
                 </button>
@@ -110,33 +110,33 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
             </div>
 
             <div className="flex items-center gap-2 mt-5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-bold">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3.5 py-1.5 text-sm font-bold">
                 {hot
-                  ? <FireIcon className="h-4 w-4 text-orange-600" />
-                  : <BarChart3 className="h-4 w-4 text-slate-700" strokeWidth={STROKE} />}
-                <span className={hot ? 'text-orange-600' : 'text-slate-700'}>{hot ? 'HOT' : 'NORMAL'}</span>
+                  ? <FireIcon className="h-4 w-4 text-warning" />
+                  : <BarChart3 className="h-4 w-4 text-primary" strokeWidth={STROKE} />}
+                <span className={hot ? 'text-warning' : 'text-primary'}>{hot ? 'HOT' : 'NORMAL'}</span>
               </span>
               {contact.last_activity && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1.5 text-sm font-medium text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-surface/20 px-3.5 py-1.5 text-sm font-medium text-primary">
                   <Clock className="h-4 w-4" strokeWidth={STROKE} />
-                  Activo {relativeTime(contact.last_activity)}
+                  Active {relativeTime(contact.last_activity)}
                 </span>
               )}
             </div>
           </div>
 
           {/* Body panel */}
-          <div className="mx-4 mb-4 bg-white rounded-2xl p-7 grid grid-cols-1 md:grid-cols-2 gap-x-10">
+          <div className="mx-4 mb-4 bg-surface rounded-2xl p-7 grid grid-cols-1 md:grid-cols-2 gap-x-10">
             {/* Left column */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Resumen IA</h3>
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wide">AI summary</h3>
               </div>
               {contact.ai_insights?.summary ? (
-                <p className="text-[15px] text-gray-800 leading-relaxed">{contact.ai_insights.summary}</p>
+                <p className="text-[15px] text-primary leading-relaxed">{contact.ai_insights.summary}</p>
               ) : (
-                <p className="text-[15px] text-gray-400">Sin resumen todavía.</p>
+                <p className="text-[15px] text-muted">No summary yet.</p>
               )}
 
               {(contact.ai_insights?.intent || contact.ai_insights?.sentiment) && (
@@ -144,14 +144,14 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
                   {contact.ai_insights?.intent && (
                     <div className="flex items-center gap-2 text-sm">
                       <Target className={`h-4 w-4 ${accent} shrink-0`} strokeWidth={STROKE} />
-                      <span className="text-gray-500">Intención:</span>
-                      <span className="font-bold text-gray-900">{contact.ai_insights.intent}</span>
+                      <span className="text-secondary">Intent:</span>
+                      <span className="font-bold text-primary">{contact.ai_insights.intent}</span>
                     </div>
                   )}
                   {contact.ai_insights?.sentiment && (
                     <div className="flex items-center gap-2 text-sm">
                       <Smile className={`h-4 w-4 ${accent} shrink-0`} strokeWidth={STROKE} />
-                      <span className="text-gray-500">Sentimiento:</span>
+                      <span className="text-secondary">Sentiment:</span>
                       <span className={`font-bold ${accent}`}>{prettifySentiment(contact.ai_insights.sentiment)}</span>
                     </div>
                   )}
@@ -159,20 +159,20 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
               )}
 
               {action && (
-                <div className="border-t border-gray-100 mt-5 pt-5">
+                <div className="border-t border-subtle mt-5 pt-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Zap className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
-                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Próxima acción recomendada</h3>
+                    <h3 className="text-xs font-bold text-primary uppercase tracking-wide">Recommended next action</h3>
                   </div>
                   <div className={`${tint} rounded-xl px-4 py-3 flex items-center justify-between gap-3`}>
                     <div className="min-w-0">
                       <p className={`font-bold ${accent}`}>{action.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{action.description}</p>
+                      <p className="text-xs text-secondary mt-0.5">{action.description}</p>
                     </div>
                     {action.channel === 'call' && contact.phone && (
                       <a
                         href={`tel:${contact.phone}`}
-                        className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm"
+                        className="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 shadow-xs"
                       >
                         <Phone className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
                       </a>
@@ -180,7 +180,7 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
                     {action.channel === 'email' && contact.email && (
                       <a
                         href={`mailto:${contact.email}`}
-                        className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm"
+                        className="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 shadow-xs"
                       >
                         <Mail className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
                       </a>
@@ -190,7 +190,7 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
                         href={wa}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm"
+                        className="w-10 h-10 rounded-full bg-surface flex items-center justify-center shrink-0 shadow-xs"
                       >
                         <MessageCircle className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
                       </a>
@@ -204,12 +204,12 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
             <div className="mt-6 md:mt-0">
               <div className="flex items-center gap-2 mb-3">
                 <List className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Datos recaudados</h3>
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wide">Collected data</h3>
               </div>
               {fields.length === 0 ? (
-                <p className="text-sm text-gray-400">Sin datos capturados todavía.</p>
+                <p className="text-sm text-muted">No captured data yet.</p>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-subtle">
                   {fields.map(([key, value]) => {
                     const Icon = fieldIcon(key);
                     // Short values sit inline (label left, value right) like the
@@ -221,14 +221,14 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
                         <div className={`flex items-center gap-3 ${long ? '' : 'justify-between'}`}>
                           <div className="flex items-center gap-2.5 min-w-0 shrink-0">
                             <Icon className={`h-5 w-5 ${accent} shrink-0`} strokeWidth={STROKE} />
-                            <span className="text-sm text-gray-500 truncate">{fieldLabel(key, labels)}</span>
+                            <span className="text-sm text-secondary truncate">{fieldLabel(key, labels)}</span>
                           </div>
                           {!long && (
-                            <span className="text-sm font-bold text-gray-900 text-right truncate">{value}</span>
+                            <span className="text-sm font-bold text-primary text-right truncate">{value}</span>
                           )}
                         </div>
                         {long && (
-                          <p className="text-sm font-bold text-gray-900 mt-1 pl-7 leading-snug break-words">{value}</p>
+                          <p className="text-sm font-bold text-primary mt-1 pl-7 leading-snug wrap-break-word">{value}</p>
                         )}
                       </div>
                     );
@@ -238,7 +238,7 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
 
               <div className="flex items-center gap-2 mb-3 mt-6">
                 <TagIcon className={`h-[18px] w-[18px] ${accent}`} strokeWidth={STROKE} />
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">Tags</h3>
+                <h3 className="text-xs font-bold text-primary uppercase tracking-wide">Tags</h3>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {tags.map((tag) => (
@@ -251,8 +251,8 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
                 ))}
                 <button
                   type="button"
-                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:border-gray-300 outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                  aria-label="Agregar tag"
+                  className="w-7 h-7 rounded-full border border-subtle flex items-center justify-center text-muted hover:text-secondary hover:border-strong outline-hidden focus-visible:ring-2 focus-visible:ring-accent/40"
+                  aria-label="Add tag"
                 >
                   <Plus className="h-4 w-4" strokeWidth={STROKE} />
                 </button>
@@ -266,37 +266,37 @@ export function ContactQuickView({ contact, open, onOpenChange, labels }: Props)
               type="button"
               onClick={handleCall}
               disabled={!contact.phone}
-              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold text-white shadow-sm transition-colors ${
-                hot ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-800 hover:bg-slate-900'
+              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold text-on-accent shadow-xs transition-colors ${
+                hot ? 'bg-warning hover:bg-warning/90' : 'bg-accent hover:bg-accent-hover'
               } ${!contact.phone ? 'opacity-40 pointer-events-none' : ''}`}
             >
-              <Phone className="h-5 w-5" strokeWidth={STROKE} /> Llamar
+              <Phone className="h-5 w-5" strokeWidth={STROKE} /> Call
             </button>
             <a
               href={wa ?? undefined}
               target="_blank"
               rel="noreferrer"
               aria-disabled={!wa}
-              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-white text-gray-900 shadow-sm hover:bg-gray-50 transition-colors ${
+              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-surface text-primary shadow-xs hover:bg-surface-raised transition-colors ${
                 !wa ? 'opacity-40 pointer-events-none' : ''
               }`}
             >
-              <MessageCircle className="h-5 w-5 text-green-500" strokeWidth={STROKE} /> WhatsApp
+              <MessageCircle className="h-5 w-5 text-success" strokeWidth={STROKE} /> WhatsApp
             </a>
             <a
               href={contact.email ? `mailto:${contact.email}` : undefined}
               aria-disabled={!contact.email}
-              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-white text-gray-900 shadow-sm hover:bg-gray-50 transition-colors ${
+              className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-surface text-primary shadow-xs hover:bg-surface-raised transition-colors ${
                 !contact.email ? 'opacity-40 pointer-events-none' : ''
               }`}
             >
-              <Mail className="h-5 w-5 text-gray-500" strokeWidth={STROKE} /> Enviar Email
+              <Mail className="h-5 w-5 text-secondary" strokeWidth={STROKE} /> Send email
             </a>
             <button
               onClick={() => router.push(`/contacts/${contact.id}`)}
-              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-white text-gray-900 shadow-sm hover:bg-gray-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 rounded-2xl px-4 py-3.5 text-[15px] font-bold bg-surface text-primary shadow-xs hover:bg-surface-raised transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-accent/40"
             >
-              Ver Perfil <ChevronRight className="h-5 w-5" strokeWidth={STROKE} />
+              View profile <ChevronRight className="h-5 w-5" strokeWidth={STROKE} />
             </button>
           </div>
         </div>

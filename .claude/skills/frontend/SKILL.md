@@ -12,22 +12,29 @@ Before writing frontend code, enforce every rule below. Violations are bugs.
 
 ## Quick Reference
 
-- **Stack**: Next.js 15 App Router + Tailwind v3 + Radix UI + CVA + Framer Motion + TanStack Query v5
+- **Stack**: Next.js 15 App Router + Tailwind v4 (CSS-first `@theme`) + Radix UI + CVA + Framer Motion + TanStack Query v5
 - **Auth**: Supabase SSR + `authClient` from `@/lib/auth-client`
 - **Icons**: `lucide-react` only
-- **Theme**: Light-only. No `dark:` variants. Ever.
+- **Theme**: Dark-only ("Premium Dark AI Dashboard"). Single theme, no `dark:` variants, no theme switcher.
 
 ## Color Tokens (STRICT)
 
-| Token | Value | Use |
-|-------|-------|-----|
-| Accent | `blue-600` | Actions, active states |
-| Surface | `bg-surface` | Page background |
-| Panel | `bg-panel` | Cards, modals, drawers |
-| Border | `border-border` | All borders |
-| Text | `gray-900` / `gray-500` / `gray-400` | Primary / secondary / muted |
+Defined once in `src/app/globals.css` (`@theme`). Never use raw hex, `gray-*`, `white` surfaces or `blue-*` in components.
 
-**Forbidden**: indigo, fuchsia, cyan, purple, custom hex.
+| Token | Class | Use |
+|-------|-------|-----|
+| App background | `bg-app` (body uses `app-canvas`) | Page canvas |
+| Surface | `bg-surface` / `panel-card` | Cards, panels, modals, drawers, sidebar |
+| Raised | `bg-surface-raised` / `inset-surface` | Inputs, rows, inset groups, menus |
+| Hover / pressed | `bg-surface-hover` / `bg-surface-pressed` | Interactive states |
+| Border | `border-subtle` / `border-strong` | Default borders / control borders |
+| Text | `text-primary` / `text-secondary` / `text-muted` | Primary / secondary / hints, axes, placeholders |
+| Accent | `bg-accent text-on-accent`, `text-accent` | Primary action, selection, active nav |
+| Olive | `bg-olive-dark`, `nav-item-active`, `icon-tile`, `action-surface` | Active/selected tints, icon containers, quick actions |
+| Status | `text-success` / `text-danger` / `text-warning` / `text-info` (+ `/10` bg, `/25` border) | Badges, trends, errors |
+| Charts | `chart-lime`, `chart-purple`, `chart-cyan`, `chart-pink`, `chart-yellow` | Data series only |
+
+**Forbidden**: blue/indigo/violet as brand or button color (data series only), saturated solid backgrounds, large glows, custom hex, `bg-white`.
 
 ## Critical Rules
 

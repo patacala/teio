@@ -24,16 +24,16 @@ export default function ConfigSequencesPage() {
     try {
       await updateSettings.mutateAsync(enabled);
       toast({
-        title: enabled ? 'Secuencias activadas' : 'Secuencias desactivadas',
+        title: enabled ? 'Sequences enabled' : 'Sequences disabled',
         description: enabled
-          ? 'Las secuencias automáticas se crearán normalmente.'
-          : 'No se crearán nuevas secuencias automáticas.',
+          ? 'Automatic sequences will be created as usual.'
+          : 'No new automatic sequences will be created.',
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: 'error',
         title: 'Error',
-        description: 'No se pudo actualizar la configuración.',
+        description: 'Could not update the settings.',
       });
     }
   };
@@ -59,19 +59,18 @@ export default function ConfigSequencesPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Secuencias de seguimiento</h1>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Definí qué hacer y por qué canal en cada intento cuando un contacto deja de responder.
-            El canal se resuelve al momento de ejecutar, según lo que tenga disponible el contacto.
+          <h1 className="text-lg font-semibold text-primary">Follow-up Sequences</h1>
+          <p className="mt-0.5 text-xs text-secondary">
+            Define what to do, and on which channel, at each attempt when a contact stops replying. The channel is resolved when the step runs, based on what the contact has available.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">
-              {sequencesEnabled ? 'Activadas' : 'Desactivadas'}
+            <p className="text-sm font-medium text-primary">
+              {sequencesEnabled ? 'Enabled' : 'Disabled'}
             </p>
-            <p className="text-xs text-gray-500">
-              {sequencesEnabled ? 'Se crearán automáticamente' : 'No se crearán nuevas'}
+            <p className="text-xs text-secondary">
+              {sequencesEnabled ? 'Created automatically' : 'No new ones will be created'}
             </p>
           </div>
           <Switch
@@ -89,20 +88,20 @@ export default function ConfigSequencesPage() {
           ))}
         </div>
       ) : !templates?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-24 text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-            <Repeat className="h-6 w-6 text-blue-500" />
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-subtle py-24 text-center">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-olive-dark">
+            <Repeat className="h-6 w-6 text-accent" />
           </div>
-          <h3 className="text-sm font-medium text-gray-900">Sin secuencias configuradas</h3>
-          <p className="mt-1 text-xs text-gray-500">
-            Corré la migración de secuencias para cargar las plantillas por defecto.
+          <h3 className="text-sm font-medium text-primary">No sequences configured</h3>
+          <p className="mt-1 text-xs text-secondary">
+            Run the sequences migration to load the default templates.
           </p>
         </div>
       ) : (
         <div className="space-y-6">
           {grouped.map(([type, items]) => (
             <section key={type}>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
                 {SEQUENCE_TYPE_LABELS[type] ?? type}
               </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

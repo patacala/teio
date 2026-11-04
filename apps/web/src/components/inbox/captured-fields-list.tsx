@@ -27,7 +27,7 @@ export function CapturedFieldsList({ contactId }: CapturedFieldsListProps) {
   const keys = Object.keys(fields);
 
   if (keys.length === 0) {
-    return <p className="text-xs text-gray-400">No captured fields yet</p>;
+    return <p className="text-xs text-muted">No captured fields yet</p>;
   }
 
   const handleBlur = (key: string) => {
@@ -46,9 +46,9 @@ export function CapturedFieldsList({ contactId }: CapturedFieldsListProps) {
     <div className="space-y-2">
       {keys.map((key) => (
         <div key={key} className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-gray-400 shrink-0 capitalize">{key.replace(/_/g, ' ')}</span>
+          <span className="text-[11px] text-muted shrink-0 capitalize">{key.replace(/_/g, ' ')}</span>
           <Input
-            className="h-6 text-[11px] px-1.5 border-transparent bg-transparent hover:border-border focus:border-border text-right"
+            className="h-6 text-[11px] px-1.5 border-transparent bg-transparent hover:border-subtle focus:border-subtle text-right"
             value={editing[key] ?? fields[key]}
             onChange={(e) => setEditing((prev) => ({ ...prev, [key]: e.target.value }))}
             onBlur={() => handleBlur(key)}

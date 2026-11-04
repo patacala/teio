@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useUpdateRules } from '@/hooks/useAIAgents';
 import { toast } from '@/hooks/useToast';
 import type { Rule } from '@/services/ai-agents.service';
@@ -82,7 +83,7 @@ function RuleCard({
   };
 
   return (
-    <div className="rounded-lg border border-border p-3 space-y-3">
+    <div className="rounded-lg border border-subtle p-3 space-y-3">
       <div className="flex items-center justify-between">
         <Input
           value={rule.rule_id}
@@ -91,7 +92,7 @@ function RuleCard({
         />
         <button
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-600 transition-colors"
+          className="text-muted hover:text-danger transition-colors"
           aria-label="Delete rule"
         >
           <Trash2 className="h-4 w-4" />
@@ -100,7 +101,7 @@ function RuleCard({
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Intent</label>
+          <label className="block text-[11px] text-secondary mb-1">Intent</label>
           <OptionalSelect
             value={rule.intent}
             options={INTENTS}
@@ -108,7 +109,7 @@ function RuleCard({
           />
         </div>
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Sentiment</label>
+          <label className="block text-[11px] text-secondary mb-1">Sentiment</label>
           <OptionalSelect
             value={rule.sentiment}
             options={SENTIMENTS}
@@ -116,7 +117,7 @@ function RuleCard({
           />
         </div>
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Urgency</label>
+          <label className="block text-[11px] text-secondary mb-1">Urgency</label>
           <OptionalSelect
             value={rule.urgency}
             options={URGENCIES}
@@ -127,7 +128,7 @@ function RuleCard({
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Action (action_type)</label>
+          <label className="block text-[11px] text-secondary mb-1">Action (action_type)</label>
           <Input
             value={rule.action_type}
             onChange={(e) => onChange({ ...rule, action_type: e.target.value })}
@@ -135,7 +136,7 @@ function RuleCard({
           />
         </div>
         <div>
-          <label className="block text-[11px] text-gray-500 mb-1">Priority</label>
+          <label className="block text-[11px] text-secondary mb-1">Priority</label>
           <Input
             type="number"
             value={rule.priority}
@@ -146,15 +147,14 @@ function RuleCard({
       </div>
 
       <div>
-        <label className="block text-[11px] text-gray-500 mb-1">Action parameters (JSON, optional)</label>
-        <textarea
+        <label className="block text-[11px] text-secondary mb-1">Action parameters (JSON, optional)</label>
+        <Textarea
           rows={2}
           value={paramsText}
           onChange={(e) => setParamsText(e.target.value)}
-          onBlur={handleParamsBlur}
-          className="w-full px-2 py-1.5 text-xs font-mono border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onBlur={handleParamsBlur} className="min-h-0 px-2 py-1.5 text-xs font-mono"
         />
-        {paramsError && <p className="text-[11px] text-red-600 mt-1">{paramsError}</p>}
+        {paramsError && <p className="text-[11px] text-danger mt-1">{paramsError}</p>}
       </div>
     </div>
   );
@@ -177,9 +177,9 @@ export function RulesTab({ rules }: { rules: Rule[] }) {
 
   return (
     <div className="space-y-3 max-w-2xl">
-      <p className="text-xs text-gray-500">
-        Rules based on the customer message's intent/sentiment/urgency → an action that shapes
-        the reply (doesn't call anything external, just guides the model).
+      <p className="text-xs text-secondary">
+        Rules based on the customer message&apos;s intent/sentiment/urgency → an action that shapes
+        the reply (doesn&apos;t call anything external, just guides the model).
       </p>
 
       {list.map((rule, i) => (
@@ -204,7 +204,7 @@ export function RulesTab({ rules }: { rules: Rule[] }) {
         <Button
           onClick={handleSave}
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </Button>

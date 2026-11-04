@@ -29,7 +29,7 @@ export function AgentStatusToggle({ conversationId, botActive: initialBotActive 
       <Button
         variant={botActive ? 'default' : 'outline'}
         size="sm"
-        className="flex-1 h-7 text-xs gap-1"
+        className={`flex-1 h-7 text-xs gap-1 ${botActive ? 'border border-accent/20 bg-olive-dark text-accent hover:bg-olive-dark' : ''}`}
         onClick={handleToggle}
         disabled={handoff.isPending}
       >
@@ -39,7 +39,7 @@ export function AgentStatusToggle({ conversationId, botActive: initialBotActive 
       <Button
         variant={!botActive ? 'default' : 'outline'}
         size="sm"
-        className={`flex-1 h-7 text-xs gap-1 ${!botActive ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
+        className={`flex-1 h-7 text-xs gap-1 ${!botActive ? 'border border-warning/25 bg-warning/10 text-warning hover:bg-warning/15' : ''}`}
         onClick={handleToggle}
         disabled={handoff.isPending}
       >

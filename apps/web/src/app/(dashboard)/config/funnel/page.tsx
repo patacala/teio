@@ -46,7 +46,7 @@ export default function ConfigFunnelPage() {
   if (funnelsLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted" />
       </div>
     );
   }
@@ -56,8 +56,8 @@ export default function ConfigFunnelPage() {
     return (
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Funnel</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Define and manage your sales pipelines.</p>
+          <h1 className="text-lg font-semibold text-primary">Funnel</h1>
+          <p className="text-xs text-secondary mt-0.5">Define and manage your sales pipelines.</p>
         </div>
         <FunnelTemplateSelector onCreated={setSelectedFunnelId} />
       </div>
@@ -69,15 +69,15 @@ export default function ConfigFunnelPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Funnel</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Define and manage your sales pipelines.</p>
+          <h1 className="text-lg font-semibold text-primary">Funnel</h1>
+          <p className="text-xs text-secondary mt-0.5">Define and manage your sales pipelines.</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Funnel selector */}
           <select
             value={selectedFunnelId ?? ''}
             onChange={(e) => setSelectedFunnelId(e.target.value)}
-            className="h-8 rounded-lg border border-border bg-panel text-sm px-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-8 rounded-lg border border-subtle bg-surface-raised text-sm px-2 text-primary focus:outline-hidden focus:ring-2 focus:ring-accent/40"
           >
             {funnels.map((f) => (
               <option key={f.id} value={f.id}>
@@ -100,23 +100,23 @@ export default function ConfigFunnelPage() {
 
       {/* View toggle — prominent row above content */}
       {selectedFunnelId && (
-        <div className="flex items-center gap-1 border-b border-border pb-4">
+        <div className="flex items-center gap-1 border-b border-subtle pb-4">
           <button
             onClick={() => setView('kanban')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
               view === 'kanban'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'border-accent/12 bg-olive-dark text-primary'
+                : 'border-transparent text-secondary hover:bg-surface-hover hover:text-primary'
             }`}
           >
             Kanban
           </button>
           <button
             onClick={() => setView('list')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
               view === 'list'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'border-accent/12 bg-olive-dark text-primary'
+                : 'border-transparent text-secondary hover:bg-surface-hover hover:text-primary'
             }`}
           >
             List
@@ -141,7 +141,7 @@ export default function ConfigFunnelPage() {
           </DialogHeader>
           <form onSubmit={handleCreateFunnel} className="space-y-4 mt-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-xs font-medium text-primary mb-1">Name</label>
               <Input
                 required
                 value={newFunnelName}
@@ -156,7 +156,7 @@ export default function ConfigFunnelPage() {
               <Button
                 type="submit"
                 disabled={createFunnel.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-accent hover:bg-accent-hover text-on-accent"
               >
                 {createFunnel.isPending ? 'Creating…' : 'Create'}
               </Button>

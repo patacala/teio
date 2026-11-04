@@ -1,7 +1,6 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { SidebarItem } from './sidebar-item';
 import type { LucideIcon } from 'lucide-react';
 
@@ -24,12 +23,12 @@ export function SidebarSection({ title, items, collapsed }: SidebarSectionProps)
   return (
     <div className="space-y-0.5">
       {!collapsed && title ? (
-        <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400 select-none">
+        <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted select-none">
           {title}
         </p>
       ) : null}
       {collapsed && (
-        <div className="mx-2 my-1 border-t border-border" />
+        <div className="mx-2 my-1 border-t border-subtle" />
       )}
       {items.map((item) => {
         const active = item.exact

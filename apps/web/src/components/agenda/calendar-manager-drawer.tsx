@@ -133,7 +133,7 @@ function CalendarConfigView({
     (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (isLoading) {
-    return <p className="text-sm text-gray-500 px-6 py-5">Loading...</p>;
+    return <p className="text-sm text-secondary px-6 py-5">Loading...</p>;
   }
 
   return (
@@ -142,7 +142,7 @@ function CalendarConfigView({
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
         {/* Work days */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Work days</label>
+          <label className="block text-sm font-medium text-primary mb-2">Work days</label>
           <div className="flex gap-2 flex-wrap">
             {DAY_LABELS.map((label, idx) => (
               <button
@@ -151,8 +151,8 @@ function CalendarConfigView({
                 onClick={() => toggleDay(idx)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
                   workDays.includes(idx)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-border hover:border-gray-300'
+                    ? 'bg-olive-dark text-accent border-accent/25'
+                    : 'bg-surface text-primary border-subtle hover:border-strong'
                 }`}
               >
                 {label}
@@ -164,30 +164,30 @@ function CalendarConfigView({
         {/* Work hours */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start time</label>
+            <label className="block text-sm font-medium text-primary mb-1">Start time</label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End time</label>
+            <label className="block text-sm font-medium text-primary mb-1">End time</label>
             <input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
             />
           </div>
         </div>
 
         {/* Slot duration */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Slot duration</label>
+          <label className="block text-sm font-medium text-primary mb-1">Slot duration</label>
           <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
-            <SelectTrigger className="w-full bg-white text-gray-900">
+            <SelectTrigger className="w-full bg-surface text-primary">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -202,9 +202,9 @@ function CalendarConfigView({
 
         {/* Buffer */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Buffer between appointments</label>
+          <label className="block text-sm font-medium text-primary mb-1">Buffer between appointments</label>
           <Select value={String(buffer)} onValueChange={(v) => setBuffer(Number(v))}>
-            <SelectTrigger className="w-full bg-white text-gray-900">
+            <SelectTrigger className="w-full bg-surface text-primary">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -219,28 +219,28 @@ function CalendarConfigView({
 
         {/* Timezone */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+          <label className="block text-sm font-medium text-primary mb-1">Timezone</label>
           <input
             type="text"
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
             placeholder="e.g. America/New_York"
-            className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
           />
         </div>
 
         {/* Payment service — only for real appointment calendars */}
         {calendar?.type === 'appointments' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Servicio a cobrar al agendar
+            <label className="block text-sm font-medium text-primary mb-1">
+              Service charged at booking
             </label>
             <Select value={paymentServiceId} onValueChange={setPaymentServiceId}>
-              <SelectTrigger className="w-full bg-white text-gray-900">
-                <SelectValue placeholder="Sin cobro" />
+              <SelectTrigger className="w-full bg-surface text-primary">
+                <SelectValue placeholder="No charge" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin cobro</SelectItem>
+                <SelectItem value="none">No charge</SelectItem>
                 {activePaymentServices.map((service) => (
                   <SelectItem key={service.id} value={service.id}>
                     {service.name} — ${formatAmount(service.amount)}
@@ -248,40 +248,40 @@ function CalendarConfigView({
                 ))}
               </SelectContent>
             </Select>
-            <p className="mt-1 text-xs text-gray-400">
-              Cuando la IA reserve en este calendario, pedirá este pago antes de confirmar la cita.
+            <p className="mt-1 text-xs text-muted">
+              When the AI books into this calendar, it will request this payment before confirming the appointment.
             </p>
           </div>
         )}
 
         {/* Blocked dates */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Blocked dates</label>
+          <label className="block text-sm font-medium text-primary mb-2">Blocked dates</label>
           <div className="flex gap-2 mb-2">
             <input
               type="date"
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
-              className="flex-1 rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="flex-1 rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
             />
             <Button type="button" variant="outline" size="sm" onClick={addBlockedDate} disabled={!newDate}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
           {blockedDates.length === 0 ? (
-            <p className="text-xs text-gray-400">No blocked dates</p>
+            <p className="text-xs text-muted">No blocked dates</p>
           ) : (
             <ul className="space-y-1">
               {blockedDates.map((date) => (
                 <li
                   key={date}
-                  className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm"
+                  className="flex items-center justify-between rounded-md bg-surface-raised px-3 py-1.5 text-sm"
                 >
-                  <span className="text-gray-700">{date}</span>
+                  <span className="text-primary">{date}</span>
                   <button
                     type="button"
                     onClick={() => setBlockedDates((prev) => prev.filter((d) => d !== date))}
-                    className="text-gray-400 hover:text-red-500"
+                    className="text-muted hover:text-danger"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -293,7 +293,7 @@ function CalendarConfigView({
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-border flex justify-between gap-3">
+      <div className="px-6 py-4 border-t border-subtle flex justify-between gap-3">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -365,28 +365,28 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={handleClose} />
+      <div className="fixed inset-0 bg-black/60 z-40" onClick={handleClose} />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle">
           <div className="flex items-center gap-2">
             {configuringId ? (
               <>
-                <Calendar className="h-5 w-5 text-gray-500" />
-                <h2 className="text-base font-semibold text-gray-900">
+                <Calendar className="h-5 w-5 text-secondary" />
+                <h2 className="text-base font-semibold text-primary">
                   {configuringCalendar?.name ?? 'Configure calendar'}
                 </h2>
               </>
             ) : (
               <>
-                <Settings2 className="h-5 w-5 text-gray-500" />
-                <h2 className="text-base font-semibold text-gray-900">Calendars</h2>
+                <Settings2 className="h-5 w-5 text-secondary" />
+                <h2 className="text-base font-semibold text-primary">Calendars</h2>
               </>
             )}
           </div>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={handleClose} className="text-muted hover:text-secondary">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -399,13 +399,13 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
             {/* List body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
               {isLoading ? (
-                <p className="text-sm text-gray-500">Loading calendars...</p>
+                <p className="text-sm text-secondary">Loading calendars...</p>
               ) : (
                 <>
                   {calendars.map((cal) => (
                       <div
                         key={cal.id}
-                        className="flex items-center gap-3 rounded-xl border border-border bg-white p-4 hover:shadow-sm transition-shadow"
+                        className="flex items-center gap-3 rounded-xl border border-subtle bg-surface p-4 hover:shadow-xs transition-shadow"
                       >
                         {/* Color indicator */}
                         <div
@@ -415,12 +415,12 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{cal.name}</p>
-                          <p className="text-xs text-gray-400 truncate">
+                          <p className="text-sm font-medium text-primary truncate">{cal.name}</p>
+                          <p className="text-xs text-muted truncate">
                             {cal.type === 'appointments'
                               ? cal.payment_service_id
-                                ? 'Cobra al agendar'
-                                : 'Citas · sin cobro'
+                                ? 'Charges at booking'
+                                : 'Appointments · no charge'
                               : cal.type === 'follow_up'
                                 ? 'Follow-up'
                                 : cal.type}
@@ -431,7 +431,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => setConfiguringId(cal.id)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="p-1.5 rounded-md text-muted hover:text-accent-hover hover:bg-olive-dark transition-colors"
                             title="Configure schedule"
                           >
                             <Settings2 className="h-4 w-4" />
@@ -439,7 +439,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                           <button
                             onClick={() => handleDelete(cal.id, cal.name)}
                             disabled={deleteCalendar.isPending}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                            className="p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
                             title="Delete calendar"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -450,14 +450,14 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
 
                   {/* Create form */}
                   {showCreateForm ? (
-                    <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/50 p-4 space-y-3">
+                    <div className="rounded-xl border border-dashed border-accent/30 bg-olive-dark/50 p-4 space-y-3">
                       <Input
                         placeholder="Calendar name"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                         autoFocus
-                        className="bg-white"
+                        className="bg-surface"
                       />
 
                       {/* Color swatches */}
@@ -470,7 +470,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                             onClick={() => setNewColor(swatch.value)}
                             className={`w-7 h-7 rounded-full border-2 transition-all ${
                               newColor === swatch.value
-                                ? 'border-gray-900 scale-110'
+                                ? 'border-strong scale-110'
                                 : 'border-transparent hover:scale-105'
                             }`}
                             style={{ backgroundColor: swatch.value }}
@@ -502,7 +502,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                   ) : (
                     <button
                       onClick={() => setShowCreateForm(true)}
-                      className="w-full flex items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-colors"
+                      className="w-full flex items-center gap-2 rounded-xl border border-dashed border-subtle px-4 py-3 text-sm text-secondary hover:border-accent/30 hover:text-accent-hover hover:bg-olive-dark/50 transition-colors"
                     >
                       <Plus className="h-4 w-4" />
                       Add calendar
@@ -513,7 +513,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-border flex justify-end">
+            <div className="px-6 py-4 border-t border-subtle flex justify-end">
               <Button variant="outline" onClick={handleClose}>
                 Close
               </Button>

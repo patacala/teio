@@ -13,7 +13,7 @@ export interface CreateTemplateBody {
   priority?: number;
 }
 
-export interface UpdateTemplateBody extends Partial<CreateTemplateBody> {}
+export type UpdateTemplateBody = Partial<CreateTemplateBody>;
 
 export interface PaginatedDeliveries {
   items: CommunicationDelivery[];

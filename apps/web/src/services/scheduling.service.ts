@@ -78,6 +78,10 @@ export interface Appointment {
   meeting_url?: string;
   notes?: string;
   calendar_id?: string;
+  action?: string;
+  executor?: string;
+  channel_strategy?: string;
+  message_content?: string;
   created_at: string;
   updated_at: string;
 }

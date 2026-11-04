@@ -43,19 +43,19 @@ export function ContactAutocomplete({ value, label, onChange }: Props) {
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >
-          <span className="truncate">{label ?? 'Seleccionar contacto...'}</span>
+          <span className="truncate">{label ?? 'Select contact...'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start" sideOffset={4}>
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start" sideOffset={4}>
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Buscar contacto..."
+            placeholder="Search contact..."
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
-            <CommandEmpty>No se encontraron contactos.</CommandEmpty>
+            <CommandEmpty>No contacts found.</CommandEmpty>
             <CommandGroup>
               {contacts.map((c) => {
                 const fullName = `${c.first_name} ${c.last_name ?? ''}`.trim();
@@ -73,7 +73,7 @@ export function ContactAutocomplete({ value, label, onChange }: Props) {
                     />
                     <div>
                       <p className="text-sm font-medium">{fullName}</p>
-                      {c.phone && <p className="text-xs text-gray-400">{c.phone}</p>}
+                      {c.phone && <p className="text-xs text-muted">{c.phone}</p>}
                     </div>
                   </CommandItem>
                 );

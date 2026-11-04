@@ -5,37 +5,37 @@ const channelConfig: Record<string, { icon: React.ReactNode; label: string; colo
   whatsapp: {
     icon: <MessageCircle className="h-3 w-3" />,
     label: 'WhatsApp',
-    color: 'bg-emerald-100 text-emerald-700',
+    color: 'bg-success/15 text-success',
   },
   sms: {
     icon: <MessageSquare className="h-3 w-3" />,
     label: 'SMS',
-    color: 'bg-blue-100 text-blue-700',
+    color: 'bg-olive-dark text-accent',
   },
   voice: {
     icon: <Phone className="h-3 w-3" />,
     label: 'Voice',
-    color: 'bg-blue-100 text-blue-300',
+    color: 'bg-olive-dark text-accent/75',
   },
   webchat: {
     icon: <Globe className="h-3 w-3" />,
     label: 'Web Chat',
-    color: 'bg-gray-100 text-gray-600',
+    color: 'bg-surface-raised text-secondary',
   },
   facebook: {
     icon: <MessageCircle className="h-3 w-3" />,
     label: 'Facebook',
-    color: 'bg-blue-100 text-blue-700',
+    color: 'bg-olive-dark text-accent',
   },
   instagram: {
     icon: <Instagram className="h-3 w-3" />,
     label: 'Instagram',
-    color: 'bg-pink-100 text-pink-600',
+    color: 'bg-chart-pink/15 text-chart-pink',
   },
   email: {
     icon: <Mail className="h-3 w-3" />,
     label: 'Email',
-    color: 'bg-violet-100 text-violet-600',
+    color: 'bg-chart-purple/15 text-chart-purple',
   },
 };
 
@@ -51,7 +51,7 @@ export function ChannelBadge({
   const config = channelConfig[channel] ?? {
     icon: <MessageSquare className="h-3 w-3" />,
     label: channel,
-    color: 'bg-gray-100 text-gray-600',
+    color: 'bg-surface-raised text-secondary',
   };
 
   return (

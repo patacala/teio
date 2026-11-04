@@ -37,7 +37,7 @@ const BASE_URL = API_URL;
 
 const GROUPS: EndpointGroup[] = [
   {
-    label: '🚀 Webchat / Landing Page — Start here',
+    label: 'Webchat / Landing Page — Start here',
     description:
       'Use this endpoint to receive the first message from a new visitor on your landing page. No API key required — it is a public endpoint. The CRM automatically creates the contact and the conversation, then fires a webhook to n8n.',
     endpoints: [
@@ -47,21 +47,21 @@ const GROUPS: EndpointGroup[] = [
         description:
           'Ingest an incoming message. Automatically find-or-create the contact (by sender_identifier + channel) and find-or-create an open conversation. Returns conversation_id, contact_id and message_id. Public — no auth required.',
         bodyParams: [
-          { name: 'channel_id', type: 'uuid', required: true, description: 'Widget ID del canal webchat (Admin → Channels → abre el canal → copia el "Widget ID"). También acepta el ID interno del canal. El backend deriva el tipo de canal automáticamente.' },
-          { name: 'content', type: 'string', required: true, description: 'Texto del mensaje.' },
-          { name: 'sender_identifier', type: 'string', description: 'ID único del visitante. Genera un UUID al inicio de sesión y guárdalo en localStorage. El CRM lo usa para reconocer visitantes que regresan y reutilizar la conversación abierta.' },
-          { name: 'sender_display_name', type: 'string', description: 'Nombre del visitante si está disponible (p.ej. de un formulario). Se usa como nombre del contacto.' },
-          { name: 'channel_message_id', type: 'string', description: 'ID único del mensaje. Si no se envía, el backend lo genera automáticamente. Envíalo solo si necesitas deduplicación en reintentos.' },
-          { name: 'direction', type: '"inbound" | "outbound"', description: 'Dirección del mensaje. El backend asume "inbound" si se omite.' },
-          { name: 'sender_type', type: '"user" | "agent" | "ai"', description: 'Tipo de remitente. El backend asume "user" si se omite.' },
-          { name: 'sent_at', type: 'ISO date', description: 'Timestamp del mensaje. Usa la hora del servidor si se omite.' },
-          { name: 'metadata', type: 'object', description: 'Datos extra opcionales (p.ej. URL de página, parámetros UTM).' },
+          { name: 'channel_id', type: 'uuid', required: true, description: 'Widget ID of the webchat channel (Admin → Channels → open the channel → copy the "Widget ID"). Also accepts the channel\'s internal ID. The backend derives the channel type automatically.' },
+          { name: 'content', type: 'string', required: true, description: 'Message text.' },
+          { name: 'sender_identifier', type: 'string', description: 'Unique visitor ID. Generate a UUID at session start and store it in localStorage. The CRM uses it to recognize returning visitors and reuse the open conversation.' },
+          { name: 'sender_display_name', type: 'string', description: 'Visitor name if available (e.g. from a form). Used as the contact name.' },
+          { name: 'channel_message_id', type: 'string', description: 'Unique message ID. If omitted, the backend generates it automatically. Send it only if you need deduplication on retries.' },
+          { name: 'direction', type: '"inbound" | "outbound"', description: 'Message direction. The backend assumes "inbound" if omitted.' },
+          { name: 'sender_type', type: '"user" | "agent" | "ai"', description: 'Sender type. The backend assumes "user" if omitted.' },
+          { name: 'sent_at', type: 'ISO date', description: 'Message timestamp. Uses the server time if omitted.' },
+          { name: 'metadata', type: 'object', description: 'Optional extra data (e.g. page URL, UTM parameters).' },
         ],
         note: [
           'RESPONSE → { conversation_id, contact_id, message_id }',
-          'Guarda conversation_id en el estado del chat. En mensajes siguientes del mismo visitante, envía el mismo sender_identifier — el CRM reutiliza la conversación abierta automáticamente.',
-          'Tras la ingestión, el CRM dispara un webhook (message.received) a n8n con conversation_id + contact_id + content.',
-          'n8n responde via POST /api/v1/conversations/:conversation_id/messages usando un API key.',
+          'Store conversation_id in the chat state. On subsequent messages from the same visitor, send the same sender_identifier — the CRM reuses the open conversation automatically.',
+          'After ingestion, the CRM fires a webhook (message.received) to n8n with conversation_id + contact_id + content.',
+          'n8n replies via POST /api/v1/conversations/:conversation_id/messages using an API key.',
         ].join(' | '),
       },
     ],
@@ -576,16 +576,16 @@ const GROUPS: EndpointGroup[] = [
 // ─── Method badge ─────────────────────────────────────────────────────────────
 
 const METHOD_STYLES: Record<HttpMethod, string> = {
-  GET: 'bg-emerald-100 text-emerald-700',
-  POST: 'bg-blue-100 text-blue-700',
-  PUT: 'bg-violet-100 text-violet-700',
-  PATCH: 'bg-amber-100 text-amber-700',
-  DELETE: 'bg-red-100 text-red-600',
+  GET: 'bg-success/15 text-success',
+  POST: 'bg-olive-dark text-accent',
+  PUT: 'bg-chart-purple/15 text-chart-purple',
+  PATCH: 'bg-warning/15 text-warning',
+  DELETE: 'bg-danger/15 text-danger',
 };
 
 function MethodBadge({ method }: { method: HttpMethod }) {
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${METHOD_STYLES[method]}`}>
+    <span className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${METHOD_STYLES[method]}`}>
       {method}
     </span>
   );
@@ -600,7 +600,7 @@ function CopyButton({ text }: { text: string }) {
         navigator.clipboard.writeText(text);
         toast({ title: 'Copied', variant: 'default' });
       }}
-      className="shrink-0 p-1 rounded text-gray-300 hover:text-gray-600 transition-colors"
+      className="shrink-0 p-1 rounded-sm text-muted hover:text-secondary transition-colors"
       title="Copy"
     >
       <Copy className="h-3 w-3" />
@@ -616,18 +616,18 @@ function EndpointRow({ ep }: { ep: Endpoint }) {
   const hasDetail = ep.queryParams || ep.bodyParams || ep.note;
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-subtle rounded-lg overflow-hidden">
       <button
-        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface transition-colors text-left"
+        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-raised transition-colors text-left"
         onClick={() => hasDetail && setOpen((v) => !v)}
       >
         <MethodBadge method={ep.method} />
-        <code className="flex-1 text-xs text-gray-800 font-mono truncate">{ep.path}</code>
-        <span className="text-xs text-gray-400 hidden sm:block truncate max-w-[280px]">{ep.description}</span>
+        <code className="flex-1 text-xs text-primary font-mono truncate">{ep.path}</code>
+        <span className="text-xs text-muted hidden sm:block truncate max-w-[280px]">{ep.description}</span>
         <div className="flex items-center gap-1 shrink-0">
           <CopyButton text={fullPath} />
           {hasDetail && (
-            <span className="text-gray-400">
+            <span className="text-muted">
               {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </span>
           )}
@@ -635,19 +635,19 @@ function EndpointRow({ ep }: { ep: Endpoint }) {
       </button>
 
       {open && hasDetail && (
-        <div className="border-t border-border px-4 py-3 bg-surface space-y-3">
-          <p className="text-xs text-gray-600">{ep.description}</p>
+        <div className="border-t border-subtle px-4 py-3 bg-surface-raised space-y-3">
+          <p className="text-xs text-secondary">{ep.description}</p>
 
           {ep.queryParams && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Query params</p>
+              <p className="text-[10px] font-semibold text-secondary uppercase tracking-wide mb-1.5">Query params</p>
               <div className="space-y-1">
                 {ep.queryParams.map((p) => (
                   <div key={p.name} className="flex items-start gap-2 text-xs">
-                    <code className="text-blue-700 font-mono shrink-0">{p.name}</code>
-                    <span className="text-gray-400 shrink-0">{p.type}</span>
-                    {p.required && <span className="text-red-500 shrink-0 text-[10px] font-medium">required</span>}
-                    <span className="text-gray-500">{p.description}</span>
+                    <code className="text-accent font-mono shrink-0">{p.name}</code>
+                    <span className="text-muted shrink-0">{p.type}</span>
+                    {p.required && <span className="text-danger shrink-0 text-[10px] font-medium">required</span>}
+                    <span className="text-secondary">{p.description}</span>
                   </div>
                 ))}
               </div>
@@ -656,14 +656,14 @@ function EndpointRow({ ep }: { ep: Endpoint }) {
 
           {ep.bodyParams && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Body (JSON)</p>
+              <p className="text-[10px] font-semibold text-secondary uppercase tracking-wide mb-1.5">Body (JSON)</p>
               <div className="space-y-1">
                 {ep.bodyParams.map((p) => (
                   <div key={p.name} className="flex items-start gap-2 text-xs">
-                    <code className="text-blue-700 font-mono shrink-0">{p.name}</code>
-                    <span className="text-gray-400 shrink-0">{p.type}</span>
-                    {p.required && <span className="text-red-500 shrink-0 text-[10px] font-medium">required</span>}
-                    <span className="text-gray-500">{p.description}</span>
+                    <code className="text-accent font-mono shrink-0">{p.name}</code>
+                    <span className="text-muted shrink-0">{p.type}</span>
+                    {p.required && <span className="text-danger shrink-0 text-[10px] font-medium">required</span>}
+                    <span className="text-secondary">{p.description}</span>
                   </div>
                 ))}
               </div>
@@ -671,9 +671,9 @@ function EndpointRow({ ep }: { ep: Endpoint }) {
           )}
 
           {ep.note && (
-            <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-              <span className="text-blue-600 text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5">Note</span>
-              <p className="text-xs text-blue-700">{ep.note}</p>
+            <div className="flex items-start gap-2 bg-olive-dark border border-accent/12 rounded-lg px-3 py-2">
+              <span className="text-accent text-[10px] font-bold uppercase tracking-wide shrink-0 mt-0.5">Note</span>
+              <p className="text-xs text-accent">{ep.note}</p>
             </div>
           )}
         </div>
@@ -688,21 +688,21 @@ function EndpointGroup({ group }: { group: EndpointGroup }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
+    <div className="border border-subtle rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-panel hover:bg-surface transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 bg-surface hover:bg-surface-raised transition-colors text-left"
       >
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-900">{group.label}</span>
-          <span className="text-xs text-gray-400">{group.endpoints.length} endpoints</span>
+          <span className="text-sm font-semibold text-primary">{group.label}</span>
+          <span className="text-xs text-muted">{group.endpoints.length} endpoints</span>
         </div>
-        {open ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+        {open ? <ChevronDown className="h-4 w-4 text-muted" /> : <ChevronRight className="h-4 w-4 text-muted" />}
       </button>
 
       {open && (
-        <div className="border-t border-border p-4 space-y-2 bg-white">
-          <p className="text-xs text-gray-500 mb-3">{group.description}</p>
+        <div className="border-t border-subtle p-4 space-y-2 bg-surface">
+          <p className="text-xs text-secondary mb-3">{group.description}</p>
           {group.endpoints.map((ep) => (
             <EndpointRow key={`${ep.method}-${ep.path}`} ep={ep} />
           ))}
@@ -725,48 +725,48 @@ export function ApiDocsSection() {
         className="w-full flex items-center justify-between text-left"
       >
         <div className="flex items-center gap-2">
-          <Book className="h-4 w-4 text-gray-400" />
-          <h2 className="text-base font-semibold text-gray-900">API Reference</h2>
-          <span className="text-xs text-gray-400">— endpoints disponibles para n8n y aplicaciones externas</span>
+          <Book className="h-4 w-4 text-muted" />
+          <h2 className="text-base font-semibold text-primary">API Reference</h2>
+          <span className="text-xs text-muted">— endpoints available to n8n and external applications</span>
         </div>
-        {open ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+        {open ? <ChevronDown className="h-4 w-4 text-muted" /> : <ChevronRight className="h-4 w-4 text-muted" />}
       </button>
 
       {open && (
         <div className="space-y-4">
           {/* Auth instructions */}
-          <div className="bg-panel border border-border rounded-xl p-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Autenticación</p>
-            <div className="space-y-2 text-xs text-gray-600">
-              <p>Incluye tu API key en el header de cada petición:</p>
-              <div className="flex items-center gap-2 bg-gray-900 text-gray-100 rounded-lg px-3 py-2 font-mono text-[11px]">
-                <span className="flex-1">x-api-key: <span className="text-emerald-400">crm_live_xxxxxxxxxxxx</span></span>
+          <div className="bg-surface border border-subtle rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-primary uppercase tracking-wide">Authentication</p>
+            <div className="space-y-2 text-xs text-secondary">
+              <p>Include your API key in the header of every request:</p>
+              <div className="flex items-center gap-2 bg-app text-primary rounded-lg px-3 py-2 font-mono text-[11px]">
+                <span className="flex-1">x-api-key: <span className="text-success">crm_live_xxxxxxxxxxxx</span></span>
                 <CopyButton text="x-api-key: YOUR_KEY" />
               </div>
-                  <p className="text-gray-500">
-                Base URL: <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">{BASE_URL}</code>
+                  <p className="text-secondary">
+                Base URL: <code className="bg-surface-raised px-1.5 py-0.5 rounded-sm text-primary">{BASE_URL}</code>
               </p>
-              <p className="text-gray-500 mt-1">
-                <span className="font-medium text-emerald-700">Public (no auth):</span>{' '}
-                <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">POST /api/v1/messages/incoming</code>
+              <p className="text-secondary mt-1">
+                <span className="font-medium text-success">Public (no auth):</span>{' '}
+                <code className="bg-surface-raised px-1.5 py-0.5 rounded-sm text-primary">POST /api/v1/messages/incoming</code>
                 {' '}— use this from your landing page chatbot without exposing any key.
               </p>
             </div>
 
-            <div className="border-t border-border pt-3">
-              <p className="text-xs font-semibold text-gray-700 mb-2">Configuración en n8n (HTTP Request node)</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
-                <div className="bg-surface rounded-lg p-2.5 space-y-1">
-                  <p className="font-medium text-gray-800">1. Authentication</p>
-                  <p>Type: <code className="bg-gray-100 px-1 rounded">Header Auth</code></p>
-                  <p>Name: <code className="bg-gray-100 px-1 rounded">x-api-key</code></p>
-                  <p>Value: <code className="bg-gray-100 px-1 rounded">tu API key</code></p>
+            <div className="border-t border-subtle pt-3">
+              <p className="text-xs font-semibold text-primary mb-2">n8n setup (HTTP Request node)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-secondary">
+                <div className="bg-surface-raised rounded-lg p-2.5 space-y-1">
+                  <p className="font-medium text-primary">1. Authentication</p>
+                  <p>Type: <code className="bg-surface-raised px-1 rounded-sm">Header Auth</code></p>
+                  <p>Name: <code className="bg-surface-raised px-1 rounded-sm">x-api-key</code></p>
+                  <p>Value: <code className="bg-surface-raised px-1 rounded-sm">your API key</code></p>
                 </div>
-                <div className="bg-surface rounded-lg p-2.5 space-y-1">
-                  <p className="font-medium text-gray-800">2. Request</p>
-                  <p>Method: según el endpoint</p>
-                  <p>Body: <code className="bg-gray-100 px-1 rounded">JSON</code></p>
-                  <p>Response: <code className="bg-gray-100 px-1 rounded">Auto-detect</code></p>
+                <div className="bg-surface-raised rounded-lg p-2.5 space-y-1">
+                  <p className="font-medium text-primary">2. Request</p>
+                  <p>Method: depends on the endpoint</p>
+                  <p>Body: <code className="bg-surface-raised px-1 rounded-sm">JSON</code></p>
+                  <p>Response: <code className="bg-surface-raised px-1 rounded-sm">Auto-detect</code></p>
                 </div>
               </div>
             </div>

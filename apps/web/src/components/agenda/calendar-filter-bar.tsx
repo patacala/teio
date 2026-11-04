@@ -33,8 +33,8 @@ export function CalendarFilterBar({
         className={[
           'rounded-full px-3 py-1 text-sm font-medium border transition-colors',
           selectedId === null
-            ? 'bg-blue-600 text-white border-blue-600'
-            : 'bg-white text-gray-500 border-border hover:border-gray-300 hover:text-gray-900',
+            ? 'bg-olive-dark text-accent border-accent/25'
+            : 'bg-surface text-secondary border-subtle hover:border-strong hover:text-primary',
         ].join(' ')}
       >
         All
@@ -47,8 +47,8 @@ export function CalendarFilterBar({
           className={[
             'flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium border transition-colors',
             selectedId === cal.id
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-500 border-border hover:border-gray-300 hover:text-gray-900',
+              ? 'bg-olive-dark text-accent border-accent/25'
+              : 'bg-surface text-secondary border-subtle hover:border-strong hover:text-primary',
           ].join(' ')}
         >
           <span

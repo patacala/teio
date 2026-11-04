@@ -1,44 +1,44 @@
 ---
 description: |
-  Crea una migracion SQL para PostgreSQL. Genera el archivo idempotente
-  en packages/database/schemas/ y actualiza la entidad TypeORM correspondiente.
-arguments: [descripcion]
+  Creates a SQL migration for PostgreSQL. Generates the idempotent file
+  in packages/database/schemas/ and updates the corresponding TypeORM entity.
+arguments: [description]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Write Edit Bash(ls *) Bash(graphify *)
 ---
 
-# Nueva Migracion: $descripcion
+# New Migration: $description
 
-## Pasos
+## Steps
 
-### 1. Determinar numero
+### 1. Determine the number
 
 ```bash
 ls packages/database/schemas/ | sort -n | tail -5
 ```
 
-Usa N+1 del ultimo archivo.
+Use N+1 of the last file.
 
-### 2. Crear archivo SQL
+### 2. Create the SQL file
 
-`packages/database/schemas/{NNN}_$descripcion.sql`
+`packages/database/schemas/{NNN}_$description.sql`
 
-Reglas:
+Rules:
 - `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
-- `organization_id UUID NOT NULL` en toda tabla nueva
+- `organization_id UUID NOT NULL` in every new table
 - `created_at TIMESTAMPTZ DEFAULT NOW()` + `updated_at TIMESTAMPTZ DEFAULT NOW()`
-- Timestamps siempre `TIMESTAMPTZ`, nunca `TIMESTAMP`
-- Arrays: `TEXT[]`, `INTEGER[]`, etc (nativos PG)
-- JSON: `JSONB`, nunca `JSON`
-- Indices: `CREATE INDEX IF NOT EXISTS` en organization_id y campos de busqueda
+- Timestamps are always `TIMESTAMPTZ`, never `TIMESTAMP`
+- Arrays: `TEXT[]`, `INTEGER[]`, etc. (native PG)
+- JSON: `JSONB`, never `JSON`
+- Indexes: `CREATE INDEX IF NOT EXISTS` on organization_id and search fields
 - FKs: `REFERENCES schema.table(id) ON DELETE CASCADE/SET NULL`
-- Seeds: `INSERT INTO ... ON CONFLICT DO NOTHING` para datos iniciales
+- Seeds: `INSERT INTO ... ON CONFLICT DO NOTHING` for initial data
 
-### 3. Actualizar entidad TypeORM
+### 3. Update the TypeORM entity
 
-Modifica o crea la entidad correspondiente en `apps/api/src/modules/` para que coincida exactamente con el SQL.
+Modify or create the corresponding entity in `apps/api/src/modules/` so it matches the SQL exactly.
 
-### 4. Verificar build
+### 4. Verify the build
 
 ```bash
 pnpm --filter @crm/api build

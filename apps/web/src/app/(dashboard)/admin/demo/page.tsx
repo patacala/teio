@@ -16,9 +16,9 @@ import { toast } from '@/hooks/useToast';
 import type { DemoRequest } from '@/services/demo.service';
 
 const STATUS_STYLES: Record<string, string> = {
-  processing: 'bg-yellow-50 text-yellow-700',
-  ready: 'bg-green-50 text-green-700',
-  failed: 'bg-red-50 text-red-700',
+  processing: 'bg-warning/10 text-warning',
+  ready: 'bg-success/10 text-success',
+  failed: 'bg-danger/10 text-danger',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,7 +36,7 @@ const DEMO_TYPE_LABELS: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`text-[11px] font-medium rounded-full px-2 py-0.5 ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}
+      className={`text-[11px] font-medium rounded-full px-2 py-0.5 ${STATUS_STYLES[status] ?? 'bg-surface-raised text-secondary'}`}
     >
       {STATUS_LABELS[status] ?? status}
     </span>
@@ -55,17 +55,17 @@ function DemoRow({
   const hasExperienceLink = !!request.experience_token_id;
 
   return (
-    <tr className="border-b border-border last:border-0 hover:bg-gray-50 transition-colors">
+    <tr className="border-b border-subtle last:border-0 hover:bg-surface-raised transition-colors">
       <td className="px-4 py-3">
-        <p className="text-sm font-medium text-gray-900">
+        <p className="text-sm font-medium text-primary">
           {request.contact_name ?? request.contact_id ?? '—'}
         </p>
         {request.contact_email && (
-          <p className="text-xs text-gray-400">{request.contact_email}</p>
+          <p className="text-xs text-muted">{request.contact_email}</p>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-secondary">
           {DEMO_TYPE_LABELS[request.demo_type] ?? request.demo_type}
         </span>
       </td>
@@ -78,16 +78,16 @@ function DemoRow({
             href={request.demo_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-blue-600 underline underline-offset-2 truncate max-w-[180px] inline-block"
+            className="text-xs text-accent underline underline-offset-2 truncate max-w-[180px] inline-block"
           >
             {request.demo_url}
           </a>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="text-xs text-muted">—</span>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-muted">
           {new Date(request.created_at).toLocaleDateString('en-US', {
             day: '2-digit',
             month: 'short',
@@ -101,7 +101,7 @@ function DemoRow({
             <Button
               size="sm"
               variant="ghost"
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-7 px-2 text-xs"
+              className="text-accent hover:text-accent-hover hover:bg-olive-dark h-7 px-2 text-xs"
               onClick={() => onSendEmail(request)}
             >
               <Mail className="h-3.5 w-3.5 mr-1" />
@@ -112,7 +112,7 @@ function DemoRow({
             <Button
               size="sm"
               variant="ghost"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2 text-xs"
+              className="text-danger hover:text-danger hover:bg-danger/10 h-7 px-2 text-xs"
               onClick={() => onRevoke(request.experience_token_id!)}
             >
               <XCircle className="h-3.5 w-3.5 mr-1" />
@@ -129,7 +129,7 @@ function TableSkeleton() {
   return (
     <>
       {Array.from({ length: 5 }).map((_, i) => (
-        <tr key={i} className="border-b border-border">
+        <tr key={i} className="border-b border-subtle">
           {Array.from({ length: 6 }).map((__, j) => (
             <td key={j} className="px-4 py-3">
               <Skeleton className="h-4 w-full" />
@@ -179,7 +179,7 @@ function SendEmailDialog({
           <DialogTitle>Send Demo Email</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-secondary">
             Send the demo link to the contact&apos;s email or a different address.
           </p>
           <Input
@@ -222,8 +222,8 @@ export default function DemoRequestsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Demo Requests</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h1 className="text-lg font-semibold text-primary">Demo Requests</h1>
+          <p className="text-xs text-secondary mt-0.5">
             Requests received from the public demo form.
           </p>
         </div>
@@ -232,7 +232,7 @@ export default function DemoRequestsPage() {
           variant="ghost"
           onClick={() => refetch()}
           disabled={isLoading}
-          className="text-gray-500 h-8"
+          className="text-secondary h-8"
         >
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
@@ -240,15 +240,15 @@ export default function DemoRequestsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-panel border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-subtle rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-gray-50">
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Contact</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Type</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Demo URL</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
+            <tr className="border-b border-subtle bg-surface-raised">
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-secondary">Contact</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-secondary">Type</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-secondary">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-secondary">Demo URL</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-secondary">Date</th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
@@ -258,8 +258,8 @@ export default function DemoRequestsPage() {
             ) : !data?.items?.length ? (
               <tr>
                 <td colSpan={6} className="px-4 py-16 text-center">
-                  <MonitorPlay className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">No demo requests yet.</p>
+                  <MonitorPlay className="h-8 w-8 text-muted mx-auto mb-3" />
+                  <p className="text-sm text-secondary">No demo requests yet.</p>
                 </td>
               </tr>
             ) : (
@@ -278,7 +278,7 @@ export default function DemoRequestsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-secondary">
           <span>
             Page {page} of {totalPages} — {data?.meta?.total ?? 0} records
           </span>

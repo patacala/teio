@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils';
  * message when scanning the schedule.
  */
 const config = {
-  send_message: { label: 'Mensaje', Icon: MessageSquare, className: 'bg-gray-100 text-gray-600' },
-  call: { label: 'Llamada', Icon: Phone, className: 'bg-blue-100 text-blue-700' },
-  send_email: { label: 'Email', Icon: Mail, className: 'bg-gray-100 text-gray-600' },
-  notify_agent: { label: 'Aviso', Icon: Bell, className: 'bg-amber-100 text-amber-700' },
-  create_task: { label: 'Tarea', Icon: CheckSquare, className: 'bg-gray-100 text-gray-600' },
+  send_message: { label: 'Message', Icon: MessageSquare, className: 'bg-surface-raised text-secondary' },
+  call: { label: 'Call', Icon: Phone, className: 'bg-olive-dark text-accent' },
+  send_email: { label: 'Email', Icon: Mail, className: 'bg-surface-raised text-secondary' },
+  notify_agent: { label: 'Aviso', Icon: Bell, className: 'bg-warning/15 text-warning' },
+  create_task: { label: 'Task', Icon: CheckSquare, className: 'bg-surface-raised text-secondary' },
 };
 
 interface Props {

@@ -1,21 +1,21 @@
 import { cn } from '@/lib/utils';
 
 const styles: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  scheduled: 'bg-amber-100 text-amber-700',
-  confirmed: 'bg-blue-100 text-blue-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-red-100 text-red-600',
-  no_show: 'bg-gray-100 text-gray-600',
+  pending: 'bg-warning/15 text-warning',
+  scheduled: 'bg-warning/15 text-warning',
+  confirmed: 'bg-olive-dark text-accent',
+  completed: 'bg-success/15 text-success',
+  cancelled: 'bg-danger/15 text-danger',
+  no_show: 'bg-surface-raised text-secondary',
 };
 
 const labels: Record<string, string> = {
-  pending: 'Pendiente',
-  scheduled: 'Programada',
-  confirmed: 'Confirmada',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
-  no_show: 'No asistió',
+  pending: 'Pending',
+  scheduled: 'Scheduled',
+  confirmed: 'Confirmed',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show: 'No-show',
 };
 
 interface Props {

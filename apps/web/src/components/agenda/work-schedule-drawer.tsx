@@ -98,19 +98,19 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 z-40"
+        className="fixed inset-0 bg-black/60 z-40"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-surface shadow-xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-subtle">
           <div className="flex items-center gap-2">
-            <Settings2 className="h-5 w-5 text-gray-500" />
-            <h2 className="text-base font-semibold text-gray-900">Configure schedule</h2>
+            <Settings2 className="h-5 w-5 text-secondary" />
+            <h2 className="text-base font-semibold text-primary">Configure schedule</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-muted hover:text-secondary">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -118,12 +118,12 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {isLoading ? (
-            <p className="text-sm text-gray-500">Loading...</p>
+            <p className="text-sm text-secondary">Loading...</p>
           ) : (
             <>
               {/* Work days */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Work days
                 </label>
                 <div className="flex gap-2 flex-wrap">
@@ -134,8 +134,8 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
                       onClick={() => toggleDay(idx)}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
                         workDays.includes(idx)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-border hover:border-gray-300'
+                          ? 'bg-olive-dark text-accent border-accent/25'
+                          : 'bg-surface text-primary border-subtle hover:border-strong'
                       }`}
                     >
                       {label}
@@ -147,36 +147,36 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
               {/* Work hours */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-primary mb-1">
                     Start time
                   </label>
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-primary mb-1">
                     End time
                   </label>
                   <input
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
               </div>
 
               {/* Slot duration */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-primary mb-1">
                   Slot duration
                 </label>
                 <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
-                  <SelectTrigger className="w-full bg-white text-gray-900">
+                  <SelectTrigger className="w-full bg-surface text-primary">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -191,11 +191,11 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
 
               {/* Buffer */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-primary mb-1">
                   Buffer between appointments
                 </label>
                 <Select value={String(buffer)} onValueChange={(v) => setBuffer(Number(v))}>
-                  <SelectTrigger className="w-full bg-white text-gray-900">
+                  <SelectTrigger className="w-full bg-surface text-primary">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -210,7 +210,7 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
 
               {/* Timezone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-primary mb-1">
                   Timezone
                 </label>
                 <input
@@ -218,13 +218,13 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
                   placeholder="e.g. America/New_York"
-                  className="w-full rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
                 />
               </div>
 
               {/* Blocked dates */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Blocked dates
                 </label>
                 <div className="flex gap-2 mb-2">
@@ -232,7 +232,7 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="flex-1 rounded-md border border-border bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="flex-1 rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
                   />
                   <Button
                     type="button"
@@ -245,19 +245,19 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
                   </Button>
                 </div>
                 {blockedDates.length === 0 ? (
-                  <p className="text-xs text-gray-400">No blocked dates</p>
+                  <p className="text-xs text-muted">No blocked dates</p>
                 ) : (
                   <ul className="space-y-1">
                     {blockedDates.map((date) => (
                       <li
                         key={date}
-                        className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm"
+                        className="flex items-center justify-between rounded-md bg-surface-raised px-3 py-1.5 text-sm"
                       >
-                        <span className="text-gray-700">{date}</span>
+                        <span className="text-primary">{date}</span>
                         <button
                           type="button"
                           onClick={() => removeBlockedDate(date)}
-                          className="text-gray-400 hover:text-red-500"
+                          className="text-muted hover:text-danger"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -271,7 +271,7 @@ export function WorkScheduleDrawer({ open, onClose }: WorkScheduleDrawerProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-subtle flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

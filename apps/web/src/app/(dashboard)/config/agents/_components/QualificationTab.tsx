@@ -78,7 +78,7 @@ export function QualificationTab({
 
   return (
     <div className="space-y-4 max-w-3xl">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-secondary">
         The data the agent should collect from each lead.{' '}
         <span className="font-medium">Ask first</span> fields (like name) are
         requested right away; <span className="font-medium">Required to book</span>{' '}
@@ -87,7 +87,7 @@ export function QualificationTab({
 
       <div className="space-y-3">
         {rows.map((f, i) => (
-          <div key={i} className="rounded-lg border border-border p-3 space-y-3">
+          <div key={i} className="rounded-lg border border-subtle p-3 space-y-3">
             <div className="flex items-center gap-2">
               <Input
                 value={f.label}
@@ -99,7 +99,7 @@ export function QualificationTab({
                 <select
                   value={f.type}
                   onChange={(e) => patch(i, { type: e.target.value as QualificationField['type'] })}
-                  className="rounded-md border border-border bg-white px-2 py-1.5 text-sm text-gray-800"
+                  className="rounded-md border border-subtle bg-surface-raised px-2 py-1.5 text-sm text-primary"
                 >
                   {FIELD_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -109,14 +109,14 @@ export function QualificationTab({
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="shrink-0 text-gray-400 hover:text-red-500"
+                className="shrink-0 text-muted hover:text-danger"
                 aria-label="Remove field"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+            <div className="flex flex-wrap gap-4 text-xs text-secondary">
               <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"
@@ -136,8 +136,8 @@ export function QualificationTab({
             </div>
 
             {expertMode && (
-              <div className="space-y-3 border-t border-border pt-3">
-                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+              <div className="space-y-3 border-t border-subtle pt-3">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-secondary">
                   <label className="flex items-center gap-1.5">
                     <input
                       type="checkbox"
@@ -153,7 +153,7 @@ export function QualificationTab({
                       onChange={(e) =>
                         patch(i, { bant_dimension: (e.target.value || null) as BantDimension | null })
                       }
-                      className="rounded-md border border-border bg-white px-2 py-1 text-xs text-gray-800"
+                      className="rounded-md border border-subtle bg-surface-raised px-2 py-1 text-xs text-primary"
                     >
                       {BANT_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
@@ -168,7 +168,7 @@ export function QualificationTab({
                     onChange={(e) =>
                       patch(i, { options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean) })
                     }
-                    placeholder="Options, comma-separated (e.g. cuotas, total)"
+                    placeholder="Options, comma-separated (e.g. installments, total)"
                   />
                 )}
 
@@ -187,7 +187,7 @@ export function QualificationTab({
       <button
         type="button"
         onClick={add}
-        className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+        className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent-hover"
       >
         <Plus className="h-3.5 w-3.5" /> Add field
       </button>
@@ -196,7 +196,7 @@ export function QualificationTab({
         <Button
           onClick={handleSave}
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </Button>

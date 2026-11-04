@@ -23,7 +23,6 @@ export function useSetActiveAutomationAgent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      triggerEvent,
       activateId,
       allForEvent,
     }: {

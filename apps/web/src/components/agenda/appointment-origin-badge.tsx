@@ -2,9 +2,9 @@ import { Bot, User, Webhook } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const config = {
-  ai: { label: 'Bot IA', Icon: Bot, className: 'bg-purple-100 text-purple-700' },
-  human: { label: 'Usuario', Icon: User, className: 'bg-gray-100 text-gray-600' },
-  webhook: { label: 'Webhook', Icon: Webhook, className: 'bg-orange-100 text-orange-600' },
+  ai: { label: 'Bot IA', Icon: Bot, className: 'bg-chart-purple/15 text-chart-purple' },
+  human: { label: 'User', Icon: User, className: 'bg-surface-raised text-secondary' },
+  webhook: { label: 'Webhook', Icon: Webhook, className: 'bg-warning/15 text-warning' },
 };
 
 interface Props {

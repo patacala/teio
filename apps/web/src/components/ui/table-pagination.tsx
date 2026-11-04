@@ -26,18 +26,18 @@ export function TablePagination({
   const last = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex items-center justify-between border-t border-border px-4 py-3">
-      <p className="text-xs text-gray-500">
+    <div className="flex items-center justify-between border-t border-subtle px-4 py-3">
+      <p className="text-xs text-muted">
         {first.toLocaleString()}–{last.toLocaleString()} of {total.toLocaleString()} {label}
       </p>
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted">
           Page {page} of {totalPages}
         </span>
         <Button
           variant="outline"
-          size="sm"
-          className="h-7 w-7 p-0"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
           aria-label="Previous page"
@@ -46,8 +46,8 @@ export function TablePagination({
         </Button>
         <Button
           variant="outline"
-          size="sm"
-          className="h-7 w-7 p-0"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
           aria-label="Next page"

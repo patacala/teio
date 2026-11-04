@@ -9,17 +9,17 @@ export default function ConfigPaymentsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Pagos</h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Conecta tu cuenta de Stripe y define los servicios que tu agente puede cobrar a los contactos.
+        <h1 className="text-lg font-semibold text-primary">Payments</h1>
+        <p className="text-xs text-secondary mt-0.5">
+          Connect your Stripe account and define the services your agent can charge contacts for.
         </p>
       </div>
 
       <Tabs defaultValue="connection">
         <TabsList className="mb-5">
-          <TabsTrigger value="connection">Conexión Stripe</TabsTrigger>
-          <TabsTrigger value="services">Servicios</TabsTrigger>
-          <TabsTrigger value="transactions">Transacciones</TabsTrigger>
+          <TabsTrigger value="connection">Stripe connection</TabsTrigger>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="connection">

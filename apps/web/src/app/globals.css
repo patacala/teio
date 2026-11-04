@@ -1,21 +1,204 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-app: #050605;
+  --color-sidebar: #10110f;
+  --color-surface: #10110f;
+  --color-surface-raised: #191a18;
+  --color-surface-hover: #22241f;
+  --color-surface-pressed: #292c23;
+  --color-surface-overlay: #20211e;
+
+  --color-accent: #b7ff4a;
+  --color-accent-hover: #c8ff73;
+  --color-on-accent: #10110f;
+  --color-olive: #647d32;
+  --color-olive-dark: #202a14;
+
+  --color-success: #a8ef43;
+  --color-danger: #e87962;
+  --color-warning: #e2bd4f;
+  --color-info: #62c5c5;
+
+  --color-chart-lime: #a8ef43;
+  --color-chart-purple: #a77be8;
+  --color-chart-cyan: #62c5c5;
+  --color-chart-pink: #ef7897;
+  --color-chart-yellow: #efc32e;
+
+  --text-color-primary: #f4f4f0;
+  --text-color-secondary: #b4b5ae;
+  --text-color-muted: #86897f;
+
+  --border-color-subtle: rgb(255 255 255 / 7%);
+  --border-color-strong: rgb(255 255 255 / 12%);
+  --divide-color-subtle: rgb(255 255 255 / 7%);
+  --background-color-divider: rgb(255 255 255 / 7%);
+
+  --font-sans: Inter, Geist, ui-sans-serif, system-ui, sans-serif;
+
+  --radius-panel: 1.5rem;
+  --radius-card: 1.25rem;
+  --radius-row: 1rem;
+  --radius-control: 0.75rem;
+  --radius-tile: 0.625rem;
+
+  --shadow-panel: 0 8px 28px rgb(0 0 0 / 24%);
+  --shadow-menu: 0 12px 32px rgb(0 0 0 / 45%);
+
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --border: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border-color-subtle);
+  }
+
+  html {
+    color-scheme: dark;
+    background-color: var(--color-app);
   }
 
   body {
-    @apply bg-surface text-gray-900 antialiased;
+    @apply app-canvas min-h-screen antialiased;
   }
+
+  ::selection {
+    background-color: rgb(183 255 74 / 25%);
+    color: var(--text-color-primary);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-color-muted);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'],
+  progress {
+    accent-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(183 255 74 / 55%);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-pressed) transparent;
+  }
+}
+
+@utility app-canvas {
+  background:
+    radial-gradient(ellipse at 24% 12%, rgb(103 137 43 / 7%), transparent 34%),
+    radial-gradient(ellipse at 86% 72%, rgb(75 104 34 / 4.5%), transparent 32%),
+    var(--color-app);
+  background-attachment: fixed;
+  color: var(--text-color-primary);
+}
+
+@utility panel-card {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-panel);
+}
+
+@utility metric-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 18% 12%, rgb(126 163 54 / 19%), transparent 58%),
+    radial-gradient(ellipse at 88% 100%, rgb(71 95 34 / 17%), transparent 54%),
+    #11130f;
+  border: 1px solid rgb(255 255 255 / 6%);
+  border-radius: var(--radius-card);
+}
+
+@utility inset-surface {
+  background: var(--color-surface-raised);
+  border: 1px solid rgb(255 255 255 / 6%);
+  border-radius: var(--radius-control);
+}
+
+@utility action-surface {
+  background: linear-gradient(145deg, rgb(100 125 50 / 16%), rgb(32 42 20 / 55%));
+  border: 1px solid rgb(183 255 74 / 10%);
+  border-radius: var(--radius-control);
+}
+
+@utility shell-surface {
+  background: var(--color-sidebar);
+  border: 1px solid var(--border-color-subtle);
+}
+
+@utility nav-item-active {
+  color: var(--color-accent);
+  background: rgb(117 153 53 / 17%);
+  border: 1px solid rgb(181 255 74 / 12%);
+}
+
+@utility icon-tile {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-tile);
+  color: #e7f1dc;
+  background: linear-gradient(145deg, rgb(113 145 53 / 20%), rgb(25 29 19 / 85%));
+  border: 1px solid rgb(181 255 74 / 12%);
+}
+
+@utility dark-control {
+  min-height: 2.5rem;
+  color: var(--text-color-primary);
+  background: var(--color-surface-raised);
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: var(--radius-control);
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out;
+}
+
+@utility dark-control-focus {
+  outline: none;
+  border-color: rgb(181 255 74 / 48%);
+  box-shadow: 0 0 0 3px rgb(181 255 74 / 10%);
+}
+
+@utility interactive-surface {
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    transform 180ms ease-out;
+  &:hover {
+    background-color: var(--color-surface-hover);
+    border-color: rgb(255 255 255 / 12%);
+  }
+  &:active {
+    background-color: var(--color-surface-pressed);
+  }
+}
+
+@utility lime-ambient-glow {
+  box-shadow: 0 0 22px rgb(181 255 74 / 10%);
 }
 
 /* Subtle "breathing" pulse for hot funnel-lead cards — draws the eye without
@@ -46,7 +229,7 @@
    WebKit pseudo-elements. */
 .thin-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: theme('colors.gray.300') transparent;
+  scrollbar-color: var(--color-surface-pressed) transparent;
 }
 
 .thin-scrollbar::-webkit-scrollbar {
@@ -59,16 +242,27 @@
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: theme('colors.gray.300');
+  background-color: var(--color-surface-pressed);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: theme('colors.gray.400');
+  background-color: var(--color-olive);
 }
 
 .virtuoso-viewport-fix [data-viewport-type="element"] {
   width: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

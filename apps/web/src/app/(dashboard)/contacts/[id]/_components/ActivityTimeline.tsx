@@ -38,7 +38,7 @@ function EventIcon({ type }: { type: ActivityEvent['type'] }) {
 function ActorChip({ actor }: { actor?: string }) {
   if (!actor) return null;
   return (
-    <span className="ml-1.5 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+    <span className="ml-1.5 inline-flex items-center rounded-full bg-surface-raised px-2 py-0.5 text-[10px] font-medium text-secondary">
       {actor}
     </span>
   );
@@ -52,7 +52,7 @@ function EventLabel({ event }: { event: ActivityEvent }) {
         {event.direction === 'inbound' ? 'sent' : 'received'} a message via{' '}
         <span className="font-medium">{event.channel}</span>
         {event.content ? (
-          <span className="ml-1 text-gray-400">
+          <span className="ml-1 text-muted">
             — &ldquo;{String(event.content).slice(0, 60)}
             {String(event.content).length > 60 ? '…' : ''}&rdquo;
           </span>
@@ -121,38 +121,38 @@ export function ActivityTimeline({ contactId }: Props) {
   }
 
   return (
-    <div className="col-span-full bg-panel border border-border rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-gray-900 mb-6">Activity Timeline</h3>
+    <div className="col-span-full bg-surface border border-subtle rounded-xl p-6">
+      <h3 className="text-sm font-semibold text-primary mb-6">Activity Timeline</h3>
 
       {isLoading && (
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted" />
         </div>
       )}
 
       {!isLoading && allEvents.length === 0 && (
-        <p className="text-sm text-gray-400">No activity yet</p>
+        <p className="text-sm text-muted">No activity yet</p>
       )}
 
       <div className="space-y-6">
         {groups.map(({ label, events }) => (
           <div key={label}>
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wide">
                 {label}
               </span>
-              <div className="flex-1 h-px bg-border" />
+              <div className="flex-1 h-px bg-divider" />
             </div>
             <ul className="space-y-3">
               {events.map((event) => (
                 <li key={event.id} className="flex items-start gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 mt-0.5">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-secondary mt-0.5">
                     <EventIcon type={event.type} />
                   </div>
-                  <div className="flex-1 min-w-0 text-sm text-gray-700">
+                  <div className="flex-1 min-w-0 text-sm text-primary">
                     <EventLabel event={event} />
                   </div>
-                  <span className="text-xs text-gray-400 shrink-0 mt-0.5 whitespace-nowrap">
+                  <span className="text-xs text-muted shrink-0 mt-0.5 whitespace-nowrap">
                     {formatDateTime(event.timestamp)}
                   </span>
                 </li>

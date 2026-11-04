@@ -1,62 +1,64 @@
 ---
 description: |
-  Crea una pagina nueva en el frontend Next.js con servicio, hook,
-  componentes, skeleton loading y empty state.
-arguments: [ruta, titulo]
+  Creates a new page in the Next.js frontend with service, hook,
+  components, skeleton loading, and empty state.
+arguments: [route, title]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Write Edit Bash(graphify *) Bash(pnpm --filter @crm/web *)
 ---
 
-# Nueva Pagina: $titulo en /$ruta
+# New Page: $title at /$route
 
-## Pasos
+## Steps
 
-### 1. Verificar endpoint backend
+### 1. Verify the backend endpoint
 
-Confirma que los endpoints que esta pagina necesita existen:
+Confirm that the endpoints this page needs exist:
 ```bash
-graphify query "$ruta controller routes API"
+graphify query "$route controller routes API"
 ```
 
-Si no existen, crealos primero (usa `/new-endpoint`).
+If they don't exist, create them first (use `/new-endpoint`).
 
-### 2. Servicio HTTP
+### 2. HTTP service
 
-Crea `apps/web/src/services/$ruta.service.ts`:
-- Solo llamadas HTTP via `authClient`
-- Tipado completo de responses
+Create `apps/web/src/services/$route.service.ts`:
+- Only HTTP calls through `authClient`
+- Fully typed responses
 
-### 3. Hook React Query
+### 3. React Query hook
 
-Crea `apps/web/src/hooks/use[Nombre].ts`:
-- `useQuery` con `staleTime: 30_000`
-- `useMutation` con `invalidateQueries` en `onSuccess`
-- `toast({ variant: 'error' })` en `onError`
+Create `apps/web/src/hooks/use[Name].ts`:
+- `useQuery` with `staleTime: 30_000`
+- `useMutation` with `invalidateQueries` in `onSuccess`
+- `toast({ variant: 'error' })` in `onError`
 
-### 4. Pagina
+### 4. Page
 
-Crea `apps/web/src/app/(dashboard)/$ruta/page.tsx`:
+Create `apps/web/src/app/(dashboard)/$route/page.tsx`:
 - `'use client'`
-- Consume hooks, nunca services directamente
-- Layout responsivo: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
+- Consumes hooks, never services directly
+- Responsive layout: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
 
-### 5. Componentes
+### 5. Components
 
-En `apps/web/src/app/(dashboard)/$ruta/_components/`:
-- Skeleton loading obligatorio
-- Empty state con icono + mensaje
-- Componentes de `@/components/ui/` (Radix)
-- Colores: blue-600 accent, gray-900/500/400 texto
+In `apps/web/src/app/(dashboard)/$route/_components/`:
+- Skeleton loading is mandatory
+- Empty state with icon + message
+- Components from `@/components/ui/` (Radix)
+- Colors: dark tokens from the frontend skill (lime accent, text-primary/secondary/muted, bg-surface)
+- All user-facing text in English
 
-### 6. Navegacion
+### 6. Navigation
 
-- Agregar entrada en sidebar (`apps/web/src/components/layout/sidebar.tsx`)
-- Agregar titulo en header mapping
-- Icono de `lucide-react`
+- Add an entry in the sidebar (`apps/web/src/components/layout/sidebar.tsx`)
+- Add the title to the header mapping
+- Icon from `lucide-react`
 
-### 7. Verificar
+### 7. Verify
 
 - `pnpm --filter @crm/web typecheck`
+- `pnpm --filter @crm/web lint`
 - `graphify update .`
 
 $ARGUMENTS

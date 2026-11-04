@@ -38,17 +38,17 @@ export function ActiveCallIndicator({ conversationId }: ActiveCallIndicatorProps
           exit={{ height: 0, opacity: 0 }}
           className="overflow-hidden"
         >
-          <div className="flex items-center gap-2 px-4 py-2 bg-blue-300/10 border-b border-blue-300 shrink-0">
+          <div className="flex items-center gap-2 px-4 py-2 bg-accent/10 border-b border-accent/30 shrink-0">
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1, repeat: Infinity }}
-              className="h-2 w-2 rounded-full bg-blue-300"
+              className="h-2 w-2 rounded-full bg-accent/70"
             />
-            <Phone className="h-3.5 w-3.5 text-blue-300" />
-            <span className="text-xs font-medium text-blue-300">
+            <Phone className="h-3.5 w-3.5 text-accent/75" />
+            <span className="text-xs font-medium text-accent/75">
               Active call{call.callerName ? ` · ${call.callerName}` : ''}
             </span>
-            <span className="text-xs text-blue-300 ml-auto font-mono">
+            <span className="text-xs text-accent/75 ml-auto font-mono">
               {formatTime(elapsed)}
             </span>
           </div>

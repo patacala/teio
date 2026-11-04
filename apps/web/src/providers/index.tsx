@@ -1,11 +1,18 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from 'next-themes';
+import { MotionConfig } from 'framer-motion';
 import { useState } from 'react';
 import { Toaster } from 'sonner';
 import { RealtimeProvider } from './realtime-provider';
 import { ImpersonationProvider } from '@/contexts/impersonation-context';
+
+const toasterStyle = {
+  '--normal-bg': 'var(--color-surface-overlay)',
+  '--normal-border': 'var(--border-color-strong)',
+  '--normal-text': 'var(--text-color-primary)',
+  '--border-radius': '0.875rem',
+} as React.CSSProperties;
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -22,14 +29,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <MotionConfig reducedMotion="user">
         <ImpersonationProvider>
           <RealtimeProvider>
             {children}
-            <Toaster position="bottom-right" richColors duration={5000} />
+            <Toaster
+              theme="dark"
+              position="bottom-right"
+              duration={5000}
+              style={toasterStyle}
+              toastOptions={{
+                classNames: {
+                  toast: 'shadow-menu!',
+                  description: 'text-secondary!',
+                  success: '[&_[data-icon]]:text-success',
+                  error: '[&_[data-icon]]:text-danger',
+                  warning: '[&_[data-icon]]:text-warning',
+                  info: '[&_[data-icon]]:text-info',
+                },
+              }}
+            />
           </RealtimeProvider>
         </ImpersonationProvider>
-      </ThemeProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

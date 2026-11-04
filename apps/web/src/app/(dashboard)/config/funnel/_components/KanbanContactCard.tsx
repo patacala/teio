@@ -32,8 +32,8 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
   const overflowTags = tags.length - visibleTags.length;
   const quote = contact.ai_insights?.summary;
 
-  const accent = hot ? 'text-orange-600' : 'text-blue-600';
-  const iconBg = hot ? 'bg-orange-50' : 'bg-blue-50';
+  const accent = hot ? 'text-warning' : 'text-accent';
+  const iconBg = hot ? 'bg-warning/10' : 'bg-olive-dark';
 
   return (
     <>
@@ -46,8 +46,8 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
         onClick={() => setOpen(true)}
         className={`relative overflow-hidden rounded-xl p-3 space-y-2 cursor-grab active:cursor-grabbing active:opacity-60 transition-shadow ${
           hot
-            ? 'bg-gradient-to-br from-orange-400 to-orange-700 text-white shadow-sm hover:shadow-md animate-card-pulse'
-            : 'bg-white border border-border text-gray-900 hover:shadow-sm'
+            ? 'border border-warning/35 bg-linear-to-br from-warning/18 via-surface to-surface text-primary shadow-[0_0_22px_rgb(226_189_79/0.10)] hover:border-warning/55 animate-card-pulse'
+            : 'bg-surface border border-subtle text-primary hover:shadow-xs'
         }`}
       >
         {/* Corner marker — a bold ribbon for hot leads (draws the eye); a
@@ -59,14 +59,14 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
                 (Q) gives an S-shaped swoosh; the reference is a single
                 constant-radius arc (L-shaped corner), so this uses an
                 elliptical arc (A) instead. */}
-            <svg viewBox="0 0 80 80" className="absolute top-0 right-0 w-20 h-20 text-orange-700">
+            <svg viewBox="0 0 80 80" className="absolute top-0 right-0 w-20 h-20 text-warning/20">
               <path d="M80,0 L80,80 A90,90 0 0 1 18,0 Z" fill="currentColor" />
             </svg>
-            <FireIcon className="absolute top-2.5 right-2.5 h-4 w-4 text-white" />
+            <FireIcon className="absolute top-2.5 right-2.5 h-4 w-4 text-warning" />
           </div>
         ) : (
-          <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md bg-gray-100 flex items-center justify-center">
-            <BarChart3 className="h-3.5 w-3.5 text-gray-500" strokeWidth={STROKE} />
+          <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md bg-surface-raised flex items-center justify-center">
+            <BarChart3 className="h-3.5 w-3.5 text-secondary" strokeWidth={STROKE} />
           </div>
         )}
 
@@ -74,17 +74,17 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
         <div className="flex items-center gap-2 pr-8">
           <div
             className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold shrink-0 ${
-              hot ? 'border-white text-white' : 'border-blue-200 text-blue-700'
+              hot ? 'border-warning/40 text-warning' : 'border-accent/20 text-accent'
             }`}
           >
             {initialsOf(contact)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-bold truncate ${hot ? 'text-white' : 'text-gray-900'}`}>
+            <p className={`text-sm font-bold truncate text-primary`}>
               {contact.first_name} {contact.last_name}
             </p>
             {contact.phone && (
-              <p className={`text-[11px] flex items-center gap-1 truncate ${hot ? 'text-white/85' : 'text-gray-400'}`}>
+              <p className={`text-[11px] flex items-center gap-1 truncate ${hot ? 'text-primary/85' : 'text-muted'}`}>
                 <Phone className="h-3 w-3 shrink-0" strokeWidth={STROKE} />
                 {contact.phone}
               </p>
@@ -95,8 +95,8 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
         {/* Status pills + score badge */}
         <div className="flex items-center gap-1.5">
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-sm ${
-              hot ? 'bg-white text-orange-600' : 'bg-gray-100 text-gray-600'
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-xs ${
+              hot ? 'bg-warning/15 text-warning' : 'bg-surface-raised text-secondary'
             }`}
           >
             {hot ? <FireIcon className="h-3 w-3" /> : <BarChart3 className="h-3 w-3" strokeWidth={STROKE} />}
@@ -105,18 +105,18 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
           {contact.last_activity && (
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium truncate ${
-                hot ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                hot ? 'bg-warning/12 text-warning' : 'bg-surface-raised text-secondary'
               }`}
             >
               <Clock className="h-3 w-3 shrink-0" strokeWidth={STROKE} />
-              Activo {relativeTime(contact.last_activity)}
+              Active {relativeTime(contact.last_activity)}
             </span>
           )}
           <div className={`ml-auto w-11 h-11 rounded-full flex flex-col items-center justify-center shrink-0 ${
-            hot ? 'border-2 border-white bg-transparent' : 'bg-gray-50'
+            hot ? 'border-2 border-warning/50 bg-transparent' : 'bg-surface-raised'
           }`}>
-            <span className={`text-base font-extrabold leading-none ${hot ? 'text-white' : 'text-gray-900'}`}>{score}</span>
-            <span className={`text-[9px] font-semibold -mt-0.5 ${hot ? 'text-white/80' : 'text-gray-400'}`}>/100</span>
+            <span className={`text-base font-extrabold leading-none text-primary`}>{score}</span>
+            <span className={`text-[9px] font-semibold -mt-0.5 ${hot ? 'text-primary/80' : 'text-muted'}`}>/100</span>
           </div>
         </div>
 
@@ -124,7 +124,7 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
         {quote && (
           <div
             className={`flex items-start gap-1.5 rounded-lg border px-2 py-1.5 text-xs italic ${
-              hot ? 'bg-white/15 border-white/25 text-white/95' : 'bg-gray-50 border-gray-100 text-gray-600'
+              hot ? 'bg-warning/8 border-warning/20 text-primary' : 'bg-surface-raised border-subtle text-secondary'
             }`}
           >
             <Quote className="h-3.5 w-3.5 shrink-0 mt-0.5 opacity-70" strokeWidth={STROKE} />
@@ -141,18 +141,18 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
             {fields.map(([key, value]) => {
               const Icon = fieldIcon(key);
               return (
-                <div key={key} className="bg-white rounded-lg p-2 min-w-0 shadow-sm">
+                <div key={key} className="bg-surface rounded-lg p-2 min-w-0 shadow-xs">
                   <div className={`w-5 h-5 rounded-full ${iconBg} flex items-center justify-center mb-1`}>
                     <Icon className={`h-3 w-3 ${accent}`} strokeWidth={STROKE} />
                   </div>
-                  <p className="text-[8px] font-semibold text-gray-400 uppercase tracking-wide truncate">
+                  <p className="text-[8px] font-semibold text-muted uppercase tracking-wide truncate">
                     {fieldLabel(key, labels)}
                   </p>
-                  {/* break-words + line-clamp, not truncate: a raw date like
+                  {/* wrap-break-word + line-clamp, not truncate: a raw date like
                       "2026-08-31" is only 10 chars but still wider than a
                       ~75px box — truncate cut it to "2026-0…", wrapping keeps
                       it readable regardless of box width. */}
-                  <p className="text-[11px] font-bold text-gray-900 leading-tight line-clamp-2 break-words">{value}</p>
+                  <p className="text-[11px] font-bold text-primary leading-tight line-clamp-2 wrap-break-word">{value}</p>
                 </div>
               );
             })}
@@ -166,7 +166,7 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
               <span
                 key={tag}
                 className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[96px] ${
-                  hot ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                  hot ? 'bg-warning/12 text-warning' : 'bg-surface-raised text-secondary'
                 }`}
               >
                 #{tag}
@@ -175,7 +175,7 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
             {overflowTags > 0 && (
               <span
                 className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  hot ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                  hot ? 'bg-warning/12 text-warning' : 'bg-surface-raised text-secondary'
                 }`}
               >
                 +{overflowTags}
@@ -184,10 +184,10 @@ export function KanbanContactCard({ contact, onDragStart }: Props) {
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className={`ml-auto w-6 h-6 rounded-full flex items-center justify-center shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                hot ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+              className={`ml-auto w-6 h-6 rounded-full flex items-center justify-center shrink-0 outline-hidden focus-visible:ring-2 focus-visible:ring-accent/50 ${
+                hot ? 'bg-warning/12 text-warning' : 'bg-surface-raised text-secondary'
               }`}
-              aria-label="Más opciones"
+              aria-label="More options"
             >
               <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={STROKE} />
             </button>

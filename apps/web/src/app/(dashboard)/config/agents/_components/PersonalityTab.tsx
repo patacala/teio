@@ -63,7 +63,7 @@ export function PersonalityTab({ personality }: { personality: Personality | nul
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+        <label className="block text-xs font-medium text-primary mb-1.5">
           How should your agent sound?
         </label>
         <ChipMultiSelect
@@ -74,17 +74,17 @@ export function PersonalityTab({ personality }: { personality: Personality | nul
       </div>
 
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-        <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700">
+        <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
           Advanced — split chat vs. phone voice
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-4 pt-4">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-muted">
             By default the same tone applies to chat and phone calls. Override either one below if
             they should differ.
           </p>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Chat tone</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Chat tone</label>
             <Input
               value={form.brand_tone}
               onChange={(e) => setForm((f) => ({ ...f, brand_tone: e.target.value }))}
@@ -96,7 +96,7 @@ export function PersonalityTab({ personality }: { personality: Personality | nul
             onChange={(v) => setForm((f) => ({ ...f, brand_instructions: v }))}
           />
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone voice tone</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Phone voice tone</label>
             <Input
               value={form.voice_tone}
               onChange={(e) => setForm((f) => ({ ...f, voice_tone: e.target.value }))}
@@ -114,7 +114,7 @@ export function PersonalityTab({ personality }: { personality: Personality | nul
         <Button
           type="submit"
           disabled={update.isPending}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-accent hover:bg-accent-hover text-on-accent"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </Button>

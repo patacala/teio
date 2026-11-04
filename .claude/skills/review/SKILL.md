@@ -1,51 +1,52 @@
 ---
 description: |
-  Revisa codigo del CRM por calidad, seguridad, y adherencia a las
-  convenciones del proyecto. Usa despues de implementar algo para validar.
+  Reviews CRM code for quality, security, and adherence to the project
+  conventions. Use after implementing something to validate it.
 allowed-tools: Read Grep Glob Bash(graphify *) Bash(pnpm *)
 ---
 
 # Code Review
 
-## Checklist de revision
+## Review checklist
 
-### Arquitectura
-- [ ] Separacion de capas respetada (controller → service → repository)
-- [ ] No hay logica de negocio en controllers
-- [ ] No hay llamadas HTTP directas en componentes (solo via hooks)
+### Architecture
+- [ ] Layer separation respected (controller → service → repository)
+- [ ] No business logic in controllers
+- [ ] No direct HTTP calls in components (only through hooks)
 
 ### Multi-tenancy
-- [ ] Toda query scoped por `organization_id`
-- [ ] No se acepta `organization_id` en request body
-- [ ] Usa `@CurrentTenant()` para obtener org
+- [ ] Every query scoped by `organization_id`
+- [ ] `organization_id` is never accepted in the request body
+- [ ] Uses `@CurrentTenant()` to get the org
 
-### Seguridad
-- [ ] `import type` para tipos de express (no value import)
-- [ ] No hay secrets hardcodeados
-- [ ] Webhooks publicos usan `@Public()` + verificacion HMAC
-- [ ] No hay SQL injection (usar QueryBuilder, no string concat)
+### Security
+- [ ] `import type` for express types (no value import)
+- [ ] No hardcoded secrets
+- [ ] Public webhooks use `@Public()` + HMAC verification
+- [ ] No SQL injection (use QueryBuilder, not string concatenation)
 
-### Enums y tipos
-- [ ] Sin magic strings — todo via `@crm/shared` enums
-- [ ] DTOs granulares (Create vs Update separados)
-- [ ] Tipos compartidos en `packages/shared/`
+### Enums and types
+- [ ] No magic strings — everything through `@crm/shared` enums
+- [ ] Granular DTOs (separate Create vs Update)
+- [ ] Shared types in `packages/shared/`
 
 ### Frontend
-- [ ] Colores del sistema de diseno (blue-600, gray-*, bg-surface/panel)
-- [ ] Componentes Radix, no nativos
-- [ ] Skeleton + empty state en listas
-- [ ] Toast con variant `'error'` no `'destructive'`
-- [ ] `invalidateQueries` en mutations
+- [ ] Dark design system colors (globals.css tokens; no gray-*, blue-*, bg-white or hex)
+- [ ] Radix components, not native ones
+- [ ] Skeleton + empty state in lists
+- [ ] Toast with variant `'error'`, not `'destructive'`
+- [ ] `invalidateQueries` in mutations
+- [ ] All user-facing text in English
 
 ### Performance
-- [ ] `staleTime` en queries (min 30s)
-- [ ] Paginacion con `buildPaginationMeta`
-- [ ] Redis cache donde aplique
+- [ ] `staleTime` on queries (min 30s)
+- [ ] Pagination with `buildPaginationMeta`
+- [ ] Redis cache where it applies
 
-### Rutas
-- [ ] Rutas estaticas ANTES de rutas `:id`
-- [ ] Backend y frontend en sync (mismo endpoint)
+### Routes
+- [ ] Static routes BEFORE `:id` routes
+- [ ] Backend and frontend in sync (same endpoint)
 
-Reporta issues encontrados con archivo:linea y fix sugerido.
+Report the issues found with file:line and a suggested fix.
 
 $ARGUMENTS

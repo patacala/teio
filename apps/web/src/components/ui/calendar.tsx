@@ -49,26 +49,26 @@ export function Calendar({ selected, onSelect, maxDate }: CalendarProps) {
         <button
           type="button"
           onClick={() => setViewMonth(new Date(year, month - 1, 1))}
-          className="p-1 rounded-md hover:bg-gray-100"
+          className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-primary"
           aria-label="Previous month"
         >
-          <ChevronLeft className="h-4 w-4 text-gray-500" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-primary">
           {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
         <button
           type="button"
           onClick={() => setViewMonth(new Date(year, month + 1, 1))}
-          className="p-1 rounded-md hover:bg-gray-100"
+          className="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-hover hover:text-primary"
           aria-label="Next month"
         >
-          <ChevronRight className="h-4 w-4 text-gray-500" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
       <div className="grid grid-cols-7 gap-y-1">
         {WEEKDAYS.map((w) => (
-          <span key={w} className="text-[10px] font-medium text-gray-400 text-center">{w}</span>
+          <span key={w} className="text-[10px] font-medium text-muted text-center">{w}</span>
         ))}
         {cells.map((day, i) => {
           if (!day) return <span key={i} />;
@@ -83,11 +83,11 @@ export function Calendar({ selected, onSelect, maxDate }: CalendarProps) {
               disabled={disabled}
               onClick={() => handlePick(day)}
               className={cn(
-                'h-7 w-7 mx-auto text-xs rounded-md flex items-center justify-center transition-colors',
-                disabled && 'text-gray-300 cursor-not-allowed',
-                !disabled && !isFrom && !isTo && !inRange && 'text-gray-700 hover:bg-gray-100',
-                inRange && 'bg-blue-50 text-blue-700',
-                (isFrom || isTo) && 'bg-blue-600 text-white font-semibold hover:bg-blue-600',
+                'h-8 w-8 mx-auto text-xs rounded-lg flex items-center justify-center transition-colors',
+                disabled && 'text-muted/50 cursor-not-allowed',
+                !disabled && !isFrom && !isTo && !inRange && 'text-secondary hover:bg-surface-hover hover:text-primary',
+                inRange && 'bg-olive-dark text-primary',
+                (isFrom || isTo) && 'bg-accent text-on-accent font-semibold',
               )}
             >
               {day.getDate()}

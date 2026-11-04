@@ -20,10 +20,10 @@ export function ContactDataUpdatedEvent({ changedFields, timestamp }: ContactDat
 
   return (
     <div className="flex justify-center my-1">
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100">
-        <UserPen className="h-3 w-3 text-blue-400 shrink-0" />
-        <span className="text-[11px] text-blue-600">{fieldNames} updated</span>
-        <span className="text-[10px] text-blue-300 shrink-0">· {formatRelativeTime(timestamp)}</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-olive-dark border border-accent/12">
+        <UserPen className="h-3 w-3 text-accent/75 shrink-0" />
+        <span className="text-[11px] text-accent">{fieldNames} updated</span>
+        <span className="text-[10px] text-accent/75 shrink-0">· {formatRelativeTime(timestamp)}</span>
       </div>
     </div>
   );

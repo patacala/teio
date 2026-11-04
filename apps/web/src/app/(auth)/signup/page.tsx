@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { MessageSquare } from 'lucide-react';
@@ -15,7 +14,6 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,37 +33,37 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-surface rounded-2xl shadow-xs border border-subtle p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
-              <MessageSquare className="w-6 h-6 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-accent rounded-xl mb-4">
+              <MessageSquare className="w-6 h-6 text-on-accent" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-            <p className="text-gray-500 mt-1">Start your free workspace</p>
+            <h1 className="text-2xl font-bold text-primary">Create account</h1>
+            <p className="text-secondary mt-1">Start your free workspace</p>
           </div>
 
           {success ? (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
+            <div className="rounded-lg bg-olive-dark border border-accent/20 px-4 py-3 text-sm text-accent">
               Check your email to confirm your account.
             </div>
           ) : (
             <>
               {error && (
-                <div className="mb-4 rounded-lg bg-gray-50 border border-highlight-300 px-4 py-3 text-sm text-highlight-700">
+                <div className="mb-4 rounded-lg border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email" className="block text-sm font-medium text-primary mb-1">
                     Email
                   </label>
                   <Input
@@ -80,7 +78,7 @@ export default function SignupPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="password" className="block text-sm font-medium text-primary mb-1">
                     Password
                   </label>
                   <Input
@@ -101,9 +99,9 @@ export default function SignupPage() {
             </>
           )}
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-secondary">
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/login" className="text-accent hover:text-accent-hover font-medium">
               Sign in
             </Link>
           </p>

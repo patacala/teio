@@ -127,9 +127,9 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex min-h-0 flex-col md:h-full md:flex-row">
       {/* Left sidebar */}
-      <aside className="w-[200px] shrink-0 border-r border-border flex flex-col">
+      <aside className="shrink-0 border-b border-subtle flex flex-col md:w-[200px] md:border-b-0 md:border-r">
         <CalendarSidebar
           selectedId={selectedCalendarId}
           onChange={(id) => {
@@ -142,12 +142,12 @@ export default function SchedulePage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
         {/* Fixed header area */}
-        <div className="shrink-0 flex flex-col gap-6 p-6 pb-0">
+        <div className="shrink-0 flex flex-col gap-6 p-4 pb-0 md:p-6 md:pb-0">
           {/* Page header */}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Schedule</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <h1 className="text-xl font-bold text-primary">Schedule</h1>
+              <p className="text-sm text-secondary mt-0.5">
                 Manage appointments and meetings with your contacts.
               </p>
             </div>
@@ -173,7 +173,7 @@ export default function SchedulePage() {
         </div>
 
         {/* Scrollable content area — fills remaining height */}
-        <div className="flex-1 min-h-0 p-6 pt-4">
+        <div className="flex-1 min-h-0 p-4 pt-4 md:p-6 md:pt-4">
           {view === 'list' && (
             <AppointmentsTable
               appointments={appointments}

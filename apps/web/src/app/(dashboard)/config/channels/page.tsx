@@ -22,18 +22,18 @@ export default function ConfigChannelsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Canales de comunicación</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Conecta los canales que utilizarán tus clientes para comunicarse contigo.
+          <h1 className="text-lg font-semibold text-primary">Communication channels</h1>
+          <p className="text-xs text-secondary mt-0.5">
+            Connect the channels your customers will use to reach you.
           </p>
         </div>
         <Button
           size="sm"
           onClick={() => setWizardOpen(true)}
-          className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+          className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent"
         >
           <Plus className="h-3.5 w-3.5" />
-          Agregar canal
+          Add channel
         </Button>
       </div>
 
@@ -41,25 +41,25 @@ export default function ConfigChannelsPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl border border-border animate-pulse bg-panel" />
+            <div key={i} className="h-24 rounded-xl border border-subtle animate-pulse bg-surface" />
           ))}
         </div>
       ) : !channels?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-24 text-center">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <Plug className="h-6 w-6 text-blue-500" />
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-subtle py-24 text-center">
+          <div className="w-12 h-12 rounded-xl bg-olive-dark flex items-center justify-center mb-3">
+            <Plug className="h-6 w-6 text-accent" />
           </div>
-          <h3 className="font-medium text-gray-900 text-sm">Sin canales configurados</h3>
-          <p className="text-xs text-gray-500 mt-1">
-            Conecta WhatsApp, SMS, Email u otros canales.
+          <h3 className="font-medium text-primary text-sm">No channels configured</h3>
+          <p className="text-xs text-secondary mt-1">
+            Connect WhatsApp, SMS, Email or other channels.
           </p>
           <Button
             size="sm"
             onClick={() => setWizardOpen(true)}
-            className="mt-4 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+            className="mt-4 gap-1.5 bg-accent hover:bg-accent-hover text-on-accent"
           >
             <Plus className="h-3.5 w-3.5" />
-            Agregar canal
+            Add channel
           </Button>
         </div>
       ) : (

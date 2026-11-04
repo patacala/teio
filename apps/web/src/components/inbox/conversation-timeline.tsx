@@ -45,7 +45,7 @@ export function ConversationTimeline({
             ))}
           </div>
         ) : messages.length === 0 ? (
-          <div className="py-12 text-center text-sm text-gray-400">No messages yet</div>
+          <div className="py-12 text-center text-sm text-muted">No messages yet</div>
         ) : (
           messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
         )}

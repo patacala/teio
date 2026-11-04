@@ -71,7 +71,7 @@ export function EmailTemplateModal({
 
   const handleSave = async () => {
     if (!eventType || !templateId.trim()) {
-      toast({ title: 'Template ID es requerido', variant: 'error' });
+      toast({ title: 'Template ID is required', variant: 'error' });
       return;
     }
 
@@ -91,23 +91,23 @@ export function EmailTemplateModal({
       } else {
         await createMutation.mutateAsync(body);
       }
-      toast({ title: isEdit ? 'Plantilla actualizada' : 'Plantilla creada' });
+      toast({ title: isEdit ? 'Template updated' : 'Template created' });
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'error' });
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'error' });
     }
   };
 
   const handleDelete = async () => {
-    if (!template || !confirm('¿Eliminar esta plantilla?')) return;
+    if (!template || !confirm('Delete this template?')) return;
     try {
       await deleteMutation.mutateAsync(template.id);
-      toast({ title: 'Plantilla eliminada' });
+      toast({ title: 'Template deleted' });
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'error' });
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'error' });
     }
   };
 
@@ -115,18 +115,18 @@ export function EmailTemplateModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Editar plantilla Email' : 'Nueva plantilla Email'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit email template' : 'New email template'}</DialogTitle>
           <DialogDescription>
-            Asocia un Template ID de Resend a este evento
+            Link a Resend Template ID to this event
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Evento</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Event</label>
             <Select value={eventType} onValueChange={setEventType} disabled={!!event}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar evento..." />
+                <SelectValue placeholder="Select event..." />
               </SelectTrigger>
               <SelectContent>
                 {eventGroups.map((group) => (
@@ -144,31 +144,31 @@ export function EmailTemplateModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-              Template ID <span className="text-red-500">*</span>
+            <label className="block text-xs font-medium text-primary mb-1.5">
+              Template ID <span className="text-danger">*</span>
             </label>
             <Input
               value={templateId}
               onChange={(e) => setTemplateId(e.target.value)}
               placeholder="re_abc123..."
             />
-            <p className="mt-1 text-[11px] text-gray-400">
-              ID de tu plantilla en Resend (ej: re_abc123)
+            <p className="mt-1 text-[11px] text-muted">
+              Your template ID in Resend (e.g. re_abc123)
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Nombre</label>
+            <label className="block text-xs font-medium text-primary mb-1.5">Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nombre descriptivo (opcional)"
+              placeholder="Descriptive name (optional)"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Prioridad</label>
+              <label className="block text-xs font-medium text-primary mb-1.5">Priority</label>
               <Input
                 type="number"
                 value={priority}
@@ -181,35 +181,35 @@ export function EmailTemplateModal({
                   type="checkbox"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded-sm border-strong"
                 />
-                <span className="text-sm text-gray-700">Activa</span>
+                <span className="text-sm text-primary">Active</span>
               </label>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2 pt-4 border-t border-border mt-4">
+        <div className="flex gap-2 pt-4 border-t border-subtle mt-4">
           {isEdit && (
             <Button
               variant="outline"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="text-danger hover:text-danger hover:bg-danger/10 border-danger/25"
             >
-              Eliminar
+              Delete
             </Button>
           )}
           <div className="flex-1" />
           <Button variant="outline" onClick={onClose}>
-            Cancelar
+            Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-accent hover:bg-accent-hover text-on-accent"
           >
-            {saving ? 'Guardando...' : isEdit ? 'Actualizar' : 'Crear'}
+            {saving ? 'Saving...' : isEdit ? 'Update' : 'Create'}
           </Button>
         </div>
       </DialogContent>

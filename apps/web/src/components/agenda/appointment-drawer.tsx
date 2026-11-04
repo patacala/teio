@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { ContactAutocomplete } from './contact-autocomplete';
 import { useCreateAppointment, useUpdateAppointment, useCalendars } from '@/hooks/useAppointments';
 import { useCreateSequence } from '@/hooks/useAutomation';
@@ -19,16 +20,16 @@ import type { Appointment } from '@/services/scheduling.service';
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
 const ACTION_OPTIONS = [
-  { value: 'send_message', label: 'Enviar Mensaje' },
-  { value: 'send_email', label: 'Enviar Email' },
-  { value: 'notify_agent', label: 'Notificar Agente' },
-  { value: 'create_task', label: 'Crear Tarea' },
-  { value: 'call', label: 'Llamada' },
+  { value: 'send_message', label: 'Send message' },
+  { value: 'send_email', label: 'Send email' },
+  { value: 'notify_agent', label: 'Notify agent' },
+  { value: 'create_task', label: 'Create task' },
+  { value: 'call', label: 'Call' },
 ];
 
 const EXECUTOR_OPTIONS = [
-  { value: 'system', label: 'Sistema (auto)' },
-  { value: 'user', label: 'Usuario (manual)' },
+  { value: 'system', label: 'System (auto)' },
+  { value: 'user', label: 'User (manual)' },
 ];
 
 const CHANNEL_OPTIONS = [
@@ -109,10 +110,10 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
       setStartTime(toDatetimeLocal(appointment.starts_at));
       setDuration(getDuration(appointment));
       setSelectedCalendarId(appointment.calendar_id ?? calendarId ?? '');
-      setAction((appointment as any).action ?? '');
-      setExecutor((appointment as any).executor ?? 'system');
-      setChannelStrategy((appointment as any).channel_strategy ?? 'auto');
-      setMessageContent((appointment as any).message_content ?? '');
+      setAction(appointment.action ?? '');
+      setExecutor(appointment.executor ?? 'system');
+      setChannelStrategy(appointment.channel_strategy ?? 'auto');
+      setMessageContent(appointment.message_content ?? '');
       setTemplateId('');
       setUseSequence(false);
     } else {
@@ -155,7 +156,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
           due_at: startTime ? new Date(startTime).toISOString() : undefined,
           message_content: messageContent || undefined,
         });
-        toast({ title: 'Secuencia iniciada' });
+        toast({ title: 'Sequence started' });
       } else {
         if (!title || !startTime) return;
         await createMutation.mutateAsync({
@@ -190,17 +191,17 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
       <DrawerContent className="flex flex-col overflow-y-auto">
         <div className="mb-6">
-          <h2 className="text-base font-semibold text-gray-900">
+          <h2 className="text-base font-semibold text-primary">
             {isEdit ? 'Edit appointment' : 'New appointment'}
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-secondary mt-0.5">
             {isEdit ? 'Update appointment details.' : 'Fill in the details to create an appointment.'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Contact *</label>
+            <label className="text-sm font-medium text-primary">Contact *</label>
             <ContactAutocomplete
               value={contactId || null}
               label={contactLabel || undefined}
@@ -209,31 +210,30 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-primary">
               Title {useSequence ? '' : '*'}
             </label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={useSequence ? 'Lo define la secuencia' : 'e.g. Initial consultation'}
+              placeholder={useSequence ? 'Defined by the sequence' : 'e.g. Initial consultation'}
               // A sequence names its own appointments ("Sequence: <type> #n")
               required={!useSequence}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea
+            <label className="text-sm font-medium text-primary">Description</label>
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Additional notes..."
-              rows={3}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={3} className="resize-none"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Date & time *</label>
+            <label className="text-sm font-medium text-primary">Date & time *</label>
             <Input
               type="datetime-local"
               value={startTime}
@@ -243,7 +243,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Duration</label>
+            <label className="text-sm font-medium text-primary">Duration</label>
             <Select
               value={String(duration)}
               onValueChange={(v) => setDuration(Number(v))}
@@ -263,7 +263,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
 
           {calendars && calendars.length > 1 && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Calendar</label>
+              <label className="text-sm font-medium text-primary">Calendar</label>
               <Select
                 value={selectedCalendarId}
                 onValueChange={(v) => setSelectedCalendarId(v)}
@@ -295,10 +295,10 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
                 id="useSequence"
                 checked={useSequence}
                 onChange={(e) => setUseSequence(e.target.checked)}
-                className="rounded border-gray-300"
+                className="rounded-sm border-strong"
               />
-              <label htmlFor="useSequence" className="text-sm font-medium text-gray-700">
-                Iniciar secuencia automática
+              <label htmlFor="useSequence" className="text-sm font-medium text-primary">
+                Start automatic sequence
               </label>
             </div>
           )}
@@ -306,17 +306,17 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
           {isFollowUpCalendar && useSequence && !isEdit && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Secuencia</label>
+                <label className="text-sm font-medium text-primary">Sequence</label>
                 {runnableTemplates.length ? (
                   <Select value={templateId} onValueChange={setTemplateId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Elegir secuencia" />
+                      <SelectValue placeholder="Choose a sequence" />
                     </SelectTrigger>
                     <SelectContent>
                       {runnableTemplates.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.name}
-                          <span className="ml-1.5 text-xs text-gray-500">
+                          <span className="ml-1.5 text-xs text-secondary">
                             · {SEQUENCE_TYPE_LABELS[t.sequence_type] ?? t.sequence_type}
                           </span>
                         </SelectItem>
@@ -324,35 +324,33 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
                     </SelectContent>
                   </Select>
                 ) : (
-                  <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                    No hay secuencias con pasos configurados. Creá una en Configuración → Secuencias.
+                  <p className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-secondary">
+                    No sequences with configured steps. Create one in Settings → Sequences.
                   </p>
                 )}
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Mensaje (opcional)</label>
-                <textarea
+                <label className="text-sm font-medium text-primary">Message (optional)</label>
+                <Textarea
                   value={messageContent}
                   onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Dejar vacío para mensaje generado por IA"
-                  rows={3}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="Leave empty for an AI-generated message"
+                  rows={3} className="resize-none"
                 />
-                <p className="text-xs text-gray-400">Solo reemplaza el primer mensaje.</p>
+                <p className="text-xs text-muted">Only replaces the first message.</p>
               </div>
 
               {selectedTemplate && (
-                <div className="rounded-lg border border-border bg-surface p-3">
-                  <p className="mb-3 text-xs font-medium text-gray-700">
-                    Cadencia ({selectedTemplate.steps.length} pasos)
+                <div className="rounded-lg border border-subtle bg-surface-raised p-3">
+                  <p className="mb-3 text-xs font-medium text-primary">
+                    Cadence ({selectedTemplate.steps.length} steps)
                   </p>
                   <SequenceTimelinePreview
                     steps={[...selectedTemplate.steps].sort((a, b) => a.position - b.position)}
                   />
-                  <p className="mt-3 text-xs text-gray-500">
-                    El canal de cada paso se resuelve al ejecutar. Se cancela automáticamente si el
-                    contacto responde.
+                  <p className="mt-3 text-xs text-secondary">
+                    Each step&apos;s channel is resolved when it runs. Cancels automatically if the contact replies.
                   </p>
                 </div>
               )}
@@ -362,10 +360,10 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
           {isFollowUpCalendar && !useSequence && !isEdit && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Acción *</label>
+                <label className="text-sm font-medium text-primary">Action *</label>
                 <Select value={action} onValueChange={setAction}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar acción" />
+                    <SelectValue placeholder="Select action" />
                   </SelectTrigger>
                   <SelectContent>
                     {ACTION_OPTIONS.map((opt) => (
@@ -376,7 +374,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Ejecutor</label>
+                <label className="text-sm font-medium text-primary">Executor</label>
                 <Select value={executor} onValueChange={setExecutor}>
                   <SelectTrigger>
                     <SelectValue />
@@ -391,7 +389,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
 
               {action === 'send_message' && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">Canal</label>
+                  <label className="text-sm font-medium text-primary">Channel</label>
                   <Select value={channelStrategy} onValueChange={setChannelStrategy}>
                     <SelectTrigger>
                       <SelectValue />
@@ -406,35 +404,34 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Mensaje (opcional)</label>
-                <textarea
+                <label className="text-sm font-medium text-primary">Message (optional)</label>
+                <Textarea
                   value={messageContent}
                   onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Override del template..."
-                  rows={3}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="Override the template..."
+                  rows={3} className="resize-none"
                 />
               </div>
             </>
           )}
 
           {isFollowUpCalendar && isEdit && (
-            <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Automation info</p>
+            <div className="flex flex-col gap-3 rounded-lg border border-subtle bg-surface-raised p-3">
+              <p className="text-xs font-medium text-secondary uppercase tracking-wide">Automation info</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-gray-500">Acción</span>
-                <span className="text-gray-900">{ACTION_OPTIONS.find((o) => o.value === action)?.label ?? (action || '—')}</span>
-                <span className="text-gray-500">Ejecutor</span>
-                <span className="text-gray-900">{EXECUTOR_OPTIONS.find((o) => o.value === executor)?.label ?? executor}</span>
-                <span className="text-gray-500">Canal</span>
-                <span className="text-gray-900">{CHANNEL_OPTIONS.find((o) => o.value === channelStrategy)?.label ?? channelStrategy}</span>
-                <span className="text-gray-500">Origin</span>
-                <span className="text-gray-900 capitalize">{appointment?.origin ?? 'human'}</span>
+                <span className="text-secondary">Action</span>
+                <span className="text-primary">{ACTION_OPTIONS.find((o) => o.value === action)?.label ?? (action || '—')}</span>
+                <span className="text-secondary">Executor</span>
+                <span className="text-primary">{EXECUTOR_OPTIONS.find((o) => o.value === executor)?.label ?? executor}</span>
+                <span className="text-secondary">Channel</span>
+                <span className="text-primary">{CHANNEL_OPTIONS.find((o) => o.value === channelStrategy)?.label ?? channelStrategy}</span>
+                <span className="text-secondary">Origin</span>
+                <span className="text-primary capitalize">{appointment?.origin ?? 'human'}</span>
               </div>
               {messageContent && (
                 <div>
-                  <span className="text-xs text-gray-500">Mensaje</span>
-                  <p className="text-sm text-gray-900 mt-0.5">{messageContent}</p>
+                  <span className="text-xs text-secondary">Message</span>
+                  <p className="text-sm text-primary mt-0.5">{messageContent}</p>
                 </div>
               )}
             </div>
@@ -442,8 +439,8 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
 
           {isEdit && !isFollowUpCalendar && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Origin</label>
-              <p className="text-sm text-gray-500 capitalize">{appointment?.origin ?? 'human'}</p>
+              <label className="text-sm font-medium text-primary">Origin</label>
+              <p className="text-sm text-secondary capitalize">{appointment?.origin ?? 'human'}</p>
             </div>
           )}
 
@@ -456,7 +453,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId }: Pr
               className="flex-1"
               disabled={isLoading || (useSequence && !selectedTemplate)}
             >
-              {isLoading ? 'Saving...' : isEdit ? 'Save changes' : useSequence ? 'Iniciar secuencia' : 'Create appointment'}
+              {isLoading ? 'Saving...' : isEdit ? 'Save changes' : useSequence ? 'Start sequence' : 'Create appointment'}
             </Button>
           </div>
         </form>

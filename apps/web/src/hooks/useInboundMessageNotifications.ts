@@ -48,12 +48,12 @@ export function useInboundMessageNotifications() {
           add({
             id: `unread:${conv.id}`,
             type: 'message',
-            title: name ? `Mensajes de ${name}` : 'Mensajes sin leer',
+            title: name ? `Messages from ${name}` : 'Unread messages',
             description: last?.content
               ? conv.unread_count > 1
-                ? `${conv.unread_count} sin leer · ${last.content.slice(0, 80)}`
+                ? `${conv.unread_count} unread · ${last.content.slice(0, 80)}`
                 : last.content.slice(0, 100)
-              : `${conv.unread_count} sin leer`,
+              : `${conv.unread_count} unread`,
             href: `/inbox?conversationId=${conv.id}`,
             conversationId: conv.id,
             createdAt: last?.created_at ? new Date(last.created_at) : undefined,
@@ -77,7 +77,7 @@ export function useInboundMessageNotifications() {
         {
           id: `${conv.id}:${last.created_at}`,
           type: 'message',
-          title: name ? `Nuevo mensaje de ${name}` : 'Nuevo mensaje',
+          title: name ? `New message from ${name}` : 'New message',
           description: last.content?.slice(0, 100),
           href: `/inbox?conversationId=${conv.id}`,
           conversationId: conv.id,

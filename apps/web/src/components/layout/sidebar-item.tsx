@@ -7,7 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface SidebarItemProps {
   label: string;
-  href: string;
+  href?: string;
   icon: LucideIcon;
   active: boolean;
   collapsed: boolean;
@@ -16,31 +16,50 @@ export interface SidebarItemProps {
 }
 
 export function SidebarItem({ label, href, icon: Icon, active, collapsed, onClick }: SidebarItemProps) {
-  const link = (
+  const className = cn(
+    'flex h-10 items-center gap-3 rounded-control border text-[13px] font-medium transition-colors',
+    collapsed ? 'mx-auto w-10 justify-center' : 'w-full px-3 text-left',
+    active
+      ? 'nav-item-active'
+      : 'border-transparent text-secondary hover:bg-surface-hover hover:text-primary',
+  );
+
+  const content = (
+    <>
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.9} />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </>
+  );
+
+  const control = href ? (
     <Link
       href={href}
-      className={cn(
-        'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150',
-        collapsed ? 'justify-center' : '',
-        active
-          ? 'bg-blue-50 text-blue-700'
-          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
-      )}
+      className={className}
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? label : undefined}
     >
-      <Icon className={cn('shrink-0', collapsed ? 'w-5 h-5' : 'w-[15px] h-[15px]')} />
-      {!collapsed && <span className="truncate">{label}</span>}
+      {content}
     </Link>
+  ) : (
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      aria-label={collapsed ? label : undefined}
+    >
+      {content}
+    </button>
   );
 
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right" className="text-xs">{label}</TooltipContent>
+        <TooltipTrigger asChild>{control}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
     );
   }
 
-  return link;
+  return control;
 }

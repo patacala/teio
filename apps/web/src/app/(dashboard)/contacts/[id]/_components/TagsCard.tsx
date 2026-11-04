@@ -35,20 +35,20 @@ export function TagsCard({ contact }: Props) {
   };
 
   return (
-    <div className="bg-panel border border-border rounded-xl p-5">
+    <div className="bg-surface border border-subtle rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <Tag className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-semibold text-gray-900">Tags</h3>
+        <Tag className="h-4 w-4 text-muted" />
+        <h3 className="text-sm font-semibold text-primary">Tags</h3>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         {tags.length === 0 && (
-          <p className="text-xs text-gray-400">No tags yet</p>
+          <p className="text-xs text-muted">No tags yet</p>
         )}
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700"
+            className="inline-flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-0.5 text-xs font-medium text-primary"
           >
             {tag}
             <button
@@ -58,7 +58,7 @@ export function TagsCard({ contact }: Props) {
                   { onError: () => toast({ title: 'Failed to remove tag', variant: 'error' }) },
                 )
               }
-              className="text-gray-400 hover:text-gray-600"
+              className="text-muted hover:text-secondary"
             >
               <X className="h-3 w-3" />
             </button>
@@ -77,7 +77,7 @@ export function TagsCard({ contact }: Props) {
         <button
           onClick={handleAdd}
           disabled={!input.trim() || addTag.isPending}
-          className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-40"
+          className="px-3 py-1 text-xs font-medium text-accent hover:text-accent-hover disabled:opacity-40"
         >
           Add
         </button>

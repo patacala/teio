@@ -1,86 +1,87 @@
 ---
 description: |
-  Crea un modulo completo full-stack: migracion SQL, entidad, servicio,
-  controlador, modulo NestJS, servicio frontend, hook, y pagina.
-  Usa cuando el usuario pide crear algo nuevo de cero.
-arguments: [nombre]
+  Creates a complete full-stack module: SQL migration, entity, service,
+  controller, NestJS module, frontend service, hook, and page.
+  Use when the user asks to create something new from scratch.
+arguments: [name]
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Write Edit Bash(graphify *) Bash(pnpm *)
 ---
 
-# Crear Modulo: $nombre
+# Create Module: $name
 
-Vas a crear un modulo full-stack completo. Sigue este orden exacto:
+You are going to create a complete full-stack module. Follow this exact order:
 
-## Paso 1 — Migracion SQL
+## Step 1 — SQL migration
 
-1. Busca el ultimo numero en `packages/database/schemas/` con `ls`
-2. Crea `packages/database/schemas/{N+1}_$nombre.sql`
-3. Usa `IF NOT EXISTS` para idempotencia
-4. Incluye `organization_id UUID NOT NULL` en toda tabla
-5. Incluye `created_at TIMESTAMPTZ DEFAULT NOW()` y `updated_at TIMESTAMPTZ DEFAULT NOW()`
+1. Find the last number in `packages/database/schemas/` with `ls`
+2. Create `packages/database/schemas/{N+1}_$name.sql`
+3. Use `IF NOT EXISTS` for idempotency
+4. Include `organization_id UUID NOT NULL` in every table
+5. Include `created_at TIMESTAMPTZ DEFAULT NOW()` and `updated_at TIMESTAMPTZ DEFAULT NOW()`
 
-## Paso 2 — Entidad TypeORM
+## Step 2 — TypeORM entity
 
-1. Crea `apps/api/src/modules/$nombre/$nombre.entity.ts`
-2. Mapea cada columna del SQL con los tipos correctos:
+1. Create `apps/api/src/modules/$name/$name.entity.ts`
+2. Map every SQL column with the correct types:
    - Arrays: `{ type: 'text', array: true, default: '{}' }`
    - JSON: `{ type: 'jsonb', default: {} }`
    - Timestamps: `{ type: 'timestamptz' }`
-3. `@Index(['organization_id'])` obligatorio
+3. `@Index(['organization_id'])` is mandatory
 
-## Paso 3 — Servicio NestJS
+## Step 3 — NestJS service
 
-1. Crea `apps/api/src/modules/$nombre/$nombre.service.ts`
-2. Inyecta `@InjectRepository(Entity)`
-3. TODAS las queries con `where: { organization_id }`
-4. Metodos: `findAll`, `findById`, `create`, `update`, `remove`
-5. Paginacion: `{ items, meta: buildPaginationMeta(...) }`
+1. Create `apps/api/src/modules/$name/$name.service.ts`
+2. Inject `@InjectRepository(Entity)`
+3. ALL queries with `where: { organization_id }`
+4. Methods: `findAll`, `findById`, `create`, `update`, `remove`
+5. Pagination: `{ items, meta: buildPaginationMeta(...) }`
 
-## Paso 4 — Controller NestJS
+## Step 4 — NestJS controller
 
-1. Crea `apps/api/src/modules/$nombre/$nombre.controller.ts`
-2. `@Controller('$nombre')` con `@ApiTags`
-3. Rutas estaticas ANTES de rutas con `:id`
-4. Usa `@CurrentTenant()` para el org context
-5. `import type { Request } from 'express'` (nunca value import)
+1. Create `apps/api/src/modules/$name/$name.controller.ts`
+2. `@Controller('$name')` with `@ApiTags`
+3. Static routes BEFORE routes with `:id`
+4. Use `@CurrentTenant()` for the org context
+5. `import type { Request } from 'express'` (never a value import)
 
-## Paso 5 — Modulo NestJS
+## Step 5 — NestJS module
 
-1. Crea `apps/api/src/modules/$nombre/$nombre.module.ts`
-2. Registra entity, service, controller
-3. Agrega al `imports` de `app.module.ts`
+1. Create `apps/api/src/modules/$name/$name.module.ts`
+2. Register the entity, service, and controller
+3. Add it to the `imports` of `app.module.ts`
 
-## Paso 6 — Tipos compartidos
+## Step 6 — Shared types
 
-1. Si hay tipos nuevos, agregalos en `packages/shared/src/types/$nombre.types.ts`
-2. Si hay enums nuevos, agregalos en `packages/shared/src/enums/index.ts`
-3. Re-exporta desde `packages/shared/src/index.ts`
+1. If there are new types, add them in `packages/shared/src/types/$name.types.ts`
+2. If there are new enums, add them in `packages/shared/src/enums/index.ts`
+3. Re-export from `packages/shared/src/index.ts`
 
-## Paso 7 — Servicio Frontend
+## Step 7 — Frontend service
 
-1. Crea `apps/web/src/services/$nombre.service.ts`
-2. Usa `authClient.get/post/patch/delete`
-3. Tipado completo de request/response
+1. Create `apps/web/src/services/$name.service.ts`
+2. Use `authClient.get/post/patch/delete`
+3. Full request/response typing
 
-## Paso 8 — Hook React Query
+## Step 8 — React Query hook
 
-1. Crea `apps/web/src/hooks/use$Nombre.ts`
-2. `useQuery` para reads, `useMutation` para writes
-3. `invalidateQueries` en `onSuccess` de mutations
-4. `staleTime: 30_000` en queries
+1. Create `apps/web/src/hooks/use$Name.ts`
+2. `useQuery` for reads, `useMutation` for writes
+3. `invalidateQueries` in the `onSuccess` of mutations
+4. `staleTime: 30_000` on queries
 
-## Paso 9 — Pagina/Componentes
+## Step 9 — Page/Components
 
-1. Crea la pagina en `apps/web/src/app/(dashboard)/...`
-2. Skeleton loading + empty state obligatorios
-3. Usa componentes de `@/components/ui/`
-4. Colores: solo blue-600, gray-900/500/400, bg-surface, bg-panel
+1. Create the page in `apps/web/src/app/(dashboard)/...`
+2. Skeleton loading + empty state are mandatory
+3. Use components from `@/components/ui/`
+4. Colors: dark tokens only (bg-surface, bg-surface-raised, text-primary/secondary/muted, accent, border-subtle)
+5. All user-facing text in English
 
-## Paso 10 — Verificacion
+## Step 10 — Verification
 
-1. `pnpm --filter @crm/api build` debe pasar
-2. `pnpm --filter @crm/web typecheck` debe pasar
-3. `graphify update .` para actualizar el grafo
+1. `pnpm --filter @crm/api build` must pass
+2. `pnpm --filter @crm/web typecheck` and `pnpm --filter @crm/web lint` must pass
+3. `graphify update .` to update the graph
 
 $ARGUMENTS

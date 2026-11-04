@@ -9,6 +9,7 @@ import { useCurrentUser } from '@/hooks/useTeam';
 import type { Channel } from '@/services/channels.service';
 import { toast } from '@/hooks/useToast';
 import { API_URL } from '@/lib/api-client';
+import { ChannelIcon } from '@/components/channel-icon';
 
 interface ConfigField {
   key: string;
@@ -25,7 +26,6 @@ interface ProviderConfig {
 
 interface ChannelTypeConfig {
   label: string;
-  icon: string;
   identifierLabel: string;
   identifierPlaceholder: string;
   providers: ProviderConfig[];
@@ -51,12 +51,11 @@ function getWebhookUrl(channelType: string): string {
  * form, so it has no providers here — selecting it hands off to
  * WhatsAppLinkDialog via `onSelectWhatsApp`.
  */
-const WHATSAPP_TILE = { label: 'WhatsApp', icon: '💬' };
+const WHATSAPP_TILE = { type: 'whatsapp', label: 'WhatsApp' };
 
 const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
   facebook: {
     label: 'Facebook',
-    icon: '📘',
     identifierLabel: 'Facebook Page ID',
     identifierPlaceholder: '123456789012345',
     providers: [
@@ -65,16 +64,15 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
         label: 'Meta',
         fields: [
           { key: 'page_access_token', label: 'Page Access Token', type: 'password' },
-          { key: 'app_secret', label: 'App Secret (opcional)', type: 'password' },
-          { key: 'verify_token', label: 'Verify Token — copiar al dashboard de Facebook', type: 'readonly' },
-          { key: 'webhook_url', label: 'Webhook URL — copiar al dashboard de Facebook', type: 'readonly' },
+          { key: 'app_secret', label: 'App Secret (optional)', type: 'password' },
+          { key: 'verify_token', label: 'Verify Token — copy to the Facebook dashboard', type: 'readonly' },
+          { key: 'webhook_url', label: 'Webhook URL — copy to the Facebook dashboard', type: 'readonly' },
         ],
       },
     ],
   },
   sms: {
     label: 'SMS',
-    icon: '📱',
     identifierLabel: 'Phone number',
     identifierPlaceholder: '+1234567890',
     providers: [
@@ -93,7 +91,7 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
         fields: [
           { key: 'api_key', label: 'API Key (KEY_xxx)', type: 'password' },
           { key: 'from_number', label: 'From Number (E.164)', type: 'text' },
-          { key: 'messaging_profile_id', label: 'Messaging Profile ID (opcional)', type: 'text' },
+          { key: 'messaging_profile_id', label: 'Messaging Profile ID (optional)', type: 'text' },
           { key: 'webhook_url', label: 'Webhook URL', type: 'readonly' },
         ],
       },
@@ -110,7 +108,6 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
   },
   email: {
     label: 'Email',
-    icon: '📧',
     identifierLabel: 'From email address',
     identifierPlaceholder: 'hello@company.com',
     providers: [
@@ -141,7 +138,6 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
   },
   instagram: {
     label: 'Instagram',
-    icon: '📷',
     identifierLabel: 'Instagram Business Account ID',
     identifierPlaceholder: '123456789012345',
     providers: [
@@ -150,16 +146,15 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
         label: 'Meta',
         fields: [
           { key: 'page_access_token', label: 'Page Access Token', type: 'password' },
-          { key: 'app_secret', label: 'App Secret (opcional)', type: 'password' },
-          { key: 'verify_token', label: 'Verify Token — copiar al dashboard de Meta', type: 'readonly' },
-          { key: 'webhook_url', label: 'Webhook URL — copiar al dashboard de Meta', type: 'readonly' },
+          { key: 'app_secret', label: 'App Secret (optional)', type: 'password' },
+          { key: 'verify_token', label: 'Verify Token — copy to the Meta dashboard', type: 'readonly' },
+          { key: 'webhook_url', label: 'Webhook URL — copy to the Meta dashboard', type: 'readonly' },
         ],
       },
     ],
   },
   webchat: {
     label: 'Web Chat',
-    icon: '🌐',
     identifierLabel: 'Widget name',
     identifierPlaceholder: 'My website chat',
     providers: [
@@ -172,21 +167,20 @@ const CHANNEL_CONFIG: Record<string, ChannelTypeConfig> = {
   },
   voice: {
     label: 'Voice',
-    icon: '📞',
     // Voice has no generic identifier row; the inbound agent id (captured as a
     // config field below) becomes the channel's external identifier.
     identifierLabel: 'Retell Inbound Agent ID',
-    identifierPlaceholder: 'agent_abc123... (recibe llamadas)',
+    identifierPlaceholder: 'agent_abc123... (receives calls)',
     providers: [
       {
         id: 'retell',
         label: 'Retell AI',
         fields: [
-          { key: 'inbound_agent_id', label: 'Retell Inbound Agent ID (recibe llamadas)', type: 'text', required: true },
-          { key: 'outbound_agent_id', label: 'Retell Outbound Agent ID (hace llamadas salientes)', type: 'text' },
-          { key: 'agent_name', label: 'Nombre del agente (ej. Ventas, Soporte)', type: 'text' },
+          { key: 'inbound_agent_id', label: 'Retell Inbound Agent ID (receives calls)', type: 'text', required: true },
+          { key: 'outbound_agent_id', label: 'Retell Outbound Agent ID (places outbound calls)', type: 'text' },
+          { key: 'agent_name', label: 'Agent name (e.g. Sales, Support)', type: 'text' },
           { key: 'api_key', label: 'Retell API Key', type: 'password' },
-          { key: 'webhook_url', label: 'Custom LLM WebSocket URL — copiar a Retell', type: 'readonly' },
+          { key: 'webhook_url', label: 'Custom LLM WebSocket URL — copy to Retell', type: 'readonly' },
         ],
       },
     ],
@@ -206,7 +200,7 @@ interface Props {
 export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Props) {
   const createChannel = useCreateChannel();
   const { data: currentUser } = useCurrentUser();
-  const isPlatformAdmin = (currentUser as any)?.is_platform_admin === true;
+  const isPlatformAdmin = currentUser?.is_platform_admin === true;
 
   const visibleChannelConfig = useMemo(() => {
     if (isPlatformAdmin) return CHANNEL_CONFIG;
@@ -273,7 +267,7 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
         ? configValues.inbound_agent_id?.trim() || configValues.outbound_agent_id?.trim() || ''
         : identifier;
     if (!externalIdentifier) {
-      toast({ title: 'Falta el Retell Inbound Agent ID', variant: 'error' });
+      toast({ title: 'The Retell Inbound Agent ID is missing', variant: 'error' });
       return;
     }
     try {
@@ -283,11 +277,11 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
         external_identifier: externalIdentifier,
         config: configValues,
       });
-      toast({ title: 'Canal creado' });
+      toast({ title: 'Channel created' });
       onCreated?.(channel);
       handleClose();
     } catch {
-      toast({ title: 'Error al crear canal', variant: 'error' });
+      toast({ title: 'Error creating channel', variant: 'error' });
     }
   };
 
@@ -298,9 +292,9 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
       : null;
 
   const stepTitle = () => {
-    if (step === 'type') return 'Agregar canal';
-    if (step === 'provider') return `${typeConfig?.label ?? ''} — Seleccionar proveedor`;
-    return `Configurar ${typeConfig?.label ?? ''}`;
+    if (step === 'type') return 'Add channel';
+    if (step === 'provider') return `${typeConfig?.label ?? ''} — Select provider`;
+    return `Configure ${typeConfig?.label ?? ''}`;
   };
 
   return (
@@ -319,20 +313,24 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
                 handleClose();
                 onSelectWhatsApp();
               }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-blue-300 hover:bg-blue-50 transition-colors text-center"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border border-subtle hover:border-accent/30 hover:bg-olive-dark transition-colors text-center"
             >
-              <span className="text-2xl">{WHATSAPP_TILE.icon}</span>
-              <span className="text-sm font-medium text-gray-900">{WHATSAPP_TILE.label}</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-tile border border-subtle bg-surface-raised">
+                <ChannelIcon type={WHATSAPP_TILE.type} />
+              </span>
+              <span className="text-sm font-medium text-primary">{WHATSAPP_TILE.label}</span>
             </button>
 
             {Object.entries(visibleChannelConfig).map(([type, cfg]) => (
               <button
                 key={type}
                 onClick={() => handleTypeSelect(type)}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-blue-300 hover:bg-blue-50 transition-colors text-center"
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border border-subtle hover:border-accent/30 hover:bg-olive-dark transition-colors text-center"
               >
-                <span className="text-2xl">{cfg.icon}</span>
-                <span className="text-sm font-medium text-gray-900">{cfg.label}</span>
+                <span className="flex h-11 w-11 items-center justify-center rounded-tile border border-subtle bg-surface-raised">
+                  <ChannelIcon type={type} />
+                </span>
+                <span className="text-sm font-medium text-primary">{cfg.label}</span>
               </button>
             ))}
           </div>
@@ -345,15 +343,15 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
               <button
                 key={p.id}
                 onClick={() => handleProviderSelect(p.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-subtle hover:border-accent/30 hover:bg-olive-dark transition-colors text-left"
               >
-                <span className="text-sm font-medium text-gray-900">{p.label}</span>
+                <span className="text-sm font-medium text-primary">{p.label}</span>
               </button>
             ))}
             <button
               type="button"
               onClick={() => setStep('type')}
-              className="text-xs text-gray-400 hover:text-gray-600 mt-2 block"
+              className="text-xs text-muted hover:text-secondary mt-2 block"
             >
               ← Back
             </button>
@@ -365,7 +363,7 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
           <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             {selectedType !== 'voice' && (
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-primary mb-1">
                   {typeConfig.identifierLabel}
                 </label>
                 <Input
@@ -379,7 +377,7 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
 
             {providerConfig.fields.map((field) => (
               <div key={field.key}>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-primary mb-1">
                   {field.label}
                 </label>
                 {field.type === 'readonly' ? (
@@ -387,14 +385,14 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
                     <Input
                       readOnly
                       value={configValues[field.key] ?? ''}
-                      className="bg-gray-50 text-gray-500 text-xs"
+                      className="bg-surface-raised text-secondary text-xs"
                     />
                     <button
                       type="button"
                       onClick={() =>
                         navigator.clipboard.writeText(configValues[field.key] ?? '')
                       }
-                      className="text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded border border-border hover:bg-blue-50 shrink-0"
+                      className="text-xs text-secondary hover:text-accent-hover px-2 py-1 rounded-sm border border-subtle hover:bg-olive-dark shrink-0"
                     >
                       Copy
                     </button>
@@ -426,21 +424,21 @@ export function ChannelWizard({ open, onClose, onCreated, onSelectWhatsApp }: Pr
                   if (typeConfig.providers.length > 1) setStep('provider');
                   else setStep('type');
                 }}
-                className="text-xs text-gray-400 hover:text-gray-600"
+                className="text-xs text-muted hover:text-secondary"
               >
                 ← Back
               </button>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={handleClose}>
-                  Cancelar
+                  Cancel
                 </Button>
                 <Button
                   type="submit"
                   size="sm"
                   disabled={createChannel.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-accent hover:bg-accent-hover text-on-accent"
                 >
-                  {createChannel.isPending ? 'Creando…' : 'Crear canal'}
+                  {createChannel.isPending ? 'Creating…' : 'Create channel'}
                 </Button>
               </div>
             </div>

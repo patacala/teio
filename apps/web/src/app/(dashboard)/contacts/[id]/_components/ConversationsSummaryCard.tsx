@@ -26,21 +26,21 @@ export function ConversationsSummaryCard({ contactId }: Props) {
   const latest = conversations[0];
 
   return (
-    <div className="bg-panel border border-border rounded-xl p-5">
+    <div className="bg-surface border border-subtle rounded-xl p-5">
       <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-semibold text-gray-900">Conversations</h3>
+        <MessageSquare className="h-4 w-4 text-muted" />
+        <h3 className="text-sm font-semibold text-primary">Conversations</h3>
       </div>
 
       {isLoading ? (
-        <div className="h-10 bg-gray-100 animate-pulse rounded" />
+        <div className="h-10 bg-surface-raised animate-pulse rounded-sm" />
       ) : (
         <>
-          <p className="text-2xl font-bold text-gray-900">{conversations.length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">total conversations</p>
+          <p className="text-2xl font-bold text-primary">{conversations.length}</p>
+          <p className="text-xs text-secondary mt-0.5">total conversations</p>
           {latest && (
-            <div className="mt-3 text-xs text-gray-500">
-              <span className="capitalize font-medium text-gray-700">{latest.channel}</span>
+            <div className="mt-3 text-xs text-secondary">
+              <span className="capitalize font-medium text-primary">{latest.channel}</span>
               {latest.last_message_at && (
                 <> · {timeAgo(latest.last_message_at)}</>
               )}

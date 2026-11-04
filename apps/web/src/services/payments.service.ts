@@ -33,7 +33,7 @@ export interface CreatePaymentServiceBody {
   is_active?: boolean;
 }
 
-export interface UpdatePaymentServiceBody extends Partial<CreatePaymentServiceBody> {}
+export type UpdatePaymentServiceBody = Partial<CreatePaymentServiceBody>;
 
 export interface PaymentContact {
   id: string;

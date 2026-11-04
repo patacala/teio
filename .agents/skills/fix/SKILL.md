@@ -1,47 +1,47 @@
 ---
 description: |
-  Investiga y corrige un bug o error. Usa el grafo de conocimiento para
-  entender el contexto antes de tocar codigo. Aplica cuando el usuario
-  reporta un error, bug, o comportamiento inesperado.
+  Investigates and fixes a bug or error. Uses the knowledge graph to
+  understand the context before touching code. Applies when the user
+  reports an error, a bug, or unexpected behavior.
 allowed-tools: Read Grep Glob Bash(graphify *) Bash(pnpm *) Bash(curl *) Edit
 ---
 
-# Investigar y Corregir Bug
+# Investigate and Fix a Bug
 
-## Protocolo de investigacion
+## Investigation protocol
 
-### 1. Entender el problema
-- Lee el error/logs que el usuario proporciona
-- Identifica: backend, frontend, o ambos?
+### 1. Understand the problem
+- Read the error/logs the user provides
+- Identify: backend, frontend, or both?
 
-### 2. Consultar el grafo PRIMERO
+### 2. Query the graph FIRST
 ```bash
-graphify query "<modulo o concepto relacionado al error>"
-graphify path "<archivo A>" "<archivo B>"   # si sospechas relacion
-graphify explain "<concepto>"               # si necesitas contexto amplio
+graphify query "<module or concept related to the error>"
+graphify path "<file A>" "<file B>"   # if you suspect a relationship
+graphify explain "<concept>"          # if you need broader context
 ```
 
-### 3. Leer codigo relevante
-- Solo los archivos que el grafo identifica
-- Busca el flujo completo: controller → service → entity (backend) o page → hook → service (frontend)
+### 3. Read the relevant code
+- Only the files the graph identifies
+- Follow the full flow: controller → service → entity (backend) or page → hook → service (frontend)
 
-### 4. Identificar causa raiz
-- No adivinar. Entender POR QUE falla
-- Verificar: es un import mal hecho? tenant scope faltante? tipo incorrecto? ruta mal declarada?
+### 4. Identify the root cause
+- Don't guess. Understand WHY it fails
+- Check: is it a bad import? A missing tenant scope? A wrong type? A badly declared route?
 
-### 5. Aplicar fix minimo
-- Cambia solo lo necesario
-- No refactorizar codigo que no esta roto
-- No agregar features de paso
+### 5. Apply the minimal fix
+- Change only what is necessary
+- Don't refactor code that isn't broken
+- Don't add features along the way
 
-### 6. Verificar
-- `pnpm --filter @crm/api build` si tocaste backend
-- `pnpm --filter @crm/web typecheck` si tocaste frontend
-- `graphify update .` para actualizar el grafo
+### 6. Verify
+- `pnpm --filter @crm/api build` if you touched the backend
+- `pnpm --filter @crm/web typecheck` and `pnpm --filter @crm/web lint` if you touched the frontend
+- `graphify update .` to update the graph
 
-### 7. Explicar
-- Que causaba el error (causa raiz)
-- Que se cambio (fix aplicado)
-- Por que funciona ahora
+### 7. Explain
+- What caused the error (root cause)
+- What was changed (fix applied)
+- Why it works now
 
 $ARGUMENTS

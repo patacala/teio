@@ -54,12 +54,12 @@ export function MessageComposer({
   };
 
   return (
-    <div className={cn('px-4 py-3 border-t border-border shrink-0', className)}>
+    <div className={cn('px-4 py-3 border-t border-subtle shrink-0', className)}>
       {/* Reply via row */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs text-gray-500">Reply via:</span>
+        <span className="text-xs text-secondary">Reply via:</span>
         <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-          <SelectTrigger className="h-6 w-auto text-xs px-2 py-0 border-border bg-transparent">
+          <SelectTrigger className="h-6 w-auto text-xs px-2 py-0 border-subtle bg-transparent">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -75,7 +75,7 @@ export function MessageComposer({
 
       {/* Composer row */}
       <div className="flex items-end gap-2">
-        <div className="flex-1 rounded-xl border border-border bg-gray-50 px-3 py-2">
+        <div className="flex-1 rounded-xl border border-subtle bg-surface-raised px-3 py-2">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -92,12 +92,12 @@ export function MessageComposer({
               el.style.height = 'auto';
               el.style.height = el.scrollHeight + 'px';
             }}
-            className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 resize-none outline-none max-h-32"
+            className="w-full bg-transparent text-sm text-primary placeholder:text-muted resize-none outline-hidden max-h-32"
             style={{ height: 'auto', minHeight: '24px' }}
           />
           <div className="flex items-center justify-between mt-1">
             <ChannelBadge channel={selectedChannel} />
-            <span className="text-[10px] text-gray-400 hidden sm:block">
+            <span className="text-[10px] text-muted hidden sm:block">
               Enter to send · Shift+Enter for new line
             </span>
           </div>

@@ -17,13 +17,13 @@ import { toast } from '@/hooks/useToast';
 type Mode = 'qr' | 'code';
 
 const STATUS_LABEL: Record<WhatsAppSessionStatus, string> = {
-  STOPPED: 'Sesión detenida',
-  STARTING: 'Iniciando sesión…',
-  SCAN_QR_CODE: 'Esperando escaneo',
-  PASSKEY_REQUIRED: 'Confirmación requerida en el teléfono',
-  PASSKEY_CONFIRMATION_REQUIRED: 'Confirmá el código en tu teléfono',
-  WORKING: 'Conectado',
-  FAILED: 'Error de conexión',
+  STOPPED: 'Session stopped',
+  STARTING: 'Starting session…',
+  SCAN_QR_CODE: 'Waiting for scan',
+  PASSKEY_REQUIRED: 'Confirmation required on the phone',
+  PASSKEY_CONFIRMATION_REQUIRED: 'Confirm the code on your phone',
+  WORKING: 'Connected',
+  FAILED: 'Connection error',
 };
 
 interface Props {
@@ -77,7 +77,7 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
   // Auto-close shortly after a successful link
   useEffect(() => {
     if (!connected) return;
-    toast({ title: 'WhatsApp conectado' });
+    toast({ title: 'WhatsApp connected' });
     const t = setTimeout(onClose, 1800);
     return () => clearTimeout(t);
   }, [connected]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,7 +96,7 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Conectar WhatsApp</DialogTitle>
+          <DialogTitle>Connect WhatsApp</DialogTitle>
         </DialogHeader>
 
         <AnimatePresence mode="wait">
@@ -108,11 +108,11 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
               animate={{ opacity: 1 }}
               className="flex flex-col items-center gap-3 py-10 text-center"
             >
-              <AlertCircle className="h-10 w-10 text-red-500" />
-              <p className="text-sm font-medium text-gray-900">No se pudo iniciar la sesión</p>
-              <p className="text-xs text-gray-500 max-w-xs">{createError}</p>
+              <AlertCircle className="h-10 w-10 text-danger" />
+              <p className="text-sm font-medium text-primary">Could not start the session</p>
+              <p className="text-xs text-secondary max-w-xs">{createError}</p>
               <Button size="sm" variant="outline" onClick={onClose} className="mt-1">
-                Cerrar
+                Close
               </Button>
             </motion.div>
           ) : connected ? (
@@ -123,13 +123,13 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-3 py-10 text-center"
             >
-              <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-              <p className="text-sm font-medium text-gray-900">WhatsApp conectado</p>
+              <CheckCircle2 className="h-12 w-12 text-success" />
+              <p className="text-sm font-medium text-primary">WhatsApp connected</p>
               {qrData?.phone_number && (
-                <p className="text-sm text-gray-500">+{qrData.phone_number}</p>
+                <p className="text-sm text-secondary">+{qrData.phone_number}</p>
               )}
               {qrData?.push_name && (
-                <p className="text-xs text-gray-400">{qrData.push_name}</p>
+                <p className="text-xs text-muted">{qrData.push_name}</p>
               )}
             </motion.div>
           ) : (
@@ -141,15 +141,15 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
               className="space-y-4"
             >
               {/* Mode switch */}
-              <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+              <div className="flex gap-1 p-1 bg-surface-raised rounded-lg">
                 {(['qr', 'code'] as Mode[]).map((m) => (
                   <button
                     key={m}
                     onClick={() => setMode(m)}
                     className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md transition-colors ${
                       mode === m
-                        ? 'bg-panel text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900'
+                        ? 'bg-surface text-primary shadow-xs'
+                        : 'text-secondary hover:text-primary'
                     }`}
                   >
                     {m === 'qr' ? (
@@ -157,36 +157,36 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
                     ) : (
                       <Smartphone className="h-3.5 w-3.5" />
                     )}
-                    {m === 'qr' ? 'Código QR' : 'Código de 8 dígitos'}
+                    {m === 'qr' ? 'QR code' : '8-digit code'}
                   </button>
                 ))}
               </div>
 
               {mode === 'qr' ? (
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-56 h-56 rounded-xl border border-border bg-panel flex items-center justify-center overflow-hidden">
+                  <div className="w-56 h-56 rounded-xl border border-subtle bg-surface flex items-center justify-center overflow-hidden">
                     {qrData?.qr ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={qrData.qr}
-                        alt="Código QR de WhatsApp"
+                        alt="WhatsApp QR code"
                         className="w-full h-full object-contain"
                       />
                     ) : (
-                      <Loader2 className="h-6 w-6 text-gray-300 animate-spin" />
+                      <Loader2 className="h-6 w-6 text-muted animate-spin" />
                     )}
                   </div>
-                  <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-                    <li>Abrí WhatsApp en tu teléfono</li>
-                    <li>Andá a Ajustes → Dispositivos vinculados</li>
-                    <li>Tocá &quot;Vincular un dispositivo&quot; y escaneá</li>
+                  <ol className="text-xs text-secondary space-y-1 list-decimal list-inside">
+                    <li>Open WhatsApp on your phone</li>
+                    <li>Go to Settings → Linked devices</li>
+                    <li>Tap &quot;Link a device&quot; and scan</li>
                   </ol>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Número de teléfono (con código de país, solo dígitos)
+                    <label className="block text-xs font-medium text-primary mb-1">
+                      Phone number (with country code, digits only)
                     </label>
                     <Input
                       value={phoneInput}
@@ -199,18 +199,18 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
                     size="sm"
                     onClick={handleRequestCode}
                     disabled={!channelId || !phoneInput || pairingCode.isPending}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                    className="w-full bg-accent hover:bg-accent-hover text-on-accent gap-1.5"
                   >
                     {pairingCode.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Solicitar código
+                    Request code
                   </Button>
                   {code && (
                     <div className="text-center py-2">
-                      <p className="text-2xl font-semibold tracking-[0.3em] text-gray-900">
+                      <p className="text-2xl font-semibold tracking-[0.3em] text-primary">
                         {code}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1.5">
-                        Ingresá este código en WhatsApp → Dispositivos vinculados
+                      <p className="text-xs text-secondary mt-1.5">
+                        Enter this code in WhatsApp → Linked devices
                       </p>
                     </div>
                   )}
@@ -218,9 +218,9 @@ export function WhatsAppLinkDialog({ open, onClose, channelId: existingId }: Pro
               )}
 
               {/* Live status */}
-              <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 border-t border-border pt-3">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-secondary border-t border-subtle pt-3">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                {status ? STATUS_LABEL[status] : 'Preparando sesión…'}
+                {status ? STATUS_LABEL[status] : 'Preparing session…'}
               </div>
             </motion.div>
           )}

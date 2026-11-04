@@ -29,23 +29,23 @@ export default function AdminApiKeysPage() {
       setOpen(false);
       setName('');
     } catch {
-      toast({ title: 'Error al crear API key', variant: 'error' });
+      toast({ title: 'Error creating API key', variant: 'error' });
     }
   };
 
   const handleRevoke = async (id: string) => {
     try {
       await revokeKey.mutateAsync(id);
-      toast({ title: 'API key revocada', variant: 'default' });
+      toast({ title: 'API key revoked', variant: 'default' });
     } catch {
-      toast({ title: 'Error al revocar', variant: 'error' });
+      toast({ title: 'Error revoking key', variant: 'error' });
     }
   };
 
   const copyKey = () => {
     if (revealed?.key) {
       navigator.clipboard.writeText(revealed.key);
-      toast({ title: 'Copiado al portapapeles', variant: 'default' });
+      toast({ title: 'Copied to clipboard', variant: 'default' });
     }
   };
 
@@ -53,84 +53,84 @@ export default function AdminApiKeysPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">API Keys</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Llaves de acceso programático a la API del CRM.</p>
+          <h1 className="text-lg font-semibold text-primary">API Keys</h1>
+          <p className="text-xs text-secondary mt-0.5">Programmatic access keys for the CRM API.</p>
         </div>
-        <Button size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus className="h-3.5 w-3.5" /> Crear API key
+        <Button size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent">
+          <Plus className="h-3.5 w-3.5" /> Create API key
         </Button>
       </div>
 
       {/* Revealed key banner */}
       {revealed && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-          <p className="text-xs font-medium text-blue-800">
-            Guarda esta clave ahora — no se mostrará de nuevo.
+        <div className="bg-olive-dark border border-accent/20 rounded-xl p-4 space-y-2">
+          <p className="text-xs font-medium text-accent">
+            Save this key now — it won&apos;t be shown again.
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-white border border-blue-200 rounded-lg px-3 py-2 font-mono text-gray-900 truncate">
+            <code className="flex-1 text-xs bg-surface border border-accent/20 rounded-lg px-3 py-2 font-mono text-primary truncate">
               {visibleKey ? revealed.key : revealed.key_prefix + '••••••••••••••••••'}
             </code>
-            <button onClick={() => setVisibleKey((v) => !v)} className="p-2 rounded-lg text-blue-500 hover:bg-blue-100 transition-colors">
+            <button onClick={() => setVisibleKey((v) => !v)} className="p-2 rounded-lg text-accent hover:bg-accent/15 transition-colors">
               {visibleKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
-            <button onClick={copyKey} className="p-2 rounded-lg text-blue-500 hover:bg-blue-100 transition-colors">
+            <button onClick={copyKey} className="p-2 rounded-lg text-accent hover:bg-accent/15 transition-colors">
               <Copy className="h-4 w-4" />
             </button>
           </div>
-          <button onClick={() => setRevealed(null)} className="text-xs text-blue-500 hover:text-blue-700 underline">
-            Cerrar
+          <button onClick={() => setRevealed(null)} className="text-xs text-accent hover:text-accent-hover underline">
+            Close
           </button>
         </div>
       )}
 
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 rounded-xl border border-border animate-pulse bg-panel" />)}
+          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 rounded-xl border border-subtle animate-pulse bg-surface" />)}
         </div>
       ) : !keys?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-20 text-center">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-            <Key className="h-6 w-6 text-blue-500" />
+        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-subtle py-20 text-center">
+          <div className="w-12 h-12 rounded-xl bg-olive-dark flex items-center justify-center mb-3">
+            <Key className="h-6 w-6 text-accent" />
           </div>
-          <h3 className="font-medium text-gray-900 text-sm">Sin API keys</h3>
-          <p className="text-xs text-gray-500 mt-1">Crea una llave para acceder a la API desde tu aplicación.</p>
-          <Button size="sm" onClick={() => setOpen(true)} className="mt-4 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="h-3.5 w-3.5" /> Crear API key
+          <h3 className="font-medium text-primary text-sm">No API keys</h3>
+          <p className="text-xs text-secondary mt-1">Create a key to access the API from your application.</p>
+          <Button size="sm" onClick={() => setOpen(true)} className="mt-4 gap-1.5 bg-accent hover:bg-accent-hover text-on-accent">
+            <Plus className="h-3.5 w-3.5" /> Create API key
           </Button>
         </div>
       ) : (
-        <div className="bg-panel border border-border rounded-xl overflow-hidden max-w-3xl">
+        <div className="bg-surface border border-subtle rounded-xl overflow-hidden max-w-3xl">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border bg-surface">
-                <th className="text-left py-2.5 px-4 text-xs font-medium text-gray-500">Nombre</th>
-                <th className="text-left py-2.5 pr-4 text-xs font-medium text-gray-500">Prefijo</th>
-                <th className="text-left py-2.5 pr-4 text-xs font-medium text-gray-500">Creada</th>
-                <th className="text-right py-2.5 pr-4 text-xs font-medium text-gray-500" />
+              <tr className="border-b border-subtle bg-surface-raised">
+                <th className="text-left py-2.5 px-4 text-xs font-medium text-secondary">Name</th>
+                <th className="text-left py-2.5 pr-4 text-xs font-medium text-secondary">Prefix</th>
+                <th className="text-left py-2.5 pr-4 text-xs font-medium text-secondary">Created</th>
+                <th className="text-right py-2.5 pr-4 text-xs font-medium text-secondary" />
               </tr>
             </thead>
             <tbody>
               {keys.map((k) => (
-                <tr key={k.id} className="border-b border-border last:border-0">
+                <tr key={k.id} className="border-b border-subtle last:border-0">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <Key className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                      <span className="text-sm font-medium text-gray-900">{k.name}</span>
+                      <Key className="h-3.5 w-3.5 text-muted shrink-0" />
+                      <span className="text-sm font-medium text-primary">{k.name}</span>
                     </div>
                   </td>
                   <td className="py-3 pr-4">
-                    <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{k.key_prefix}…</code>
+                    <code className="text-xs bg-surface-raised text-primary px-2 py-0.5 rounded-sm">{k.key_prefix}…</code>
                   </td>
-                  <td className="py-3 pr-4 text-xs text-gray-400">
+                  <td className="py-3 pr-4 text-xs text-muted">
                     {new Date(k.created_at).toLocaleDateString()}
                   </td>
                   <td className="py-3 pr-4 text-right">
                     <button
                       onClick={() => handleRevoke(k.id)}
                       disabled={revokeKey.isPending}
-                      className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      title="Revocar"
+                      className="p-1.5 rounded-sm text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      title="Revoke"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -143,22 +143,22 @@ export default function AdminApiKeysPage() {
       )}
 
       {/* API Reference */}
-      <div className="border-t border-border pt-5">
+      <div className="border-t border-subtle pt-5">
         <ApiDocsSection />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Nueva API key</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>New API key</DialogTitle></DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 mt-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Nombre</label>
-              <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Producción, CI/CD…" />
+              <label className="block text-xs font-medium text-primary mb-1">Name</label>
+              <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Production, CI/CD…" />
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createKey.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
-                {createKey.isPending ? 'Creando…' : 'Crear'}
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createKey.isPending} className="bg-accent hover:bg-accent-hover text-on-accent">
+                {createKey.isPending ? 'Creating…' : 'Create'}
               </Button>
             </div>
           </form>

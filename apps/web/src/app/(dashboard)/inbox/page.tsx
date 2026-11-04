@@ -30,10 +30,7 @@ function InboxContent() {
   );
 
   return (
-    <div
-      className="flex h-full"
-      style={{ margin: '-24px', height: 'calc(100vh - 64px)' }}
-    >
+    <div className="panel-card flex h-full min-h-0 overflow-hidden">
       <ConversationListPanel selectedId={selectedId} onSelect={onSelect} />
       <ConversationViewPanel conversationId={selectedId} />
       <InboxInner selectedId={selectedId} />

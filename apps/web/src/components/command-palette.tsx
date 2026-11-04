@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -14,7 +19,7 @@ const navItems = [
   { label: 'Dashboard', href: '/', icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: 'Inbox', href: '/inbox', icon: <MessageSquare className="h-4 w-4" /> },
   { label: 'Contacts', href: '/contacts', icon: <Users className="h-4 w-4" /> },
-  { label: 'Agenda', href: '/agenda', icon: <Calendar className="h-4 w-4" /> },
+  { label: 'Schedule', href: '/schedule', icon: <Calendar className="h-4 w-4" /> },
   { label: 'AI Agents', href: '/config/agents', icon: <Bot className="h-4 w-4" /> },
   { label: 'Integrations', href: '/integrations', icon: <Plug className="h-4 w-4" /> },
   { label: 'Settings', href: '/admin', icon: <Settings className="h-4 w-4" /> },

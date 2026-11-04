@@ -10,6 +10,7 @@ import {
   DrawerFooter,
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { ChannelIcon } from '@/components/channel-icon';
 import { Input } from '@/components/ui/input';
 import { useUpdateChannel, useTestChannelConnection } from '@/hooks/useChannels';
 import type { Channel, TestConnectionResult } from '@/services/channels.service';
@@ -18,16 +19,6 @@ import { API_URL } from '@/lib/api-client';
 import { WhatsAppChannelPanel } from './WhatsAppChannelPanel';
 
 const SENSITIVE_FIELDS = ['api_key', 'password', 'access_token', 'api_secret', 'auth_token'];
-
-const CHANNEL_EMOJI: Record<string, string> = {
-  whatsapp: '💬',
-  facebook: '📘',
-  instagram: '📷',
-  sms: '📱',
-  email: '📧',
-  webchat: '🌐',
-  voice: '🎙️',
-};
 
 interface FieldDef {
   key: string;
@@ -38,12 +29,12 @@ interface FieldDef {
 const CHANNEL_FIELDS: Record<string, FieldDef[]> = {
   'facebook/facebook': [
     { key: 'page_access_token', label: 'Page Access Token', type: 'password' },
-    { key: 'app_secret', label: 'App Secret (opcional)', type: 'password' },
+    { key: 'app_secret', label: 'App Secret (optional)', type: 'password' },
     { key: 'verify_token', label: 'Verify Token', type: 'readonly' },
   ],
   'instagram/meta': [
     { key: 'page_access_token', label: 'Page Access Token', type: 'password' },
-    { key: 'app_secret', label: 'App Secret (opcional)', type: 'password' },
+    { key: 'app_secret', label: 'App Secret (optional)', type: 'password' },
     { key: 'verify_token', label: 'Verify Token', type: 'readonly' },
   ],
   'sms/twilio': [
@@ -67,9 +58,9 @@ const CHANNEL_FIELDS: Record<string, FieldDef[]> = {
   ],
   'webchat/custom': [{ key: 'widget_id', label: 'Widget ID', type: 'readonly' }],
   'voice/retell': [
-    { key: 'inbound_agent_id', label: 'Retell Inbound Agent ID (recibe llamadas)', type: 'text' },
-    { key: 'outbound_agent_id', label: 'Retell Outbound Agent ID (hace llamadas salientes)', type: 'text' },
-    { key: 'agent_name', label: 'Nombre del agente (ej. Ventas, Soporte)', type: 'text' },
+    { key: 'inbound_agent_id', label: 'Retell Inbound Agent ID (receives calls)', type: 'text' },
+    { key: 'outbound_agent_id', label: 'Retell Outbound Agent ID (places outbound calls)', type: 'text' },
+    { key: 'agent_name', label: 'Agent name (e.g. Sales, Support)', type: 'text' },
     { key: 'api_key', label: 'Retell API Key', type: 'password' },
   ],
 };
@@ -153,10 +144,10 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
     }
     try {
       await updateChannel.mutateAsync({ id: channel.id, body });
-      toast({ title: 'Cambios guardados' });
+      toast({ title: 'Changes saved' });
       onClose();
     } catch {
-      toast({ title: 'Error al guardar', variant: 'error' });
+      toast({ title: 'Error saving', variant: 'error' });
     }
   };
 
@@ -175,10 +166,12 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
       <DrawerContent className="overflow-y-auto flex flex-col">
         <DrawerHeader>
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{CHANNEL_EMOJI[channel.type] ?? '🔌'}</span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-tile border border-subtle bg-surface-raised">
+              <ChannelIcon type={channel.type} />
+            </span>
             <div>
               <DrawerTitle className="capitalize">{channel.type}</DrawerTitle>
-              <p className="text-xs text-gray-500 capitalize">{channel.provider}</p>
+              <p className="text-xs text-secondary capitalize">{channel.provider}</p>
             </div>
           </div>
         </DrawerHeader>
@@ -192,7 +185,7 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
           {/* Editable identifier — voice derives it from the inbound agent id */}
           {channel.type !== 'voice' && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Identificador</label>
+              <label className="block text-xs font-medium text-primary mb-1">Identifier</label>
               <Input
                 value={identifierDraft}
                 onChange={(e) => setIdentifierDraft(e.target.value)}
@@ -204,20 +197,20 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
           {/* Dynamic config fields */}
           {fields.map((field) => (
             <div key={field.key}>
-              <label className="block text-xs font-medium text-gray-700 mb-1">{field.label}</label>
+              <label className="block text-xs font-medium text-primary mb-1">{field.label}</label>
               {field.type === 'readonly' ? (
                 <div className="flex gap-2">
                   <Input
                     readOnly
                     value={configDraft[field.key] ?? ''}
-                    className="bg-gray-50 text-gray-500 text-xs"
+                    className="bg-surface-raised text-secondary text-xs"
                   />
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(configDraft[field.key] ?? '')}
-                    className="text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded border border-border hover:bg-blue-50 shrink-0"
+                    className="text-xs text-secondary hover:text-accent-hover px-2 py-1 rounded-sm border border-subtle hover:bg-olive-dark shrink-0"
                   >
-                    Copiar
+                    Copy
                   </button>
                 </div>
               ) : (
@@ -250,11 +243,11 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
               className="gap-1.5"
             >
               {testConnection.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Probar conexión
+              Test connection
             </Button>
             {testResult && (
               <p
-                className={`mt-2 text-xs ${testResult.success ? 'text-emerald-600' : 'text-red-600'}`}
+                className={`mt-2 text-xs ${testResult.success ? 'text-success' : 'text-danger'}`}
               >
                 {testResult.success ? '✓' : '✗'} {testResult.message}
               </p>
@@ -263,21 +256,21 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
 
           {/* Webhook URL — computed per channel type (WebSocket for voice) */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-primary mb-1">
               {channel.type === 'voice' ? 'Custom LLM WebSocket URL (Retell)' : 'Webhook URL'}
             </label>
             <div className="flex gap-2">
               <Input
                 readOnly
                 value={getWebhookUrl(channel.type)}
-                className="bg-gray-50 text-gray-500 text-xs"
+                className="bg-surface-raised text-secondary text-xs"
               />
               <button
                 type="button"
                 onClick={() => navigator.clipboard.writeText(getWebhookUrl(channel.type))}
-                className="text-xs text-gray-500 hover:text-blue-600 px-2 py-1 rounded border border-border hover:bg-blue-50 shrink-0"
+                className="text-xs text-secondary hover:text-accent-hover px-2 py-1 rounded-sm border border-subtle hover:bg-olive-dark shrink-0"
               >
-                Copiar
+                Copy
               </button>
             </div>
           </div>
@@ -287,20 +280,20 @@ export function ChannelConfigDrawer({ channel, open, onClose, onLinkWhatsApp }: 
         <DrawerFooter>
           {isWhatsApp ? (
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cerrar
+              Close
             </Button>
           ) : (
             <>
               <Button type="button" variant="outline" size="sm" onClick={onClose}>
-                Cancelar
+                Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={updateChannel.isPending}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-accent hover:bg-accent-hover text-on-accent"
               >
-                {updateChannel.isPending ? 'Guardando…' : 'Guardar cambios'}
+                {updateChannel.isPending ? 'Saving…' : 'Save changes'}
               </Button>
             </>
           )}
