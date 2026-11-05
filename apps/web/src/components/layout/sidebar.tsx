@@ -19,7 +19,6 @@ import {
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { DialogTitle } from '@/components/ui/dialog';
 import { SidebarItem } from './sidebar-item';
-import { OverlaySidebar } from './overlay-sidebar';
 import { useShell } from './shell-context';
 import type { SidebarNavItem } from './sidebar-section';
 import { ADMIN_ITEMS, CONFIG_ITEMS, isConfigurationPath } from './sidebar-nav';
@@ -39,6 +38,7 @@ import {
   Shield,
   Mail,
   Filter,
+  ArrowLeft,
 } from 'lucide-react';
 
 const MAIN_ITEMS: SidebarNavItem[] = [
@@ -101,6 +101,15 @@ export function Sidebar() {
     setMobileNavOpen(false);
   }, [pathname, setMobileNavOpen]);
 
+  useEffect(() => {
+    if (overlayView === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOverlayView(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [overlayView]);
+
   const setCollapsedPersisted = (value: boolean) => {
     localStorage.setItem('sidebar-collapsed', String(value));
     setCollapsed(value);
@@ -125,6 +134,8 @@ export function Sidebar() {
   const showPlatformOnly = isPlatformAdmin && !isImpersonating;
   const showOrgSections = !isPlatformAdmin || isImpersonating;
   const primaryItems = showPlatformOnly ? PLATFORM_SIDEBAR_ITEMS : showOrgSections ? MAIN_ITEMS : [];
+  const overlayItems = overlayView === 'settings' ? CONFIG_ITEMS : overlayView === 'admin' ? ADMIN_ITEMS : null;
+  const overlayTitle = overlayView === 'settings' ? 'Settings' : 'Admin';
 
   const orgSelector = isImpersonating ? (
     <div className="flex h-9 items-center gap-2 rounded-control border border-accent/15 bg-olive-dark px-2.5">
@@ -168,7 +179,9 @@ export function Sidebar() {
         >
           <Logo />
           {!collapsed && (
-            <span className="flex-1 truncate text-sm font-semibold tracking-tight text-primary">AI CRM</span>
+            <span className="flex-1 truncate text-sm font-semibold tracking-tight text-primary">
+              {overlayView ? overlayTitle : 'AI CRM'}
+            </span>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -214,35 +227,61 @@ export function Sidebar() {
         )}
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {primaryItems.map((item) => (
-            <SidebarItem
-              key={item.href}
-              label={item.label}
-              href={item.href}
-              icon={item.icon}
-              active={isItemActive(pathname, item)}
-              collapsed={collapsed}
-              exact={item.exact}
-            />
-          ))}
-
-          {showOrgSections && (
+          {overlayItems ? (
             <>
+              <SidebarItem
+                label="Back"
+                icon={ArrowLeft}
+                active={false}
+                collapsed={collapsed}
+                onClick={() => setOverlayView(null)}
+              />
               <div className="mx-1 my-3 border-t border-subtle" />
-              <SidebarItem
-                label="Settings"
-                icon={Settings}
-                active={isConfigurationPath(pathname)}
-                collapsed={collapsed}
-                onClick={() => setOverlayView('settings')}
-              />
-              <SidebarItem
-                label="Admin"
-                icon={Shield}
-                active={pathname.startsWith('/admin')}
-                collapsed={collapsed}
-                onClick={() => setOverlayView('admin')}
-              />
+              {overlayItems.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  label={item.label}
+                  href={item.href}
+                  icon={item.icon}
+                  active={isItemActive(pathname, item)}
+                  collapsed={collapsed}
+                  exact={item.exact}
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              {primaryItems.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  label={item.label}
+                  href={item.href}
+                  icon={item.icon}
+                  active={isItemActive(pathname, item)}
+                  collapsed={collapsed}
+                  exact={item.exact}
+                />
+              ))}
+
+              {showOrgSections && (
+                <>
+                  <div className="mx-1 my-3 border-t border-subtle" />
+                  <SidebarItem
+                    label="Settings"
+                    icon={Settings}
+                    active={isConfigurationPath(pathname)}
+                    collapsed={collapsed}
+                    onClick={() => setOverlayView('settings')}
+                  />
+                  <SidebarItem
+                    label="Admin"
+                    icon={Shield}
+                    active={pathname.startsWith('/admin')}
+                    collapsed={collapsed}
+                    onClick={() => setOverlayView('admin')}
+                  />
+                </>
+              )}
             </>
           )}
         </nav>
@@ -280,19 +319,6 @@ export function Sidebar() {
           )}
         </div>
       </aside>
-
-      <OverlaySidebar
-        title="Settings"
-        items={CONFIG_ITEMS}
-        isOpen={overlayView === 'settings'}
-        onClose={() => setOverlayView(null)}
-      />
-      <OverlaySidebar
-        title="Admin"
-        items={ADMIN_ITEMS}
-        isOpen={overlayView === 'admin'}
-        onClose={() => setOverlayView(null)}
-      />
 
       <Drawer open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <DrawerContent side="left" className="flex max-w-[280px] flex-col p-0" aria-describedby={undefined}>
