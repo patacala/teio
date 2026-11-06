@@ -18,6 +18,7 @@ export {
   ORG_COMMUNICATION_EVENTS,
   PLATFORM_COMMUNICATION_EVENTS,
   UserRole,
+  ASSIGNABLE_USER_ROLES,
   ChannelType,
 } from './enums';
 export * from './types/automation.types';

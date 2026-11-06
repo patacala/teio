@@ -8,6 +8,7 @@ import type Redis from 'ioredis';
 import type { SupabaseJwtPayload } from '@crm/shared';
 import { CommunicationEventType, ChannelType } from '@crm/shared';
 import { UsersService } from '../../modules/users/users.service';
+import { userAuthCacheKey } from '../../modules/users/users.constants';
 import { ApiKeysService } from '../../modules/api-keys/api-keys.service';
 import { OrganizationsService } from '../../modules/organizations/organizations.service';
 import { CommunicationDispatchService } from '../../modules/communications/communication-dispatch.service';
@@ -84,7 +85,7 @@ export class TenantContextMiddleware implements NestMiddleware {
     if (!payload) return;
 
     const sub = payload.sub as string;
-    const cacheKey = `user:auth:${sub}`;
+    const cacheKey = userAuthCacheKey(sub);
     let user: Awaited<ReturnType<UsersService['findByAuthUserId']>>;
 
     const cached = await this.redis.get(cacheKey);

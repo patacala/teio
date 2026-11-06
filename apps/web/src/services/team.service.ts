@@ -1,3 +1,4 @@
+import type { UserRole } from '@crm/shared';
 import { authClient } from '@/lib/auth-client';
 
 export interface TeamMember {
@@ -20,6 +21,15 @@ export interface UpdateMemberBody {
   is_active?: boolean;
 }
 
+export interface InviteMemberBody {
+  email: string;
+  role: UserRole;
+}
+
+export interface AcceptInviteBody {
+  full_name?: string;
+}
+
 export const teamService = {
   getMembers: () =>
     authClient.get<TeamMember[]>('/users'),
@@ -29,4 +39,10 @@ export const teamService = {
 
   updateMember: (id: string, body: UpdateMemberBody) =>
     authClient.patch<TeamMember>(`/users/${id}`, body),
+
+  inviteMember: (body: InviteMemberBody) =>
+    authClient.post<TeamMember>('/users/invite', body),
+
+  acceptInvite: (body: AcceptInviteBody) =>
+    authClient.post<TeamMember>('/users/invite/accept', body),
 };

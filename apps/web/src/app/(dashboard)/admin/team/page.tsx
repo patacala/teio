@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, UserCheck, UserX } from 'lucide-react';
+import { Users, UserCheck, UserX, UserPlus } from 'lucide-react';
+import { ASSIGNABLE_USER_ROLES, UserRole } from '@crm/shared';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useTeamMembers, useUpdateMember } from '@/hooks/useTeam';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useInviteMember, useTeamMembers, useUpdateMember } from '@/hooks/useTeam';
 import { toast } from '@/hooks/useToast';
 import type { TeamMember } from '@/services/team.service';
 import { cn } from '@/lib/utils';
@@ -89,7 +91,7 @@ function MemberRow({ member }: { member: TeamMember }) {
           <div className="space-y-4 mt-2">
             <p className="text-xs text-secondary">{member.full_name}</p>
             <div className="flex gap-2">
-              {['admin', 'agent'].map((r) => (
+              {ASSIGNABLE_USER_ROLES.map((r) => (
                 <button
                   key={r}
                   onClick={() => setRole(r)}
@@ -112,8 +114,85 @@ function MemberRow({ member }: { member: TeamMember }) {
   );
 }
 
+function InviteMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const invite = useInviteMember();
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<UserRole>(UserRole.AGENT);
+
+  const reset = () => {
+    setEmail('');
+    setRole(UserRole.AGENT);
+    invite.reset();
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) reset();
+    onOpenChange(next);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const member = await invite.mutateAsync({ email: email.trim(), role });
+      toast({ title: 'Member invited', description: member.email, variant: 'default' });
+      handleOpenChange(false);
+    } catch (err) {
+      toast({ title: 'Error inviting member', description: (err as Error).message, variant: 'error' });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Invite member</DialogTitle>
+          <DialogDescription className="text-xs">We&apos;ll email them a link to set their password and join your team.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div>
+            <label htmlFor="invite-email" className="block text-xs font-medium text-primary mb-1">Email</label>
+            <Input
+              id="invite-email"
+              type="email"
+              required
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+            />
+          </div>
+          <div>
+            <span className="block text-xs font-medium text-primary mb-1">Role</span>
+            <div className="flex gap-2" role="radiogroup" aria-label="Role">
+              {ASSIGNABLE_USER_ROLES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  role="radio"
+                  aria-checked={role === r}
+                  onClick={() => setRole(r)}
+                  className={cn('flex-1 py-2 rounded-lg text-xs font-medium border transition-colors capitalize', role === r ? 'bg-accent text-on-accent border-accent/50' : 'bg-surface text-secondary border-subtle hover:border-strong')}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={invite.isPending} className="bg-accent hover:bg-accent-hover text-on-accent">
+              {invite.isPending ? 'Inviting…' : 'Send invite'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminTeamPage() {
   const { data: members, isLoading } = useTeamMembers();
+  const [inviteOpen, setInviteOpen] = useState(false);
   const activeCount = members?.filter((m) => m.is_active).length ?? 0;
 
   return (
@@ -125,6 +204,9 @@ export default function AdminTeamPage() {
             {members ? `${activeCount} active member${activeCount !== 1 ? 's' : ''}` : 'Team management'}
           </p>
         </div>
+        <Button size="sm" onClick={() => setInviteOpen(true)} className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent">
+          <UserPlus className="h-3.5 w-3.5" /> Invite member
+        </Button>
       </div>
 
       {isLoading ? (
@@ -157,6 +239,8 @@ export default function AdminTeamPage() {
           </table>
         </div>
       )}
+
+      <InviteMemberDialog open={inviteOpen} onOpenChange={setInviteOpen} />
     </div>
   );
 }

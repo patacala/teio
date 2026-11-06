@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import configuration from './config/configuration';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
+import { SupabaseAdminModule } from './infrastructure/supabase/supabase-admin.module';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { UsersModule } from './modules/users/users.module';
@@ -51,6 +52,7 @@ import { PlatformAdminGuard } from './common/guards/platform-admin.guard';
     ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
+    SupabaseAdminModule,
     RabbitMQModule,
     MailModule,
     SmsModule,

@@ -3,9 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
+import { SUPABASE_ADMIN_CLIENT } from '../../infrastructure/supabase/supabase-admin.constants';
 import { UserEntity } from '../users/user.entity';
 import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
 import { CommunicationEventType, ChannelType } from '@crm/shared';
@@ -15,7 +16,6 @@ const RESET_TTL = 3600; // 1 hour
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly supabaseAdmin: SupabaseClient | null;
   private readonly frontendUrl: string;
 
   constructor(
@@ -24,21 +24,11 @@ export class AuthService {
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
     private readonly config: ConfigService,
+    @Inject(SUPABASE_ADMIN_CLIENT)
+    private readonly supabaseAdmin: SupabaseClient | null,
     @Optional()
     private readonly dispatchService: CommunicationDispatchService,
   ) {
-    const supabaseUrl = this.config.get<string>('supabase.url') ?? '';
-    const serviceRoleKey = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY') ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-
-    if (supabaseUrl && serviceRoleKey) {
-      this.supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-    } else {
-      this.supabaseAdmin = null;
-      this.logger.warn('SUPABASE_SERVICE_ROLE_KEY not set — reset password will not work');
-    }
-
     this.frontendUrl = this.config.get<string>('FRONTEND_URL') ?? process.env.FRONTEND_URL ?? 'http://localhost:3000';
   }
 

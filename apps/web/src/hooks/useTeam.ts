@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { teamService, type UpdateMemberBody } from '@/services/team.service';
+import { teamService, type InviteMemberBody, type UpdateMemberBody } from '@/services/team.service';
 
 export function useTeamMembers() {
   return useQuery({
@@ -27,6 +27,14 @@ export function useUpdateMember() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateMemberBody }) =>
       teamService.updateMember(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['team'] }),
+  });
+}
+
+export function useInviteMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: InviteMemberBody) => teamService.inviteMember(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['team'] }),
   });
 }

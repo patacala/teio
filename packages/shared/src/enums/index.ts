@@ -97,6 +97,9 @@ export enum UserRole {
   VIEWER = 'viewer',
 }
 
+/** Roles an org admin can assign to members (invite and role change) */
+export const ASSIGNABLE_USER_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.AGENT];
+
 export enum ContactStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',

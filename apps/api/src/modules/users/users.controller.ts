@@ -1,8 +1,14 @@
 import { Controller, Get, Post, Patch, Body, Param, Req } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { UsersService, CreateUserDto, UpdateUserDto } from './users.service';
+import { UsersService } from './users.service';
+import { InviteUserDto } from './dto/invite-user.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
 
 @ApiTags('users')
@@ -30,12 +36,26 @@ export class UsersController {
     return this.service.findById(id, tenant.organization_id);
   }
 
+  @Post('invite/accept')
+  @Roles(...Object.values(UserRole))
+  acceptInvite(@Body() dto: AcceptInviteDto, @CurrentTenant() tenant: TenantContext) {
+    return this.service.acceptInvite(tenant.user_id, tenant.organization_id, dto);
+  }
+
+  @Post('invite')
+  @Roles(UserRole.ADMIN)
+  invite(@Body() dto: InviteUserDto, @CurrentTenant() tenant: TenantContext) {
+    return this.service.invite(tenant.organization_id, tenant.user_id, dto);
+  }
+
   @Post()
+  @Roles(UserRole.ADMIN)
   create(@Body() dto: CreateUserDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.create(tenant.organization_id, dto);
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
