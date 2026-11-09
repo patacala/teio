@@ -186,3 +186,43 @@ export const ORG_COMMUNICATION_EVENTS: CommunicationEventType[] =
 /** Events managed exclusively by platform admins — auto-derived from PLATFORM_EVENT_SET */
 export const PLATFORM_COMMUNICATION_EVENTS: CommunicationEventType[] =
   ALL_EVENTS.filter((e) => PLATFORM_EVENT_SET.has(e));
+
+/**
+ * How much of the product an organization can use, derived from its billing state.
+ * Demo (free-plan) organizations get FULL access and are flagged with `is_demo`.
+ */
+export enum BillingAccessLevel {
+  FULL = 'full',
+  /** Paid plan without a successful payment: everything is blocked until it is paid. */
+  BLOCKED = 'blocked',
+  /** Organization deactivated by the platform. */
+  SUSPENDED = 'suspended',
+}
+
+export enum BillingRestrictionReason {
+  ORGANIZATION_INACTIVE = 'organization_inactive',
+  PAYMENT_METHOD_MISSING = 'payment_method_missing',
+  PAYMENT_METHOD_EXPIRED = 'payment_method_expired',
+  PAYMENT_PAST_DUE = 'payment_past_due',
+  GRACE_PERIOD_EXPIRED = 'grace_period_expired',
+  SUBSCRIPTION_UNPAID = 'subscription_unpaid',
+  SUBSCRIPTION_INCOMPLETE = 'subscription_incomplete',
+  SUBSCRIPTION_PAUSED = 'subscription_paused',
+  SUBSCRIPTION_CANCELED = 'subscription_canceled',
+  CANCELLATION_SCHEDULED = 'cancellation_scheduled',
+  /** Demo period is over: blocked until a plan is chosen. */
+  DEMO_EXPIRED = 'demo_expired',
+  /** Demo ends within a few days. */
+  DEMO_ENDING_SOON = 'demo_ending_soon',
+}
+
+/** Values stored in billing.plans.features. `ALL` unlocks every feature. */
+export enum PlanFeature {
+  BASIC_INBOX = 'basic_inbox',
+  CONTACTS = 'contacts',
+  AI_RESPONSES = 'ai_responses',
+  ANALYTICS = 'analytics',
+  VOICE_CALLS = 'voice_calls',
+  AUTOMATION = 'automation',
+  ALL = 'all',
+}

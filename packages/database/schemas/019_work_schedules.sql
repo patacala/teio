@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS scheduling.work_schedules (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_work_schedules_updated_at ON scheduling.work_schedules;
 CREATE TRIGGER trg_work_schedules_updated_at
   BEFORE UPDATE ON scheduling.work_schedules
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

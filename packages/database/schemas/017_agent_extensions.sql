@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS agents.agent_capture_fields (
 CREATE INDEX IF NOT EXISTS idx_capture_fields_agent ON agents.agent_capture_fields(agent_id);
 CREATE INDEX IF NOT EXISTS idx_capture_fields_org   ON agents.agent_capture_fields(organization_id);
 
+DROP TRIGGER IF EXISTS agent_capture_fields_updated_at ON agents.agent_capture_fields;
 CREATE TRIGGER agent_capture_fields_updated_at
   BEFORE UPDATE ON agents.agent_capture_fields
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

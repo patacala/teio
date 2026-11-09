@@ -20,6 +20,9 @@ export {
   UserRole,
   ASSIGNABLE_USER_ROLES,
   ChannelType,
+  BillingAccessLevel,
+  BillingRestrictionReason,
+  PlanFeature,
 } from './enums';
 export * from './types/automation.types';
 export * from './dtos/pagination.dto';

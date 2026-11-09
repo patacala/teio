@@ -40,6 +40,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PlatformAdminGuard } from './common/guards/platform-admin.guard';
+import { BillingAccessGuard } from './modules/billing/billing-access.guard';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { PlatformAdminGuard } from './common/guards/platform-admin.guard';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PlatformAdminGuard },
+    { provide: APP_GUARD, useExisting: BillingAccessGuard },
   ],
 })
 export class AppModule implements NestModule {

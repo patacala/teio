@@ -18,12 +18,13 @@ CREATE TABLE IF NOT EXISTS integrations.channel_configs (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_channel_configs_updated_at ON integrations.channel_configs;
 CREATE TRIGGER trg_channel_configs_updated_at
   BEFORE UPDATE ON integrations.channel_configs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_channel_configs_org_id ON integrations.channel_configs (organization_id);
-CREATE UNIQUE INDEX idx_channel_configs_unique ON integrations.channel_configs (organization_id, channel, name);
+CREATE INDEX IF NOT EXISTS idx_channel_configs_org_id ON integrations.channel_configs (organization_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_configs_unique ON integrations.channel_configs (organization_id, channel, name);
 
 -- Outbound webhooks (notify external systems)
 CREATE TABLE IF NOT EXISTS integrations.webhooks (
@@ -41,11 +42,12 @@ CREATE TABLE IF NOT EXISTS integrations.webhooks (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_webhooks_updated_at ON integrations.webhooks;
 CREATE TRIGGER trg_webhooks_updated_at
   BEFORE UPDATE ON integrations.webhooks
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_webhooks_org_id ON integrations.webhooks (organization_id);
+CREATE INDEX IF NOT EXISTS idx_webhooks_org_id ON integrations.webhooks (organization_id);
 
 -- Webhook delivery log
 CREATE TABLE IF NOT EXISTS integrations.webhook_deliveries (
@@ -62,5 +64,5 @@ CREATE TABLE IF NOT EXISTS integrations.webhook_deliveries (
   delivered_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_webhook_deliveries_webhook_id ON integrations.webhook_deliveries (webhook_id);
-CREATE INDEX idx_webhook_deliveries_delivered_at ON integrations.webhook_deliveries (delivered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_webhook_id ON integrations.webhook_deliveries (webhook_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_delivered_at ON integrations.webhook_deliveries (delivered_at DESC);

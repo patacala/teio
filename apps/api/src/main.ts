@@ -10,8 +10,11 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { registerProcessSafetyNet } from './common/process-safety';
 
 async function bootstrap() {
+  registerProcessSafetyNet();
+
   // rawBody: true buffers raw body for HMAC verification (Retell webhooks)
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['log', 'error', 'warn', 'debug'],

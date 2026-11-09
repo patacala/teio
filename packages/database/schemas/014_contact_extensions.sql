@@ -21,7 +21,14 @@ CREATE TABLE IF NOT EXISTS clients.funnel_stages (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_funnel_stages_org ON clients.funnel_stages(organization_id, "order");
+-- 018 renames "order" to position; skip once renamed (the index follows the rename).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'clients' AND table_name = 'funnel_stages' AND column_name = 'order') THEN
+    CREATE INDEX IF NOT EXISTS idx_funnel_stages_org ON clients.funnel_stages(organization_id, "order");
+  END IF;
+END $$;
 
 -- Message templates table
 CREATE TABLE IF NOT EXISTS conversations.message_templates (

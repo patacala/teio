@@ -24,16 +24,17 @@ CREATE TABLE IF NOT EXISTS conversations.conversations (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_conversations_updated_at ON conversations.conversations;
 CREATE TRIGGER trg_conversations_updated_at
   BEFORE UPDATE ON conversations.conversations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_conversations_org_id ON conversations.conversations (organization_id);
-CREATE INDEX idx_conversations_contact_id ON conversations.conversations (contact_id);
-CREATE INDEX idx_conversations_status ON conversations.conversations (organization_id, status);
-CREATE INDEX idx_conversations_channel ON conversations.conversations (organization_id, channel);
-CREATE INDEX idx_conversations_assigned ON conversations.conversations (assigned_agent_id);
-CREATE INDEX idx_conversations_last_msg ON conversations.conversations (organization_id, last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_org_id ON conversations.conversations (organization_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_contact_id ON conversations.conversations (contact_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations.conversations (organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_conversations_channel ON conversations.conversations (organization_id, channel);
+CREATE INDEX IF NOT EXISTS idx_conversations_assigned ON conversations.conversations (assigned_agent_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_msg ON conversations.conversations (organization_id, last_message_at DESC);
 
 -- Messages
 CREATE TABLE IF NOT EXISTS conversations.messages (
@@ -56,14 +57,15 @@ CREATE TABLE IF NOT EXISTS conversations.messages (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_messages_updated_at ON conversations.messages;
 CREATE TRIGGER trg_messages_updated_at
   BEFORE UPDATE ON conversations.messages
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_messages_conversation_id ON conversations.messages (conversation_id);
-CREATE INDEX idx_messages_org_id ON conversations.messages (organization_id);
-CREATE INDEX idx_messages_sent_at ON conversations.messages (conversation_id, sent_at DESC);
-CREATE INDEX idx_messages_external_id ON conversations.messages (organization_id, external_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON conversations.messages (conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_org_id ON conversations.messages (organization_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON conversations.messages (conversation_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_external_id ON conversations.messages (organization_id, external_id);
 
 -- Conversation labels
 CREATE TABLE IF NOT EXISTS conversations.labels (
@@ -75,4 +77,4 @@ CREATE TABLE IF NOT EXISTS conversations.labels (
   UNIQUE (organization_id, name)
 );
 
-CREATE INDEX idx_labels_org_id ON conversations.labels (organization_id);
+CREATE INDEX IF NOT EXISTS idx_labels_org_id ON conversations.labels (organization_id);

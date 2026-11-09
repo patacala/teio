@@ -15,12 +15,13 @@ CREATE TABLE IF NOT EXISTS core.organizations (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_organizations_updated_at ON core.organizations;
 CREATE TRIGGER trg_organizations_updated_at
   BEFORE UPDATE ON core.organizations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_organizations_slug ON core.organizations (slug);
-CREATE INDEX idx_organizations_plan ON core.organizations (plan);
+CREATE INDEX IF NOT EXISTS idx_organizations_slug ON core.organizations (slug);
+CREATE INDEX IF NOT EXISTS idx_organizations_plan ON core.organizations (plan);
 
 -- Users (linked to Supabase Auth)
 CREATE TABLE IF NOT EXISTS core.users (
@@ -39,10 +40,11 @@ CREATE TABLE IF NOT EXISTS core.users (
   UNIQUE (organization_id, email)
 );
 
+DROP TRIGGER IF EXISTS trg_users_updated_at ON core.users;
 CREATE TRIGGER trg_users_updated_at
   BEFORE UPDATE ON core.users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_users_organization_id ON core.users (organization_id);
-CREATE INDEX idx_users_email ON core.users (email);
-CREATE INDEX idx_users_role ON core.users (organization_id, role);
+CREATE INDEX IF NOT EXISTS idx_users_organization_id ON core.users (organization_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON core.users (email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON core.users (organization_id, role);

@@ -26,17 +26,23 @@ CREATE TABLE IF NOT EXISTS agents.ai_agents (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_ai_agents_updated_at ON agents.ai_agents;
 CREATE TRIGGER trg_ai_agents_updated_at
   BEFORE UPDATE ON agents.ai_agents
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_ai_agents_org_id ON agents.ai_agents (organization_id);
-CREATE INDEX idx_ai_agents_status ON agents.ai_agents (organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_ai_agents_org_id ON agents.ai_agents (organization_id);
+CREATE INDEX IF NOT EXISTS idx_ai_agents_status ON agents.ai_agents (organization_id, status);
 
 -- Add FK from conversations to ai_agents (deferred, agent table now exists)
-ALTER TABLE conversations.conversations
-  ADD CONSTRAINT fk_conversations_ai_agent
-  FOREIGN KEY (ai_agent_id) REFERENCES agents.ai_agents (id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_conversations_ai_agent') THEN
+    ALTER TABLE conversations.conversations
+      ADD CONSTRAINT fk_conversations_ai_agent
+      FOREIGN KEY (ai_agent_id) REFERENCES agents.ai_agents (id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- AI Agent conversation sessions
 CREATE TABLE IF NOT EXISTS agents.ai_sessions (
@@ -52,10 +58,11 @@ CREATE TABLE IF NOT EXISTS agents.ai_sessions (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_ai_sessions_updated_at ON agents.ai_sessions;
 CREATE TRIGGER trg_ai_sessions_updated_at
   BEFORE UPDATE ON agents.ai_sessions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_ai_sessions_org_id ON agents.ai_sessions (organization_id);
-CREATE INDEX idx_ai_sessions_conversation_id ON agents.ai_sessions (conversation_id);
-CREATE INDEX idx_ai_sessions_agent_id ON agents.ai_sessions (ai_agent_id);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_org_id ON agents.ai_sessions (organization_id);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_conversation_id ON agents.ai_sessions (conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_agent_id ON agents.ai_sessions (ai_agent_id);

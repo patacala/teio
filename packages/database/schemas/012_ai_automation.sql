@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS ai_agents.agents (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_automation_agents_org_event ON ai_agents.agents (organization_id, trigger_event) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_automation_agents_org_event ON ai_agents.agents (organization_id, trigger_event) WHERE is_active = true;
 
 -- ai_agents.agent_tools — CRM tool definitions available to agents
 CREATE TABLE IF NOT EXISTS ai_agents.agent_tools (
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS ai_agents.agent_tools (
   config_schema   JSONB NOT NULL DEFAULT '{}',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE UNIQUE INDEX idx_agent_tools_org_name ON ai_agents.agent_tools (organization_id, name);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_tools_org_name ON ai_agents.agent_tools (organization_id, name);
 
 -- ai_agents.agent_tool_executions — audit log of every tool call
 CREATE TABLE IF NOT EXISTS ai_agents.agent_tool_executions (
@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS ai_agents.agent_tool_executions (
                     CHECK (status IN ('pending','success','failed')),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_tool_executions_agent_id ON ai_agents.agent_tool_executions (agent_id, created_at DESC);
-CREATE INDEX idx_tool_executions_org_id   ON ai_agents.agent_tool_executions (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tool_executions_agent_id ON ai_agents.agent_tool_executions (agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tool_executions_org_id   ON ai_agents.agent_tool_executions (organization_id, created_at DESC);
 
 -- ai_agents.agent_logs — full trace log
 CREATE TABLE IF NOT EXISTS ai_agents.agent_logs (
@@ -56,5 +56,5 @@ CREATE TABLE IF NOT EXISTS ai_agents.agent_logs (
   payload         JSONB NOT NULL DEFAULT '{}',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_agent_logs_agent_id ON ai_agents.agent_logs (agent_id, created_at DESC);
-CREATE INDEX idx_agent_logs_org_id   ON ai_agents.agent_logs (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_agent_id ON ai_agents.agent_logs (agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_org_id   ON ai_agents.agent_logs (organization_id, created_at DESC);

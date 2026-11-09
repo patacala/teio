@@ -9,7 +9,8 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "db:check-drift": "node scripts/check-schema-drift.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1054.0",
@@ -64,6 +65,8 @@
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdf-parse": "^1.1.5",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.7.3"
   },
   "jest": {

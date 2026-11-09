@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS clients.demo_requests (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_demo_requests_updated_at ON clients.demo_requests;
 CREATE TRIGGER trg_demo_requests_updated_at
   BEFORE UPDATE ON clients.demo_requests
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

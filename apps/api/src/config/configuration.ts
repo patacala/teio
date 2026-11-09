@@ -91,6 +91,13 @@ export default () => ({
     // when WAHA runs on the same host. Falls back to BASE_URL when unset.
     webhookBaseUrl: (process.env.WAHA_WEBHOOK_BASE_URL ?? '').replace(/\/+$/, ''),
   },
+  billing: {
+    // Stripe Checkout / Billing Portal redirect back here. Computed server-side
+    // so clients can never choose where Stripe sends the user.
+    webUrl: (process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000').replace(/\/+$/, ''),
+    // How long a failed payment keeps full access before the org is blocked.
+    gracePeriodHours: parseInt(process.env.BILLING_GRACE_PERIOD_HOURS ?? '48', 10),
+  },
   aws: {
     accessKeyId:     process.env.AWS_ACCESS_KEY_ID ?? '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',

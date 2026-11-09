@@ -19,12 +19,13 @@ CREATE TABLE IF NOT EXISTS clients.companies (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_companies_updated_at ON clients.companies;
 CREATE TRIGGER trg_companies_updated_at
   BEFORE UPDATE ON clients.companies
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_companies_organization_id ON clients.companies (organization_id);
-CREATE INDEX idx_companies_name ON clients.companies USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_companies_organization_id ON clients.companies (organization_id);
+CREATE INDEX IF NOT EXISTS idx_companies_name ON clients.companies USING gin (name gin_trgm_ops);
 
 -- Contacts
 CREATE TABLE IF NOT EXISTS clients.contacts (
@@ -48,16 +49,17 @@ CREATE TABLE IF NOT EXISTS clients.contacts (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_contacts_updated_at ON clients.contacts;
 CREATE TRIGGER trg_contacts_updated_at
   BEFORE UPDATE ON clients.contacts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_contacts_organization_id ON clients.contacts (organization_id);
-CREATE INDEX idx_contacts_email ON clients.contacts (organization_id, email);
-CREATE INDEX idx_contacts_phone ON clients.contacts (organization_id, phone);
-CREATE INDEX idx_contacts_company_id ON clients.contacts (company_id);
-CREATE INDEX idx_contacts_assigned_to ON clients.contacts (assigned_to);
-CREATE INDEX idx_contacts_name ON clients.contacts USING gin (
+CREATE INDEX IF NOT EXISTS idx_contacts_organization_id ON clients.contacts (organization_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON clients.contacts (organization_id, email);
+CREATE INDEX IF NOT EXISTS idx_contacts_phone ON clients.contacts (organization_id, phone);
+CREATE INDEX IF NOT EXISTS idx_contacts_company_id ON clients.contacts (company_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_assigned_to ON clients.contacts (assigned_to);
+CREATE INDEX IF NOT EXISTS idx_contacts_name ON clients.contacts USING gin (
   (first_name || ' ' || COALESCE(last_name, '')) gin_trgm_ops
 );
-CREATE INDEX idx_contacts_tags ON clients.contacts USING gin (tags);
+CREATE INDEX IF NOT EXISTS idx_contacts_tags ON clients.contacts USING gin (tags);

@@ -1,7 +1,13 @@
 -- Migration 018: Named funnels, templates, and contact funnel history
 
 -- 1. Rename order → position in funnel_stages
-ALTER TABLE clients.funnel_stages RENAME COLUMN "order" TO position;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'clients' AND table_name = 'funnel_stages' AND column_name = 'order') THEN
+    ALTER TABLE clients.funnel_stages RENAME COLUMN "order" TO position;
+  END IF;
+END $$;
 
 -- 2. Named funnel containers
 CREATE TABLE IF NOT EXISTS clients.funnels (

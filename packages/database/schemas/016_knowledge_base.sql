@@ -4,7 +4,7 @@
 
 CREATE SCHEMA IF NOT EXISTS knowledge;
 
-CREATE TABLE knowledge.knowledge_entries (
+CREATE TABLE IF NOT EXISTS knowledge.knowledge_entries (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES core.organizations(id) ON DELETE CASCADE,
   title           TEXT NOT NULL,
@@ -16,14 +16,15 @@ CREATE TABLE knowledge.knowledge_entries (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_knowledge_entries_org      ON knowledge.knowledge_entries(organization_id);
-CREATE INDEX idx_knowledge_entries_status   ON knowledge.knowledge_entries(organization_id, status);
-CREATE INDEX idx_knowledge_entries_category ON knowledge.knowledge_entries(organization_id, category);
-CREATE INDEX idx_knowledge_entries_title_trgm
+CREATE INDEX IF NOT EXISTS idx_knowledge_entries_org      ON knowledge.knowledge_entries(organization_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_entries_status   ON knowledge.knowledge_entries(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_knowledge_entries_category ON knowledge.knowledge_entries(organization_id, category);
+CREATE INDEX IF NOT EXISTS idx_knowledge_entries_title_trgm
   ON knowledge.knowledge_entries USING GIN (title gin_trgm_ops);
-CREATE INDEX idx_knowledge_entries_content_trgm
+CREATE INDEX IF NOT EXISTS idx_knowledge_entries_content_trgm
   ON knowledge.knowledge_entries USING GIN (content gin_trgm_ops);
 
+DROP TRIGGER IF EXISTS knowledge_entries_updated_at ON knowledge.knowledge_entries;
 CREATE TRIGGER knowledge_entries_updated_at
   BEFORE UPDATE ON knowledge.knowledge_entries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

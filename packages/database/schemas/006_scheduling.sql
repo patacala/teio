@@ -17,12 +17,13 @@ CREATE TABLE IF NOT EXISTS scheduling.calendars (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_calendars_updated_at ON scheduling.calendars;
 CREATE TRIGGER trg_calendars_updated_at
   BEFORE UPDATE ON scheduling.calendars
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_calendars_org_id ON scheduling.calendars (organization_id);
-CREATE INDEX idx_calendars_owner_id ON scheduling.calendars (owner_id);
+CREATE INDEX IF NOT EXISTS idx_calendars_org_id ON scheduling.calendars (organization_id);
+CREATE INDEX IF NOT EXISTS idx_calendars_owner_id ON scheduling.calendars (owner_id);
 
 -- Appointments
 CREATE TABLE IF NOT EXISTS scheduling.appointments (
@@ -50,13 +51,14 @@ CREATE TABLE IF NOT EXISTS scheduling.appointments (
   CHECK (ends_at > starts_at)
 );
 
+DROP TRIGGER IF EXISTS trg_appointments_updated_at ON scheduling.appointments;
 CREATE TRIGGER trg_appointments_updated_at
   BEFORE UPDATE ON scheduling.appointments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_appointments_org_id ON scheduling.appointments (organization_id);
-CREATE INDEX idx_appointments_calendar_id ON scheduling.appointments (calendar_id);
-CREATE INDEX idx_appointments_contact_id ON scheduling.appointments (contact_id);
-CREATE INDEX idx_appointments_assigned_to ON scheduling.appointments (assigned_to);
-CREATE INDEX idx_appointments_starts_at ON scheduling.appointments (organization_id, starts_at);
-CREATE INDEX idx_appointments_status ON scheduling.appointments (organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_appointments_org_id ON scheduling.appointments (organization_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_calendar_id ON scheduling.appointments (calendar_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_contact_id ON scheduling.appointments (contact_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_assigned_to ON scheduling.appointments (assigned_to);
+CREATE INDEX IF NOT EXISTS idx_appointments_starts_at ON scheduling.appointments (organization_id, starts_at);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON scheduling.appointments (organization_id, status);

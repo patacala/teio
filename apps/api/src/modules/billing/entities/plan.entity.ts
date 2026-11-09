@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity({ name: 'plans', schema: 'billing' })
@@ -28,6 +29,9 @@ export class PlanEntity {
   @Column({ type: 'int', default: 0 })
   price_yearly: number;
 
+  @Column({ length: 10, default: 'usd' })
+  currency: string;
+
   @Column({ type: 'jsonb', default: {} })
   limits: Record<string, number>;
 
@@ -40,6 +44,13 @@ export class PlanEntity {
   @Column({ type: 'int', default: 0 })
   sort_order: number;
 
+  /** Free plan only: length of new demos in days; null = no end date. */
+  @Column({ type: 'int', nullable: true })
+  demo_duration_days: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at: Date;
 }

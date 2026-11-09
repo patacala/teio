@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS analytics.events_2026_05
   PARTITION OF analytics.events
   FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
 
-CREATE INDEX idx_events_org_id ON analytics.events (organization_id, occurred_at DESC);
-CREATE INDEX idx_events_type ON analytics.events (organization_id, event_type, occurred_at DESC);
-CREATE INDEX idx_events_resource ON analytics.events (resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_events_org_id ON analytics.events (organization_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_type ON analytics.events (organization_id, event_type, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_resource ON analytics.events (resource_type, resource_id);
 
 -- Conversation metrics (pre-aggregated for dashboards)
 CREATE TABLE IF NOT EXISTS analytics.conversation_metrics (
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS analytics.conversation_metrics (
   UNIQUE (organization_id, date, channel)
 );
 
-CREATE INDEX idx_conv_metrics_org_date ON analytics.conversation_metrics (organization_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_conv_metrics_org_date ON analytics.conversation_metrics (organization_id, date DESC);
 
 -- Agent performance metrics
 CREATE TABLE IF NOT EXISTS analytics.agent_metrics (
@@ -67,4 +67,4 @@ CREATE TABLE IF NOT EXISTS analytics.agent_metrics (
   UNIQUE (organization_id, user_id, date)
 );
 
-CREATE INDEX idx_agent_metrics_org_date ON analytics.agent_metrics (organization_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_metrics_org_date ON analytics.agent_metrics (organization_id, date DESC);
