@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
+  // Visual regression tests build into their own directory (see playwright.config.ts).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: ['@crm/shared'],
