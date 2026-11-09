@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { server } from './msw/server';
@@ -11,6 +11,10 @@ vi.mock('@/lib/supabase', async () => {
 });
 
 MotionGlobalConfig.skipAnimations = true;
+
+// findBy*/waitFor give up after 1s by default; debounced searches plus Radix
+// rendering in jsdom can take longer on a loaded CI machine.
+configure({ asyncUtilTimeout: 5_000 });
 
 // Browser APIs jsdom lacks that Radix (Select, Popover) and cmdk rely on.
 class ResizeObserverStub {

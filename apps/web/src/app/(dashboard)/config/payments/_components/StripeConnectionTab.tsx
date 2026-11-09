@@ -16,9 +16,10 @@ export function StripeConnectionTab() {
   const [form, setForm] = useState({ stripe_secret_key: '', stripe_webhook_secret: '', currency: 'usd' });
   const [copied, setCopied] = useState(false);
 
+  const savedCurrency = settings?.currency;
   useEffect(() => {
-    if (settings) setForm((f) => ({ ...f, currency: settings.currency }));
-  }, [settings?.currency]);
+    if (savedCurrency) setForm((f) => ({ ...f, currency: savedCurrency }));
+  }, [savedCurrency]);
 
   // Computed server-side (organization id comes from the authenticated tenant context,
   // never guessed on the frontend) — see PaymentSettingsService.getMasked().

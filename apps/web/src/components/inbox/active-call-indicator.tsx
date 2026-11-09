@@ -20,14 +20,15 @@ export function ActiveCallIndicator({ conversationId }: ActiveCallIndicatorProps
   const call = activeCalls.get(conversationId);
   const [elapsed, setElapsed] = useState(0);
 
+  const callId = call?.callId;
   useEffect(() => {
-    if (!call) {
+    if (!callId) {
       setElapsed(0);
       return;
     }
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
-  }, [call?.callId]);
+  }, [callId]);
 
   return (
     <AnimatePresence>

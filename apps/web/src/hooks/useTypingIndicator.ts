@@ -21,6 +21,7 @@ export function useTypingIndicator(conversationId: string | null) {
   useEffect(() => {
     if (!conversationId) return;
     const ch = client.getOrCreate(`conversation:${conversationId}`);
+    const activeTimers = timers.current;
 
     const clearUser = (userId: string) => {
       setTypingUsers((prev) => {
@@ -46,8 +47,8 @@ export function useTypingIndicator(conversationId: string | null) {
     });
 
     return () => {
-      timers.current.forEach(clearTimeout);
-      timers.current.clear();
+      activeTimers.forEach(clearTimeout);
+      activeTimers.clear();
     };
   }, [conversationId, client, user?.id]);
 

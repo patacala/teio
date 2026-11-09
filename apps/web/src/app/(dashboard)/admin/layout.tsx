@@ -2,13 +2,15 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { UserRole } from '@crm/shared';
 import { useCurrentUser } from '@/hooks/useTeam';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading, isError } = useCurrentUser();
   const router = useRouter();
 
-  const hasAccess = user && (user.role === 'admin' || user.is_platform_admin === true);
+  const hasAccess =
+    user && (user.role === UserRole.ADMIN || user.role === UserRole.OWNER || user.is_platform_admin === true);
 
   useEffect(() => {
     if (!isLoading && (isError || (user && !hasAccess))) {

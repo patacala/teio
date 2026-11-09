@@ -18,42 +18,45 @@ type ModalState = {
 
 type MatrixEntry = { email?: CommunicationTemplate; sms?: CommunicationTemplate };
 
+const ALL_EVENTS = [...ORG_COMMUNICATION_EVENTS, ...PLATFORM_COMMUNICATION_EVENTS] as string[];
+const EVENT_GROUPS = groupEvents(ALL_EVENTS);
+
 export function EventTemplateMatrix() {
   const { data: systemTemplates = [], refetch } = useSystemTemplates();
   const [activeModal, setActiveModal] = useState<ModalState>(null);
   const [search, setSearch] = useState('');
 
-  // Build lookup
-  const matrix: Record<string, MatrixEntry> = {};
-  for (const t of systemTemplates) {
-    if (!matrix[t.event_type]) matrix[t.event_type] = {};
-    if (t.channel_type === 'email') matrix[t.event_type].email = t;
-    if (t.channel_type === 'sms') matrix[t.event_type].sms = t;
-  }
+  const matrix = useMemo(() => {
+    const lookup: Record<string, MatrixEntry> = {};
+    for (const t of systemTemplates) {
+      if (!lookup[t.event_type]) lookup[t.event_type] = {};
+      if (t.channel_type === 'email') lookup[t.event_type].email = t;
+      if (t.channel_type === 'sms') lookup[t.event_type].sms = t;
+    }
+    return lookup;
+  }, [systemTemplates]);
 
-  const allEvents = [...ORG_COMMUNICATION_EVENTS, ...PLATFORM_COMMUNICATION_EVENTS] as string[];
-  const groups = groupEvents(allEvents);
 
   // Filter by search
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return groups;
+    if (!search.trim()) return EVENT_GROUPS;
     const q = search.toLowerCase();
-    return groups
+    return EVENT_GROUPS
       .map((g) => ({
         ...g,
         events: g.events.filter((e) => formatEventLabel(e).toLowerCase().includes(q)),
       }))
       .filter((g) => g.events.length > 0);
-  }, [groups, search]);
+  }, [search]);
 
   // Stats
   const stats = useMemo(() => {
-    const configuredEmail = allEvents.filter((e) => matrix[e]?.email).length;
-    const configuredSms = allEvents.filter((e) => matrix[e]?.sms).length;
-    const total = allEvents.length * 2;
+    const configuredEmail = ALL_EVENTS.filter((e) => matrix[e]?.email).length;
+    const configuredSms = ALL_EVENTS.filter((e) => matrix[e]?.sms).length;
+    const total = ALL_EVENTS.length * 2;
     const configured = configuredEmail + configuredSms;
-    return { total: allEvents.length, configuredEmail, configuredSms, coverage: total > 0 ? Math.round((configured / total) * 100) : 0 };
-  }, [allEvents, matrix]);
+    return { total: ALL_EVENTS.length, configuredEmail, configuredSms, coverage: total > 0 ? Math.round((configured / total) * 100) : 0 };
+  }, [matrix]);
 
   const handleChipClick = (event: string, channel: 'email' | 'sms', template?: CommunicationTemplate) => {
     setActiveModal({ channel, event, template });
@@ -127,7 +130,7 @@ export function EventTemplateMatrix() {
           onClose={() => setActiveModal(null)}
           template={activeModal.template}
           event={activeModal.event}
-          eventGroups={groups}
+          eventGroups={EVENT_GROUPS}
           onSaved={() => refetch()}
         />
       )}
@@ -138,7 +141,7 @@ export function EventTemplateMatrix() {
           onClose={() => setActiveModal(null)}
           template={activeModal.template}
           event={activeModal.event}
-          eventGroups={groups}
+          eventGroups={EVENT_GROUPS}
           onSaved={() => refetch()}
         />
       )}

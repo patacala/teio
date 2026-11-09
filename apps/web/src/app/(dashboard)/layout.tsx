@@ -2,6 +2,8 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { CommandPalette } from '@/components/command-palette';
 import { ShellProvider } from '@/components/layout/shell-context';
+import { BillingStatusBanner } from '@/components/billing/billing-status-banner';
+import { BillingGate } from '@/components/billing/billing-gate';
 
 export default function DashboardLayout({
   children,
@@ -14,7 +16,10 @@ export default function DashboardLayout({
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col gap-3 lg:gap-4">
           <Header />
-          <main className="thin-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-2">{children}</main>
+          <BillingStatusBanner />
+          <main className="thin-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-2">
+            <BillingGate>{children}</BillingGate>
+          </main>
         </div>
         <CommandPalette />
       </div>

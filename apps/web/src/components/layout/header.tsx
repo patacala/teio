@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { DemoAccountBadge } from '@/components/billing/demo-account-badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUser } from '@/hooks/useTeam';
 import { getInitials } from '@/lib/utils';
@@ -35,6 +36,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/billing': 'Billing',
   '/admin/api-keys': 'API Keys',
   '/admin/demo': 'Demo Requests',
+  // Platform
+  '/platform/demo-accounts': 'Demo Accounts',
 };
 
 const DETAIL_TITLES: Array<[RegExp, string]> = [
@@ -111,6 +114,8 @@ export function Header() {
         >
           <Search className="h-[18px] w-[18px]" />
         </button>
+
+        <DemoAccountBadge />
 
         <NotificationBell />
 

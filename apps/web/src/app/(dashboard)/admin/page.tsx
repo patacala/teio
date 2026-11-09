@@ -72,7 +72,7 @@ export default function AdminPanelPage() {
           ) : (
             <p className="text-xl font-bold text-primary">{activeMembers}</p>
           )}
-          <p className="text-[10px] text-muted mt-0.5">{members?.length ?? 0} en total</p>
+          <p className="text-[10px] text-muted mt-0.5">{members?.length ?? 0} total</p>
         </div>
 
         <div className="bg-surface border border-subtle rounded-xl p-4">

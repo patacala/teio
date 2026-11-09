@@ -44,3 +44,10 @@ export function formatRelativeTime(date: string | Date): string {
   if (days < 7) return `${days}d`;
   return d.toLocaleDateString();
 }
+
+export function formatMoney(cents: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: (currency || 'usd').toUpperCase(),
+  }).format(cents / 100);
+}

@@ -1,129 +1,246 @@
 'use client';
 
-import { CreditCard, CheckCircle, ExternalLink, TrendingUp } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { BillingRestrictionReason } from '@crm/shared';
+import type { BillingPeriod } from '@crm/shared';
 import { Button } from '@/components/ui/button';
-import { useBillingSubscription, useCreatePortalSession } from '@/hooks/useBilling';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  useBillingPlans,
+  useBillingSubscription,
+  useCancelSubscription,
+  useChangePlan,
+  useConnectPaymentMethod,
+  useCreatePortalSession,
+  useResumeSubscription,
+  useStartCheckout,
+} from '@/hooks/useBilling';
 import { toast } from '@/hooks/useToast';
+import { BillingAlert } from './_components/BillingAlert';
+import { CurrentPlanCard } from './_components/CurrentPlanCard';
+import { PaymentMethodCard } from './_components/PaymentMethodCard';
+import { PlanPicker } from './_components/PlanPicker';
+import { UsageCard } from './_components/UsageCard';
+import { InvoicesCard } from './_components/InvoicesCard';
 
-function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
-  const pct = limit === -1 ? 0 : Math.min(100, Math.round((used / limit) * 100));
-  const isUnlimited = limit === -1;
+const RETURN_POLL_MS = 3_000;
+const RETURN_POLL_WINDOW_MS = 30_000;
+
+const RETURN_MESSAGES: Record<string, { title: string; description?: string; variant: 'default' | 'info' }> = {
+  'checkout=success': {
+    title: 'Payment received',
+    description: 'Your subscription will update in a few seconds.',
+    variant: 'default',
+  },
+  'checkout=canceled': { title: 'Checkout canceled. No charge was made.', variant: 'info' },
+  'payment_method=success': {
+    title: 'Payment method saved',
+    description: 'It will be used for your next invoices.',
+    variant: 'default',
+  },
+  'payment_method=canceled': { title: 'Payment method was not changed.', variant: 'info' },
+};
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+function BillingPageSkeleton() {
   return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-xs">
-        <span className="text-secondary font-medium">{label}</span>
-        <span className="text-muted">
-          {used.toLocaleString()} / {isUnlimited ? '∞' : limit.toLocaleString()}
-        </span>
+    <div className="space-y-4" aria-busy="true">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Skeleton className="h-56" />
+        <Skeleton className="h-56" />
       </div>
-      {!isUnlimited && (
-        <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-danger' : pct >= 70 ? 'bg-warning' : 'bg-accent'}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+      <Skeleton className="h-80" />
+    </div>
+  );
+}
+
+function useStripeReturn(): boolean {
+  const params = useSearchParams();
+  const router = useRouter();
+  const handledKey = useRef<string | null>(null);
+  const [pollUntil, setPollUntil] = useState<number | null>(null);
+
+  const key = ['checkout', 'payment_method']
+    .map((k) => (params.get(k) ? `${k}=${params.get(k)}` : null))
+    .find(Boolean);
+
+  useEffect(() => {
+    if (!key || handledKey.current === key) return;
+    handledKey.current = key;
+    const message = RETURN_MESSAGES[key];
+    if (message) toast(message);
+    if (key.endsWith('=success')) setPollUntil(Date.now() + RETURN_POLL_WINDOW_MS);
+    router.replace('/admin/billing');
+  }, [key, router]);
+
+  useEffect(() => {
+    if (pollUntil === null) return;
+    const timer = setTimeout(() => setPollUntil(null), Math.max(0, pollUntil - Date.now()));
+    return () => clearTimeout(timer);
+  }, [pollUntil]);
+
+  return pollUntil !== null;
+}
+
+function BillingPageContent() {
+  const awaitingWebhook = useStripeReturn();
+  const overview = useBillingSubscription(awaitingWebhook ? RETURN_POLL_MS : false);
+  const plans = useBillingPlans();
+  const startCheckout = useStartCheckout();
+  const changePlan = useChangePlan();
+  const connectPaymentMethod = useConnectPaymentMethod();
+  const portal = useCreatePortalSession();
+  const cancel = useCancelSubscription();
+  const resume = useResumeSubscription();
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+
+  const redirectBusy = connectPaymentMethod.isPending || portal.isPending || startCheckout.isPending;
+
+  const handleSubscribe = (planId: string, period: BillingPeriod) => {
+    setPendingPlanId(planId);
+    startCheckout.mutate(
+      { plan_id: planId, period },
+      {
+        onError: (err) => {
+          setPendingPlanId(null);
+          toast({ title: 'Could not start checkout', description: errorMessage(err, 'Try again later.'), variant: 'error' });
+        },
+      },
+    );
+  };
+
+  const handleChangePlan = async (planId: string, period: BillingPeriod) => {
+    setPendingPlanId(planId);
+    try {
+      await changePlan.mutateAsync({ plan_id: planId, period });
+      toast({ title: 'Plan updated' });
+    } catch (err) {
+      toast({ title: 'Could not change the plan', description: errorMessage(err, 'Try again later.'), variant: 'error' });
+    } finally {
+      setPendingPlanId(null);
+    }
+  };
+
+  const handleConnectPaymentMethod = () =>
+    connectPaymentMethod.mutate(undefined, {
+      onError: (err) =>
+        toast({ title: 'Could not open the payment form', description: errorMessage(err, 'Try again later.'), variant: 'error' }),
+    });
+
+  const handleOpenPortal = () =>
+    portal.mutate(undefined, {
+      onError: (err) =>
+        toast({ title: 'Could not open the billing portal', description: errorMessage(err, 'Try again later.'), variant: 'error' }),
+    });
+
+  const handleCancel = async () => {
+    try {
+      await cancel.mutateAsync();
+      toast({ title: 'Subscription will cancel at the end of the period' });
+    } catch (err) {
+      toast({ title: 'Could not cancel the subscription', description: errorMessage(err, 'Try again later.'), variant: 'error' });
+    }
+  };
+
+  const handleResume = async () => {
+    try {
+      await resume.mutateAsync();
+      toast({ title: 'Subscription resumed' });
+    } catch (err) {
+      toast({ title: 'Could not resume the subscription', description: errorMessage(err, 'Try again later.'), variant: 'error' });
+    }
+  };
+
+  if (overview.isLoading) return <BillingPageSkeleton />;
+
+  if (overview.isError || !overview.data) {
+    return (
+      <div className="panel-card flex flex-col items-center gap-3 p-10 text-center">
+        <p className="text-sm font-medium text-primary">Could not load billing information.</p>
+        <p className="text-xs text-muted">{errorMessage(overview.error, 'Please try again.')}</p>
+        <Button size="sm" variant="secondary" onClick={() => overview.refetch()}>Try again</Button>
+      </div>
+    );
+  }
+
+  const { subscription, access, usage, limits, has_live_subscription } = overview.data;
+  const paymentMethodRequired = access.reasons.some(
+    (r) => r === BillingRestrictionReason.PAYMENT_METHOD_MISSING || r === BillingRestrictionReason.PAYMENT_METHOD_EXPIRED,
+  );
+
+  return (
+    <div className="space-y-4">
+      {awaitingWebhook && (
+        <p className="text-xs text-muted" aria-live="polite">Syncing with Stripe…</p>
       )}
+
+      <BillingAlert
+        access={access}
+        onConnectPaymentMethod={handleConnectPaymentMethod}
+        onOpenPortal={handleOpenPortal}
+        onChoosePlan={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
+        busy={redirectBusy}
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <CurrentPlanCard
+          subscription={subscription}
+          access={access}
+          hasLiveSubscription={has_live_subscription}
+          onCancel={handleCancel}
+          onResume={handleResume}
+          cancelPending={cancel.isPending}
+          resumePending={resume.isPending}
+        />
+        <PaymentMethodCard
+          paymentMethod={subscription.payment_method}
+          required={paymentMethodRequired}
+          hasCustomer={!!subscription.stripe_customer_id}
+          onConnect={handleConnectPaymentMethod}
+          onOpenPortal={handleOpenPortal}
+          connectPending={connectPaymentMethod.isPending}
+          portalPending={portal.isPending}
+        />
+      </div>
+
+      <PlanPicker
+        plans={plans.data}
+        isLoading={plans.isLoading}
+        isError={plans.isError}
+        onRetry={() => plans.refetch()}
+        subscription={subscription}
+        hasLiveSubscription={has_live_subscription}
+        onSubscribe={handleSubscribe}
+        onChangePlan={handleChangePlan}
+        pendingPlanId={pendingPlanId}
+        demoEnded={access.reasons.includes(BillingRestrictionReason.DEMO_EXPIRED)}
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <UsageCard usage={usage} limits={limits} customLimits={access.has_custom_limits} />
+        <InvoicesCard />
+      </div>
     </div>
   );
 }
 
 export default function AdminBillingPage() {
-  const { data: billing, isLoading } = useBillingSubscription();
-  const createPortal = useCreatePortalSession();
-
-  const handleManage = async () => {
-    try {
-      const { url } = await createPortal.mutateAsync(window.location.href);
-      window.location.href = url;
-    } catch {
-      toast({ title: 'Error opening the billing portal', variant: 'error' });
-    }
-  };
-
-  const sub = billing?.subscription;
-  const usage = billing?.usage;
-  const limits = billing?.limits;
-
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-primary">Billing</h1>
-          <p className="text-xs text-secondary mt-0.5">Plan and platform usage.</p>
-        </div>
-        <Button
-          size="sm"
-          onClick={handleManage}
-          disabled={createPortal.isPending}
-          className="gap-1.5 bg-accent hover:bg-accent-hover text-on-accent"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          {createPortal.isPending ? 'Opening…' : 'Billing portal'}
-        </Button>
+    <div className="max-w-5xl space-y-5">
+      <div>
+        <h1 className="text-lg font-semibold text-primary">Billing</h1>
+        <p className="mt-0.5 text-xs text-secondary">
+          Your CRM subscription, payment method and invoices. Payments you collect from your own customers are managed in
+          Settings → Payments.
+        </p>
       </div>
-
-      {/* Subscription card */}
-      <div className="bg-surface border border-subtle rounded-xl p-5 space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-olive-dark flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              {isLoading ? (
-                <div className="space-y-1">
-                  <div className="h-5 w-24 bg-surface-raised rounded-sm animate-pulse" />
-                  <div className="h-3 w-16 bg-surface-raised rounded-sm animate-pulse" />
-                </div>
-              ) : (
-                <>
-                  <p className="font-semibold text-primary capitalize">{sub?.plan?.name ?? '—'}</p>
-                  <p className="text-xs text-muted capitalize">{sub?.billing_period ?? '—'} · {sub?.status ?? '—'}</p>
-                </>
-              )}
-            </div>
-          </div>
-          {sub?.status === 'active' && (
-            <span className="flex items-center gap-1 text-xs text-accent bg-olive-dark px-2 py-0.5 rounded-full">
-              <CheckCircle className="h-3 w-3" /> Active
-            </span>
-          )}
-        </div>
-
-        {sub?.plan?.features && sub.plan.features.length > 0 && (
-          <div className="grid grid-cols-2 gap-1.5 pt-1">
-            {sub.plan.features.map((f) => (
-              <div key={f} className="flex items-center gap-1.5 text-xs text-secondary">
-                <CheckCircle className="h-3 w-3 text-accent/75 shrink-0" />
-                {f}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Usage card */}
-      {(usage || isLoading) && (
-        <div className="bg-surface border border-subtle rounded-xl p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-accent" />
-            <h2 className="text-sm font-semibold text-primary">Usage this month</h2>
-          </div>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-surface-raised rounded-sm animate-pulse" />)}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <UsageBar used={usage?.conversations ?? 0} limit={limits?.conversations ?? -1} label="Conversations" />
-              <UsageBar used={usage?.messages ?? 0} limit={limits?.messages ?? -1} label="Messages" />
-              <UsageBar used={usage?.ai_calls ?? 0} limit={limits?.ai_calls ?? -1} label="AI calls" />
-              <UsageBar used={usage?.voice_minutes ?? 0} limit={limits?.voice_minutes ?? -1} label="Voice minutes" />
-            </div>
-          )}
-        </div>
-      )}
+      <Suspense fallback={<BillingPageSkeleton />}>
+        <BillingPageContent />
+      </Suspense>
     </div>
   );
 }

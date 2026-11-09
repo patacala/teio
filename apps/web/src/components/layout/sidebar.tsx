@@ -39,6 +39,7 @@ import {
   Mail,
   Filter,
   ArrowLeft,
+  Gauge,
 } from 'lucide-react';
 
 const MAIN_ITEMS: SidebarNavItem[] = [
@@ -54,6 +55,7 @@ const PLATFORM_SIDEBAR_ITEMS: SidebarNavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, exact: true },
   { label: 'Communications', href: '/config/communications', icon: Mail },
   { label: 'Demos', href: '/admin/demo', icon: MonitorPlay },
+  { label: 'Demo accounts', href: '/platform/demo-accounts', icon: Gauge },
 ];
 
 type OverlayView = null | 'settings' | 'admin';
