@@ -330,7 +330,9 @@ export class PaymentsService {
         payload: paymentPayload,
       },
       { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-    );
+    ).catch((err: Error) =>
+        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
+      );
   }
 
   private async validateAndNormalizeBooking(
@@ -479,6 +481,8 @@ export class PaymentsService {
         payload: expiredPayload,
       },
       { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-    );
+    ).catch((err: Error) =>
+        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
+      );
   }
 }

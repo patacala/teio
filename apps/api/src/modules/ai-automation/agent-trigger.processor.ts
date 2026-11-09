@@ -7,6 +7,8 @@ import { ClientManagementService } from '../client-management/client-management.
 import { PaymentServiceService } from '../payments/payment-service.service';
 import { PaymentSettingsService } from '../payments/payment-settings.service';
 import { AGENT_TRIGGER_QUEUE } from './ai-automation.constants';
+import { BillingAccessService } from '../billing/billing-access.service';
+import { UsageTrackingService } from '../billing/usage-tracking.service';
 import type { AgentTriggerJobData } from '@crm/shared';
 
 export const AGENT_TRIGGER_QUEUE_NAME = 'agent_trigger';
@@ -29,6 +31,8 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly paymentServiceService: PaymentServiceService,
     @Optional() private readonly paymentSettingsService: PaymentSettingsService,
     @Inject(AGENT_TRIGGER_QUEUE) private readonly _queue: unknown, // ensure queue provider is initialized
+    @Optional() private readonly billingAccess?: BillingAccessService,
+    @Optional() private readonly usageTracking?: UsageTrackingService,
   ) {}
 
   onModuleInit() {
@@ -59,6 +63,11 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
 
     this.logger.debug(`Processing agent trigger: ${event_type} for org ${organization_id}`);
 
+    if (this.billingAccess && !(await this.billingAccess.isOperational(organization_id))) {
+      this.logger.log(`Skipping agent trigger '${event_type}': org ${organization_id} billing is restricted`);
+      return;
+    }
+
     let agents = await this.agentTriggerService.findAgentsForEvent(organization_id, event_type);
 
     if (agents.length === 0 && PAYMENT_EVENTS.has(event_type)) {
@@ -74,6 +83,22 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
     }
 
     for (const agent of agents) {
+      if (this.billingAccess) {
+        const check = await this.billingAccess.checkLimit(organization_id, 'ai_calls');
+        if (!check.allowed) {
+          this.logger.log(`Skipping agent ${agent.id}: org ${organization_id} reached its AI call limit (${check.limit})`);
+          await this.agentTriggerService
+            .log(organization_id, agent.id, conversation_id ?? null, 'usage_limit_reached', {
+              event_type,
+              metric: 'ai_calls',
+              limit: check.limit,
+              current: check.current,
+            })
+            .catch(() => {/* ignore log errors */});
+          continue;
+        }
+      }
+
       try {
         // Log trigger
         await this.agentTriggerService.log(
@@ -170,6 +195,10 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
         if (!response.ok) {
           throw new Error(`workflow endpoint responded with ${response.status}: ${await response.text()}`);
         }
+
+        void this.usageTracking?.increment(organization_id, 'ai_calls').catch((err: Error) =>
+          this.logger.warn(`Could not count ai_calls for org ${organization_id}: ${err.message}`),
+        );
 
         await this.agentTriggerService.log(
           organization_id,

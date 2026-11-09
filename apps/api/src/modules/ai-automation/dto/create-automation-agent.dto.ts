@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsUrl } from 'class-validator';
+import { StrictBoolean } from '../../../common/decorators/strict-boolean.decorator';
 
 export class CreateAutomationAgentDto {
   @IsString()
@@ -21,7 +22,7 @@ export class CreateAutomationAgentDto {
   auth_header_value?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 }
 
@@ -48,7 +49,7 @@ export class UpdateAutomationAgentDto {
   auth_header_value?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 }
 

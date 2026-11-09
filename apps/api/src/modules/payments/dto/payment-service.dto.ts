@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
+import { StrictBoolean } from '../../../common/decorators/strict-boolean.decorator';
 
 export class CreatePaymentServiceDto {
   @IsString()
@@ -15,7 +16,7 @@ export class CreatePaymentServiceDto {
   amount: number;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 }
 
@@ -35,6 +36,6 @@ export class UpdatePaymentServiceDto {
   amount?: number;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 }

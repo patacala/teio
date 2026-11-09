@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { OrganizationsService, CreateOrganizationDto, UpdateOrganizationDto } from './organizations.service';
+import { OrganizationsService } from './organizations.service';
+import { CreateOrganizationDto, UpdateOrganizationDto, UpdateSequenceSettingsDto } from './dto/organization.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
+import { SkipBillingCheck } from '../billing/billing-access.decorators';
 import { UpdateBrandingDto } from './dto/update-branding.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateProsalesIntegrationDto } from './dto/update-prosales-integration.dto';
@@ -21,6 +23,7 @@ export class OrganizationsController {
   }
 
   @Get('me')
+  @SkipBillingCheck()
   async getMyOrganization(@CurrentTenant() tenant: TenantContext) {
     const org = await this.service.findById(tenant.organization_id);
     // settings.prosales.api_key is a secret used server-side only (ai-agents
@@ -62,18 +65,20 @@ export class OrganizationsController {
   @Patch('me/sequences')
   updateSequenceSettings(
     @CurrentTenant() tenant: TenantContext,
-    @Body() dto: { enabled: boolean },
+    @Body() dto: UpdateSequenceSettingsDto,
   ) {
     return this.service.updateSequenceSettings(tenant.organization_id, dto.enabled);
   }
 
   @Post()
+  @PlatformAdmin()
   create(@Body() dto: CreateOrganizationDto) {
     return this.service.create(dto);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateOrganizationDto) {
+  @PlatformAdmin()
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateOrganizationDto) {
     return this.service.update(id, dto);
   }
 }

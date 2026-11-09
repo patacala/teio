@@ -3,7 +3,9 @@ import {
   NotFoundException, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { PlanFeature } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
+import { RequiresPlanFeature } from '../billing/billing-access.decorators';
 import { AutomatedAppointmentService } from './automated-appointment.service';
 import { AutomationSequenceService } from './automation-sequence.service';
 import type { CreateAutomatedAppointmentInput, CreateSequenceInput } from '@crm/shared';
@@ -18,6 +20,7 @@ export class AutomationEngineController {
   // ── Sequences (BEFORE follow-ups/:id to avoid route conflicts) ──
 
   @Post('sequences')
+  @RequiresPlanFeature(PlanFeature.AUTOMATION)
   async createSequence(@CurrentTenant() tenant: TenantContext, @Body() body: CreateSequenceInput) {
     return this.sequenceService.create(tenant.organization_id, body);
   }

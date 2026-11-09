@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
 import type { Redis } from 'ioredis';
 import { ChannelType } from '@crm/shared';
 import { ChannelEntity } from './channel.entity';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { WahaService } from '../../infrastructure/waha/waha.service';
+import { StrictBoolean } from '../../common/decorators/strict-boolean.decorator';
 
 const CHANNEL_CACHE_TTL = 300; // seconds
 const SENSITIVE_KEYS = ['api_key', 'password', 'access_token', 'api_secret', 'auth_token', 'hmac_secret'];
@@ -29,7 +30,7 @@ export class UpdateChannelDto {
   @IsOptional() @IsObject()
   config?: Record<string, unknown>;
 
-  @IsOptional() @IsBoolean()
+  @IsOptional() @StrictBoolean()
   is_active?: boolean;
 
   @IsOptional() @IsString()

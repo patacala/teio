@@ -563,6 +563,8 @@ export class ConversationManagementService {
           payload: { message: dto.content, channel: channelEntity.type },
         },
         { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+      ).catch((err: Error) =>
+        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
       );
     }
 

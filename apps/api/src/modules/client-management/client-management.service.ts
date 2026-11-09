@@ -840,7 +840,7 @@ export class ClientManagementService {
 
     // INSERT ... ON CONFLICT using the unique index on (org_id, normalized_phone)
     // If a conflict occurs, DO NOTHING and return the existing row
-    const result = await this.contactRepo.manager.query(
+    const result: ContactEntity[] = await this.contactRepo.manager.query(
       `
       INSERT INTO clients.contacts (
         organization_id,

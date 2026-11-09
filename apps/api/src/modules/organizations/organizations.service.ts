@@ -3,19 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrganizationEntity } from './organization.entity';
 import { SchedulingService } from '../scheduling/scheduling.service';
-
-export interface CreateOrganizationDto {
-  name: string;
-  slug: string;
-  plan?: string;
-  settings?: Record<string, unknown>;
-}
-
-export interface UpdateOrganizationDto {
-  name?: string;
-  settings?: Record<string, unknown>;
-  is_active?: boolean;
-}
+import { BillingAccessService } from '../billing/billing-access.service';
+import { SubscriptionService } from '../billing/subscription.service';
+import type { CreateOrganizationDto, UpdateOrganizationDto } from './dto/organization.dto';
 
 @Injectable()
 export class OrganizationsService {
@@ -23,6 +13,8 @@ export class OrganizationsService {
     @InjectRepository(OrganizationEntity)
     private readonly repo: Repository<OrganizationEntity>,
     @Optional() private readonly schedulingService?: SchedulingService,
+    @Optional() private readonly billingAccess?: BillingAccessService,
+    @Optional() private readonly subscriptions?: SubscriptionService,
   ) {}
 
   async findAll(): Promise<OrganizationEntity[]> {
@@ -48,21 +40,28 @@ export class OrganizationsService {
     const org = this.repo.create({
       name: dto.name,
       slug: dto.slug,
-      plan: dto.plan ?? 'free',
+      plan: 'free',
       settings: dto.settings ?? {},
     });
     const saved = await this.repo.save(org);
 
     // Eager-seed default calendars for the new org
     await this.schedulingService?.seedDefaultCalendars(saved.id).catch(() => {});
+    // Start the demo now so its end date is fixed from the day of signup.
+    await this.subscriptions?.getOrCreateForOrg(saved.id).catch(() => {});
 
     return saved;
   }
 
   async update(id: string, dto: UpdateOrganizationDto): Promise<OrganizationEntity> {
     const org = await this.findById(id);
-    Object.assign(org, dto);
-    return this.repo.save(org);
+    if (dto.name !== undefined) org.name = dto.name;
+    if (dto.settings !== undefined) org.settings = dto.settings;
+    const activeChanged = dto.is_active !== undefined && dto.is_active !== org.is_active;
+    if (dto.is_active !== undefined) org.is_active = dto.is_active;
+    const saved = await this.repo.save(org);
+    if (activeChanged) await this.billingAccess?.invalidate(id);
+    return saved;
   }
 
   async updateBranding(orgId: string, branding: Record<string, unknown>): Promise<OrganizationEntity> {

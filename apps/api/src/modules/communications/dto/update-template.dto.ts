@@ -1,4 +1,5 @@
-import { IsString, IsBoolean, IsOptional, IsInt, MaxLength, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsInt, MaxLength, IsUUID } from 'class-validator';
+import { StrictBoolean } from '../../../common/decorators/strict-boolean.decorator';
 
 export class UpdateTemplateDto {
   @IsOptional()
@@ -40,7 +41,7 @@ export class UpdateTemplateDto {
   from_override?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 
   @IsOptional()

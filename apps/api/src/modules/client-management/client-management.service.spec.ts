@@ -56,6 +56,14 @@ describe('ClientManagementService - findOrCreateByChannel', () => {
       },
     } as any;
 
+    // resolveDefaultStage(): org has no funnel stages → new contacts get no stage
+    const stageQuery: Record<string, jest.Mock> = {};
+    for (const m of ['innerJoin', 'where', 'orderBy', 'addOrderBy', 'select', 'limit']) {
+      stageQuery[m] = jest.fn(() => stageQuery);
+    }
+    stageQuery.getRawOne = jest.fn().mockResolvedValue(undefined);
+    const mockStageRepo = { createQueryBuilder: jest.fn(() => stageQuery) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ClientManagementService,
@@ -110,7 +118,7 @@ describe('ClientManagementService - findOrCreateByChannel', () => {
         },
         {
           provide: getRepositoryToken(FunnelStageEntity),
-          useValue: {},
+          useValue: mockStageRepo,
         },
         {
           provide: getRepositoryToken(FunnelEntity),

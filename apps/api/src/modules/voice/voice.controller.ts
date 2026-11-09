@@ -15,7 +15,9 @@ import { TranscriptService } from './transcript.service';
 import { ProsalesClientService } from '../ai-agents/prosales-client.service';
 import { ClientManagementService } from '../client-management/client-management.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { PlanFeature } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
+import { CheckPlanLimit, RequiresPlanFeature } from '../billing/billing-access.decorators';
 
 class RespondDto {
   @IsString()
@@ -58,6 +60,8 @@ export class VoiceController {
   // POST /voice/calls — start an outbound Retell call through ProSales. ProSales
   // pulls this org's Retell credentials per-call and never stores them.
   @Post('calls')
+  @RequiresPlanFeature(PlanFeature.VOICE_CALLS)
+  @CheckPlanLimit('voice_minutes')
   async startCall(@Body() dto: StartCallDto, @CurrentTenant() tenant: TenantContext) {
     let toNumber = dto.to_number;
     if (!toNumber && dto.contact_id) {

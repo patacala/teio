@@ -16,6 +16,7 @@ import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
+import { UsageTrackingService } from '../billing/usage-tracking.service';
 import type { RetellWebhookDto } from './retell-webhook.dto';
 import type { CallCompletedEvent } from '@crm/shared';
 
@@ -42,6 +43,7 @@ export class CallsService {
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
     @Optional() @Inject(AGENT_TRIGGER_QUEUE) private readonly agentQueue?: Queue,
     @Optional() private readonly configService?: ConfigService,
+    @Optional() private readonly usageTracking?: UsageTrackingService,
     @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
   ) {}
 
@@ -189,6 +191,8 @@ export class CallsService {
           },
         },
         { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+      ).catch((err: Error) =>
+        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
       );
     }
 
@@ -354,11 +358,21 @@ export class CallsService {
     call.conversation_id = conversationId;
 
     const saved = await this.callRepo.save(call);
+    this.meterVoiceMinutes(saved);
 
     // Cache the internal ID for fast dedup
     await this.redis.setex(cacheKey, CALL_EXT_CACHE_TTL, saved.id);
 
     return saved;
+  }
+
+  /** Bills a completed call once, rounded up to whole minutes. */
+  private meterVoiceMinutes(call: CallEntity): void {
+    if (!this.usageTracking || call.status !== 'completed' || !call.duration_seconds) return;
+    const minutes = Math.ceil(call.duration_seconds / 60);
+    void this.usageTracking
+      .incrementOnce(call.organization_id, 'voice_minutes', minutes, `call:${call.id}`)
+      .catch((err: Error) => this.logger.warn(`Could not count voice minutes for call ${call.id}: ${err.message}`));
   }
 
   /**

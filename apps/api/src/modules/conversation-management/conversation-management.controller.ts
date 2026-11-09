@@ -9,6 +9,7 @@ import {
 } from './conversation-management.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext, PaginationQuery } from '@crm/shared';
+import { CheckPlanLimit } from '../billing/billing-access.decorators';
 
 @ApiTags('conversations')
 @ApiBearerAuth()
@@ -35,11 +36,13 @@ export class ConversationManagementController {
   }
 
   @Post()
+  @CheckPlanLimit('conversations')
   create(@Body() dto: CreateConversationDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.create(tenant.organization_id, dto);
   }
 
   @Post(':id/messages')
+  @CheckPlanLimit('messages')
   sendMessage(
     @Param('id') id: string,
     @Body() dto: SendMessageDto,

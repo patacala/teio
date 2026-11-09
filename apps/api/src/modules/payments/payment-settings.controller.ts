@@ -3,7 +3,9 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagg
 import { PaymentSettingsService } from './payment-settings.service';
 import { UpdatePaymentSettingsDto } from './dto/payment-settings.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { UserRole } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('payments')
 @ApiBearerAuth()
@@ -19,6 +21,7 @@ export class PaymentSettingsController {
   }
 
   @Patch()
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
   @ApiOperation({ summary: "Update the organization's Stripe secret key / webhook secret / currency" })
   @ApiResponse({ status: 200, description: 'Updated masked payment settings' })
   update(@CurrentTenant() tenant: TenantContext, @Body() dto: UpdatePaymentSettingsDto) {

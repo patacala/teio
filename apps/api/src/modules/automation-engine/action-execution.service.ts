@@ -15,8 +15,16 @@ import { SendEmailHandler } from './handlers/send-email.handler';
 import { NotifyAgentHandler } from './handlers/notify-agent.handler';
 import { CreateTaskHandler } from './handlers/create-task.handler';
 import { CallHandler } from './handlers/call.handler';
+import { BillingAccessService } from '../billing/billing-access.service';
 
 const CHANNEL_REQUIRED_ACTIONS = new Set(['send_message']);
+
+/** Automated actions that consume a metered, limited resource. */
+const METERED_ACTIONS: Record<string, 'messages' | 'voice_minutes'> = {
+  send_message: 'messages',
+  send_email: 'messages',
+  call: 'voice_minutes',
+};
 
 @Injectable()
 export class ActionExecutionService {
@@ -38,6 +46,7 @@ export class ActionExecutionService {
     @Optional() private readonly notifyAgentHandler?: NotifyAgentHandler,
     @Optional() private readonly createTaskHandler?: CreateTaskHandler,
     @Optional() private readonly callHandler?: CallHandler,
+    @Optional() private readonly billingAccess?: BillingAccessService,
   ) {
     const handlers: IActionHandler[] = [
       this.sendMessageHandler,
@@ -79,6 +88,20 @@ export class ActionExecutionService {
     if (!org) {
       await this.failStep(appt, 'Organization not found');
       return;
+    }
+
+    if (this.billingAccess && !(await this.billingAccess.isOperational(appt.organization_id))) {
+      await this.failStep(appt, 'Organization billing is restricted');
+      return;
+    }
+
+    const meteredMetric = METERED_ACTIONS[appt.action];
+    if (this.billingAccess && meteredMetric) {
+      const check = await this.billingAccess.checkLimit(appt.organization_id, meteredMetric);
+      if (!check.allowed) {
+        await this.failStep(appt, `Monthly ${meteredMetric.replace('_', ' ')} limit reached (${check.limit})`);
+        return;
+      }
     }
 
     let resolved = null;

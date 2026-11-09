@@ -8,7 +8,9 @@ import {
   UpdateCaptureFieldDto,
 } from './ai-agents.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { PlanFeature } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
+import { RequiresPlanFeature } from '../billing/billing-access.decorators';
 
 @ApiTags('ai-agents')
 @ApiBearerAuth()
@@ -21,6 +23,7 @@ export class AIAgentsController {
   // otherwise Express/Nest would match "config" as an :id. ---
 
   @Post('config/provision')
+  @RequiresPlanFeature(PlanFeature.AI_RESPONSES)
   provisionAgent(
     @CurrentTenant() tenant: TenantContext,
     @Body() body: { agent_type?: string },

@@ -8,6 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CheckPlanLimit, SkipBillingCheck } from '../billing/billing-access.decorators';
 import { UserRole } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
 
@@ -18,6 +19,7 @@ export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   @Get('me')
+  @SkipBillingCheck()
   getMe(@Req() req: Request, @CurrentTenant() tenant: TenantContext) {
     // Platform admins may be impersonating another org, so look up by ID only
     if (req.user?.is_platform_admin) {
@@ -44,12 +46,14 @@ export class UsersController {
 
   @Post('invite')
   @Roles(UserRole.ADMIN)
+  @CheckPlanLimit('agents')
   invite(@Body() dto: InviteUserDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.invite(tenant.organization_id, tenant.user_id, dto);
   }
 
   @Post()
   @Roles(UserRole.ADMIN)
+  @CheckPlanLimit('agents')
   create(@Body() dto: CreateUserDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.create(tenant.organization_id, dto);
   }

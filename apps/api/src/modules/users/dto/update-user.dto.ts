@@ -1,5 +1,6 @@
-import { IsBoolean, IsIn, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ASSIGNABLE_USER_ROLES, UserRole } from '@crm/shared';
+import { StrictBoolean } from '../../../common/decorators/strict-boolean.decorator';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -17,7 +18,7 @@ export class UpdateUserDto {
   avatar_url?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @StrictBoolean()
   is_active?: boolean;
 
   @IsOptional()
