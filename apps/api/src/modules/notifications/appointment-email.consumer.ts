@@ -1,17 +1,21 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Logger, Optional } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailService } from '../../infrastructure/mail/mail.service';
 import type { MailAttachment } from '../../infrastructure/mail/mail.service';
+import { SmsService } from '../../infrastructure/sms/sms.service';
+import { ProcessedEventsService } from '../../infrastructure/outbox/processed-events.service';
 import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
 import { ContactEntity } from '../client-management/contact.entity';
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { UserEntity } from '../users/user.entity';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { CommunicationEventType } from '@crm/shared';
+import { buildIcs } from './ics';
 
-interface AppointmentCreatedPayload {
+interface AppointmentPayload {
+  event_id?: string;
   organization_id: string;
   appointment_id: string;
   contact_id: string;
@@ -24,29 +28,42 @@ interface AppointmentCreatedPayload {
   created_by?: string;
   description?: string;
   origin?: string;
+  /** Only on events published before follow-up steps left the appointments table. */
+  action?: string | null;
+  status?: string;
+  sequence?: number;
+  manage_url?: string | null;
+  manage_url_sms?: string | null;
 }
+
+interface ConfirmationRequestPayload extends AppointmentPayload {
+  confirm_url: string;
+  confirm_url_sms: string;
+  reminder?: boolean;
+  rescheduled?: boolean;
+}
+
+interface ReminderPayload extends AppointmentPayload {
+  reminder_id: string;
+  offset_minutes: number;
+  confirm_url?: string | null;
+  confirm_url_sms?: string | null;
+}
+
+type Contact = ContactEntity;
+
+/** Follow-up steps never produce customer-facing appointment messages. */
+function isFollowUpStep(data: AppointmentPayload): boolean {
+  return data.origin === 'automation' || !!data.action;
+}
+
+const CONSUMER = 'appointment-email';
 
 /**
- * Convert a UTC ISO string to a local ICS datetime string (YYYYMMDDTHHMMSS)
- * in the given IANA timezone, using native Intl.DateTimeFormat.
+ * Everything the contact hears about a booking: the request to confirm, the
+ * confirmation (with the calendar invite), changes, cancellations and
+ * reminders. Each event is handled once even if delivered twice.
  */
-function convertUtcToTimezone(isoUtc: string, timezone: string): string {
-  const d = new Date(isoUtc);
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).formatToParts(d);
-
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
-  return `${get('year')}${get('month')}${get('day')}T${get('hour')}${get('minute')}${get('second')}`;
-}
-
 @Controller()
 export class AppointmentEmailConsumer {
   private readonly logger = new Logger(AppointmentEmailConsumer.name);
@@ -60,384 +77,378 @@ export class AppointmentEmailConsumer {
     private readonly orgRepo: Repository<OrganizationEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    private readonly smsService: SmsService,
+    @Optional() private readonly processed?: ProcessedEventsService,
   ) {}
 
+  /** Asks the contact to confirm: email with a button, the link by SMS, or SMS only when there is no email. */
+  @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_CONFIRMATION_REQUESTED)
+  async handleConfirmationRequested(@Payload() data: ConfirmationRequestPayload): Promise<void> {
+    if (isFollowUpStep(data) || !(await this.once('confirmation-request', data))) return;
+    await this.safely(`confirmation request for ${data.appointment_id}`, () =>
+      this.sendConfirmationRequest(data, {
+        confirmUrl: data.confirm_url,
+        confirmUrlSms: data.confirm_url_sms,
+        reminder: !!data.reminder,
+        rescheduled: !!data.rescheduled,
+      }),
+    );
+  }
+
+  /** The booking is confirmed: confirmation with the calendar invite. */
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_CONFIRMED)
-  async handleAppointmentConfirmed(@Payload() data: AppointmentCreatedPayload): Promise<void> {
-    // Skip confirmation emails for automation/follow-up appointments
-    if (data.origin === 'automation') {
+  async handleAppointmentConfirmed(@Payload() data: AppointmentPayload): Promise<void> {
+    if (isFollowUpStep(data)) {
       this.logger.debug(`Skipping confirmation email for automation appointment ${data.appointment_id}`);
       return;
     }
+    if (!(await this.once('confirmed', data))) return;
+    await this.safely(`confirmation for ${data.appointment_id}`, async () => {
+      const ctx = await this.context(data);
+      if (!ctx) return;
+      const { contact, orgName, variables } = ctx;
 
-    try {
-      const contact = await this.contactRepo.findOne({
-        where: { id: data.contact_id, organization_id: data.organization_id },
-      });
-      if (!contact?.email) {
-        this.logger.debug(`No email for contact ${data.contact_id}, skipping confirmation`);
-        return;
-      }
-
-      const org = await this.orgRepo.findOne({ where: { id: data.organization_id } });
-      const orgName = org?.name ?? 'Nuestra empresa';
-      const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Cliente';
-
-      // Resolve creator info for ORGANIZER field
-      let organizerEmail = 'noreply@prosalesia.com';
-      let organizerName = orgName;
-      if (data.created_by) {
-        const creator = await this.userRepo.findOne({
-          where: { id: data.created_by, organization_id: data.organization_id },
-        });
-        if (creator) {
-          organizerEmail = creator.email;
-          organizerName = creator.full_name || orgName;
+      if (contact.email) {
+        const ics = await this.invite(data, ctx, 'REQUEST');
+        const result = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CREATED, 'email', contact.email, variables, [ics]);
+        if (!result) {
+          await this.mailService.send({
+            to: contact.email,
+            subject: `Confirmación de cita: ${data.title}`,
+            html: this.layout(orgName, ctx.contactName, 'Tu cita ha sido confirmada. Aquí tienes los detalles:', data, variables, {
+              button: data.meeting_url ? { label: 'Unirse a la reunión', url: data.meeting_url } : undefined,
+              manageUrl: data.manage_url ?? undefined,
+            }),
+            attachments: [ics],
+          });
         }
       }
-
-      // Generate ICS attachment
-      const icsAttachment = this.generateIcsAttachment({
-        appointmentId: data.appointment_id,
-        title: data.title,
-        startsAt: data.starts_at,
-        endsAt: data.ends_at,
-        location: data.location,
-        meetingUrl: data.meeting_url,
-        description: data.description,
-        timezone: data.timezone,
-        orgName,
-        organizerEmail,
-        organizerName,
-        attendeeEmail: contact.email,
-        attendeeName: contactName,
-      });
-
-      const formattedDate = this.formatDate(data.starts_at, data.timezone);
-      const formattedTime = this.formatTime(data.starts_at, data.timezone);
-      const formattedEndTime = this.formatTime(data.ends_at, data.timezone);
-
-      const variables = {
-        // Original variable names (used by default HTML fallback + other orgs)
-        contact_name: contactName,
-        title: data.title,
-        date: formattedDate,
-        time: formattedTime,
-        end_time: formattedEndTime,
-        timezone: data.timezone,
-        location: data.location ?? '',
-        meeting_url: data.meeting_url ?? '',
-        organization_name: orgName,
-        // Aliases for Resend templates
-        client_name: contactName,
-        booking_date: formattedDate,
-        booking_time: formattedTime,
-      };
-
-      // Try dispatch via communications module (email + SMS)
-      const result = await this.dispatchService.dispatch({
-        organizationId: data.organization_id,
-        eventType: CommunicationEventType.APPOINTMENT_CREATED,
-        channelType: 'email',
-        recipient: contact.email,
-        variables,
-        attachments: [icsAttachment],
-      });
-
       if (contact.phone) {
-        await this.dispatchService.dispatch({
-          organizationId: data.organization_id,
-          eventType: CommunicationEventType.APPOINTMENT_CREATED,
-          channelType: 'sms',
-          recipient: contact.phone,
-          variables,
+        await this.dispatch(data, CommunicationEventType.APPOINTMENT_CREATED, 'sms', contact.phone, {
+          ...variables,
+          manage_url: data.manage_url_sms ?? '',
         });
       }
-
-      if (!result.dispatched) {
-        // Fallback to inline HTML
-        await this.mailService.send({
-          to: contact.email,
-          subject: `Confirmación de cita: ${data.title}`,
-          html: this.buildHtml({
-            contactName,
-            title: data.title,
-            date: variables.date,
-            time: variables.time,
-            endTime: variables.end_time,
-            timezone: data.timezone,
-            location: data.location,
-            meetingUrl: data.meeting_url,
-            orgName,
-          }),
-          attachments: [icsAttachment],
-        });
-      }
-
-      this.logger.log(`Appointment confirmation email sent to ${contact.email} for appointment ${data.appointment_id}`);
-    } catch (err) {
-      this.logger.warn(`Failed to send appointment confirmation email: ${(err as Error).message}`);
-    }
+      this.logger.log(`Appointment confirmation sent for appointment ${data.appointment_id}`);
+    });
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_RESCHEDULED)
-  async handleAppointmentRescheduled(@Payload() data: AppointmentCreatedPayload): Promise<void> {
-    try {
-      const contact = await this.contactRepo.findOne({
-        where: { id: data.contact_id, organization_id: data.organization_id },
-      });
-      if (!contact?.email) return;
+  async handleAppointmentRescheduled(@Payload() data: AppointmentPayload): Promise<void> {
+    if (isFollowUpStep(data) || !(await this.once('rescheduled', data))) return;
+    await this.safely(`reschedule notice for ${data.appointment_id}`, async () => {
+      const ctx = await this.context(data);
+      if (!ctx) return;
+      const { contact, orgName, variables } = ctx;
 
-      const org = await this.orgRepo.findOne({ where: { id: data.organization_id } });
-      const orgName = org?.name ?? 'Nuestra empresa';
-      const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Cliente';
-
-      const variables = {
-        contact_name: contactName,
-        client_name: contactName,
-        title: data.title,
-        date: this.formatDate(data.starts_at, data.timezone),
-        time: this.formatTime(data.starts_at, data.timezone),
-        end_time: this.formatTime(data.ends_at, data.timezone),
-        booking_date: this.formatDate(data.starts_at, data.timezone),
-        booking_time: this.formatTime(data.starts_at, data.timezone),
-        timezone: data.timezone,
-        location: data.location ?? '',
-        meeting_url: data.meeting_url ?? '',
-        organization_name: orgName,
-      };
-
-      await this.dispatchService.dispatch({
-        organizationId: data.organization_id,
-        eventType: CommunicationEventType.APPOINTMENT_RESCHEDULED,
-        channelType: 'email',
-        recipient: contact.email,
-        variables,
-      });
-
+      if (contact.email) {
+        const ics = await this.invite(data, ctx, 'REQUEST');
+        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_RESCHEDULED, 'email', contact.email, variables, [ics]);
+        // A booking awaiting confirmation also gets the request with the button; no second email here.
+        if (!sent && data.status !== 'scheduled') {
+          await this.mailService.send({
+            to: contact.email,
+            subject: `Tu cita cambió de horario: ${data.title}`,
+            html: this.layout(orgName, ctx.contactName, 'Tu cita cambió de horario. Estos son los nuevos detalles:', data, variables, {
+              manageUrl: data.manage_url ?? undefined,
+            }),
+            attachments: [ics],
+          });
+        }
+      }
       if (contact.phone) {
-        await this.dispatchService.dispatch({
-          organizationId: data.organization_id,
-          eventType: CommunicationEventType.APPOINTMENT_RESCHEDULED,
-          channelType: 'sms',
-          recipient: contact.phone,
-          variables,
+        await this.dispatch(data, CommunicationEventType.APPOINTMENT_RESCHEDULED, 'sms', contact.phone, {
+          ...variables,
+          manage_url: data.manage_url_sms ?? '',
         });
       }
-
-      this.logger.log(`Appointment rescheduled notification sent to ${contact.email} for appointment ${data.appointment_id}`);
-    } catch (err) {
-      this.logger.warn(`Failed to send appointment rescheduled email: ${(err as Error).message}`);
-    }
+      this.logger.log(`Appointment rescheduled notification sent for appointment ${data.appointment_id}`);
+    });
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_CANCELLED)
-  async handleAppointmentCancelled(@Payload() data: AppointmentCreatedPayload): Promise<void> {
-    try {
-      const contact = await this.contactRepo.findOne({
-        where: { id: data.contact_id, organization_id: data.organization_id },
-      });
-      if (!contact?.email) return;
+  async handleAppointmentCancelled(@Payload() data: AppointmentPayload): Promise<void> {
+    if (isFollowUpStep(data) || !(await this.once('cancelled', data))) return;
+    await this.safely(`cancellation notice for ${data.appointment_id}`, async () => {
+      const ctx = await this.context(data);
+      if (!ctx) return;
+      const { contact, orgName, variables } = ctx;
 
-      const org = await this.orgRepo.findOne({ where: { id: data.organization_id } });
-      const orgName = org?.name ?? 'Nuestra empresa';
-      const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Cliente';
-
-      const variables = {
-        contact_name: contactName,
-        client_name: contactName,
-        title: data.title,
-        date: this.formatDate(data.starts_at, data.timezone),
-        time: this.formatTime(data.starts_at, data.timezone),
-        end_time: this.formatTime(data.ends_at, data.timezone),
-        booking_date: this.formatDate(data.starts_at, data.timezone),
-        booking_time: this.formatTime(data.starts_at, data.timezone),
-        timezone: data.timezone,
-        organization_name: orgName,
-      };
-
-      await this.dispatchService.dispatch({
-        organizationId: data.organization_id,
-        eventType: CommunicationEventType.APPOINTMENT_CANCELLED,
-        channelType: 'email',
-        recipient: contact.email,
-        variables,
-      });
-
+      if (contact.email) {
+        const ics = await this.invite(data, ctx, 'CANCEL');
+        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CANCELLED, 'email', contact.email, variables, [ics]);
+        if (!sent) {
+          await this.mailService.send({
+            to: contact.email,
+            subject: `Cita cancelada: ${data.title}`,
+            html: this.layout(orgName, ctx.contactName, 'Tu cita fue cancelada:', data, variables, {}),
+            attachments: [ics],
+          });
+        }
+      }
       if (contact.phone) {
-        await this.dispatchService.dispatch({
-          organizationId: data.organization_id,
-          eventType: CommunicationEventType.APPOINTMENT_CANCELLED,
-          channelType: 'sms',
-          recipient: contact.phone,
-          variables,
+        await this.dispatch(data, CommunicationEventType.APPOINTMENT_CANCELLED, 'sms', contact.phone, variables);
+      }
+      this.logger.log(`Appointment cancelled notification sent for appointment ${data.appointment_id}`);
+    });
+  }
+
+  /** A reminder before the appointment; unconfirmed bookings are asked to confirm instead. */
+  @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_REMINDER_DUE)
+  async handleReminderDue(@Payload() data: ReminderPayload): Promise<void> {
+    if (isFollowUpStep(data) || !(await this.once('reminder', data))) return;
+    await this.safely(`reminder ${data.reminder_id}`, async () => {
+      if (data.confirm_url && data.confirm_url_sms) {
+        await this.sendConfirmationRequest(data, {
+          confirmUrl: data.confirm_url,
+          confirmUrlSms: data.confirm_url_sms,
+          reminder: true,
+          rescheduled: false,
+        });
+        return;
+      }
+      const ctx = await this.context(data);
+      if (!ctx) return;
+      const { contact, orgName, variables } = ctx;
+      if (contact.email) {
+        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_REMINDER, 'email', contact.email, variables);
+        if (!sent) {
+          await this.mailService.send({
+            to: contact.email,
+            subject: `Recordatorio: ${data.title}`,
+            html: this.layout(orgName, ctx.contactName, 'Te recordamos tu cita:', data, variables, {
+              button: data.meeting_url ? { label: 'Unirse a la reunión', url: data.meeting_url } : undefined,
+              manageUrl: data.manage_url ?? undefined,
+            }),
+          });
+        }
+      }
+      if (contact.phone) {
+        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_REMINDER, 'sms', contact.phone, {
+          ...variables,
+          manage_url: data.manage_url_sms ?? '',
+        });
+        if (!sent && !contact.email) {
+          await this.smsService.send({
+            to: contact.phone,
+            text: `${orgName}: recordatorio de tu cita "${data.title}" el ${variables.date} a las ${variables.time}.`,
+          });
+        }
+      }
+    });
+  }
+
+  // ── Internals ───────────────────────────────────────────────────────────
+
+  private async sendConfirmationRequest(
+    data: AppointmentPayload,
+    opts: { confirmUrl: string; confirmUrlSms: string; reminder: boolean; rescheduled: boolean },
+  ): Promise<void> {
+    const ctx = await this.context(data);
+    if (!ctx) return;
+    const { contact, orgName, variables } = ctx;
+    const vars = {
+      ...variables,
+      confirm_url: opts.confirmUrl,
+      reminder: opts.reminder ? 'true' : '',
+      rescheduled: opts.rescheduled ? 'true' : '',
+    };
+
+    if (contact.email) {
+      const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CONFIRMATION_REQUEST, 'email', contact.email, vars);
+      if (!sent) {
+        const intro = opts.rescheduled
+          ? 'Tu cita cambió de horario. Por favor confirma el nuevo horario:'
+          : opts.reminder
+            ? 'Tu cita es pronto y aún no la confirmas. Por favor confírmala:'
+            : 'Tienes una cita agendada. Por favor confírmala:';
+        await this.mailService.send({
+          to: contact.email,
+          subject: opts.rescheduled
+            ? `Confirma el nuevo horario: ${data.title}`
+            : opts.reminder
+              ? `Recordatorio: confirma tu cita ${data.title}`
+              : `Confirma tu cita: ${data.title}`,
+          html: this.layout(orgName, ctx.contactName, intro, data, variables, {
+            button: { label: 'Confirmar cita', url: opts.confirmUrl },
+            footer: 'Desde el mismo enlace puedes cambiar el horario o cancelar.',
+          }),
         });
       }
+    }
 
-      this.logger.log(`Appointment cancelled notification sent to ${contact.email} for appointment ${data.appointment_id}`);
-    } catch (err) {
-      this.logger.warn(`Failed to send appointment cancelled email: ${(err as Error).message}`);
+    if (contact.phone) {
+      const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CONFIRMATION_REQUEST, 'sms', contact.phone, {
+        ...vars,
+        confirm_url: opts.confirmUrlSms,
+      });
+      // Without an email the link by SMS is the only way to confirm.
+      if (!sent && !contact.email) {
+        await this.smsService.send({
+          to: contact.phone,
+          text: `${orgName}: confirma tu cita "${data.title}" el ${variables.date} a las ${variables.time}: ${opts.confirmUrlSms}`,
+        });
+      }
     }
   }
 
-  private generateIcsAttachment(params: {
-    appointmentId: string;
-    title: string;
-    startsAt: string;
-    endsAt: string;
-    location?: string;
-    meetingUrl?: string;
-    description?: string;
-    timezone: string;
-    orgName: string;
-    organizerEmail: string;
-    organizerName: string;
-    attendeeEmail: string;
-    attendeeName: string;
-  }): MailAttachment {
-    const tz = params.timezone;
-
-    const formatIcsDateUtc = (iso: string) =>
-      new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-
-    const now = formatIcsDateUtc(new Date().toISOString());
-    const dtStart = convertUtcToTimezone(params.startsAt, tz);
-    const dtEnd = convertUtcToTimezone(params.endsAt, tz);
-
-    // Escape ICS text values (fold newlines, escape commas/semicolons/backslashes)
-    const icsEscape = (s: string) =>
-      s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
-
-    const lines: string[] = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      `PRODID:-//${icsEscape(params.orgName)}//CRM//ES`,
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VTIMEZONE',
-      `TZID:${tz}`,
-      'END:VTIMEZONE',
-      'BEGIN:VEVENT',
-      `UID:${params.appointmentId}`,
-      `DTSTAMP:${now}`,
-      `DTSTART;TZID=${tz}:${dtStart}`,
-      `DTEND;TZID=${tz}:${dtEnd}`,
-      `SUMMARY:${icsEscape(params.title)}`,
-    ];
-
-    if (params.description) {
-      lines.push(`DESCRIPTION:${icsEscape(params.description)}`);
+  private async context(data: AppointmentPayload) {
+    const contact = await this.contactRepo.findOne({
+      where: { id: data.contact_id, organization_id: data.organization_id },
+    });
+    if (!contact?.email && !contact?.phone) {
+      this.logger.debug(`Contact ${data.contact_id} has no email or phone; skipping ${data.appointment_id}`);
+      return null;
     }
-    if (params.location) {
-      lines.push(`LOCATION:${icsEscape(params.location)}`);
-    }
-    if (params.meetingUrl) {
-      lines.push(`URL:${params.meetingUrl}`);
-    }
+    const org = await this.orgRepo.findOne({ where: { id: data.organization_id } });
+    const orgName = org?.name ?? 'Nuestra empresa';
+    const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Cliente';
+    const date = this.formatDate(data.starts_at, data.timezone);
+    const time = this.formatTime(data.starts_at, data.timezone);
+    const variables: Record<string, string> = {
+      contact_name: contactName,
+      client_name: contactName,
+      title: data.title,
+      date,
+      time,
+      end_time: this.formatTime(data.ends_at, data.timezone),
+      booking_date: date,
+      booking_time: time,
+      timezone: data.timezone,
+      location: data.location ?? '',
+      meeting_url: data.meeting_url ?? '',
+      organization_name: orgName,
+      manage_url: data.manage_url ?? '',
+    };
+    return { contact: contact as Contact, orgName, contactName, variables };
+  }
 
-    lines.push(
-      `ORGANIZER;CN=${icsEscape(params.organizerName)}:mailto:${params.organizerEmail}`,
-      `ATTENDEE;CN=${icsEscape(params.attendeeName)};ROLE=REQ-PARTICIPANT:mailto:${params.attendeeEmail}`,
-      'STATUS:CONFIRMED',
-      'BEGIN:VALARM',
-      'TRIGGER:-PT1H',
-      'ACTION:DISPLAY',
-      `DESCRIPTION:Recordatorio: ${icsEscape(params.title)}`,
-      'END:VALARM',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    );
+  /** True the first time this consumer sees the event (dedupes redeliveries). */
+  private async once(handler: string, data: AppointmentPayload): Promise<boolean> {
+    if (!this.processed) return true;
+    return this.processed.claim(`${CONSUMER}:${handler}`, data.event_id);
+  }
 
-    const icsContent = lines.join('\r\n');
+  private async safely(what: string, fn: () => Promise<void>): Promise<void> {
+    try {
+      await fn();
+    } catch (err) {
+      this.logger.warn(`Failed to send ${what}: ${(err as Error).message}`);
+    }
+  }
+
+  /** The org's template for this event/channel; false when none is configured. */
+  private async dispatch(
+    data: AppointmentPayload,
+    eventType: CommunicationEventType,
+    channelType: 'email' | 'sms',
+    recipient: string,
+    variables: Record<string, string>,
+    attachments?: MailAttachment[],
+  ): Promise<boolean> {
+    const result = await this.dispatchService.dispatch({
+      organizationId: data.organization_id,
+      eventType,
+      channelType,
+      recipient,
+      variables,
+      ...(attachments ? { attachments } : {}),
+    });
+    return !!result?.dispatched;
+  }
+
+  private async invite(
+    data: AppointmentPayload,
+    ctx: { contact: Contact; orgName: string; contactName: string },
+    method: 'REQUEST' | 'CANCEL',
+  ): Promise<MailAttachment> {
+    let organizer = { name: ctx.orgName, email: 'noreply@prosalesia.com' };
+    if (data.created_by) {
+      const creator = await this.userRepo.findOne({
+        where: { id: data.created_by, organization_id: data.organization_id },
+      });
+      if (creator) organizer = { name: creator.full_name || ctx.orgName, email: creator.email };
+    }
+    const ics = buildIcs({
+      method,
+      uid: `${data.appointment_id}@crm`,
+      sequence: Number(data.sequence ?? 1),
+      start: new Date(data.starts_at),
+      end: new Date(data.ends_at),
+      title: data.title,
+      description: data.description,
+      location: data.location,
+      url: data.meeting_url,
+      organizer,
+      attendee: { name: ctx.contactName, email: ctx.contact.email as string },
+      productName: ctx.orgName,
+    });
     return {
-      filename: 'appointment.ics',
-      content: Buffer.from(icsContent).toString('base64'),
-      contentType: 'text/calendar',
+      filename: method === 'CANCEL' ? 'cancel.ics' : 'invite.ics',
+      content: Buffer.from(ics).toString('base64'),
+      contentType: `text/calendar; method=${method}`,
     };
   }
 
   private formatDate(iso: string, timezone: string): string {
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     try {
-      return new Date(iso).toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        timeZone: timezone,
-      });
+      return new Date(iso).toLocaleDateString('es-ES', { ...options, timeZone: timezone });
     } catch {
-      return new Date(iso).toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      return new Date(iso).toLocaleDateString('es-ES', { ...options, timeZone: 'UTC' });
     }
   }
 
   private formatTime(iso: string, timezone: string): string {
+    const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
     try {
-      return new Date(iso).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: timezone,
-      });
+      return new Date(iso).toLocaleTimeString('es-ES', { ...options, timeZone: timezone });
     } catch {
-      return new Date(iso).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      return new Date(iso).toLocaleTimeString('es-ES', { ...options, timeZone: 'UTC' });
     }
   }
 
-  private buildHtml(params: {
-    contactName: string;
-    title: string;
-    date: string;
-    time: string;
-    endTime: string;
-    timezone: string;
-    location?: string;
-    meetingUrl?: string;
-    orgName: string;
-  }): string {
-    const locationRow = params.location
-      ? `<tr><td style="padding:8px 0;color:#6B7280;width:120px">Ubicación</td><td style="padding:8px 0;color:#111827">${this.escapeHtml(params.location)}</td></tr>`
+  private layout(
+    orgName: string,
+    contactName: string,
+    intro: string,
+    data: AppointmentPayload,
+    variables: Record<string, string>,
+    extras: { button?: { label: string; url: string }; manageUrl?: string; footer?: string },
+  ): string {
+    const row = (label: string, value: string) =>
+      `<tr><td style="padding:8px 0;color:#6B7280;width:120px">${label}</td><td style="padding:8px 0;color:#111827">${value}</td></tr>`;
+    const button = extras.button
+      ? `<div style="text-align:center;margin:24px 0"><a href="${this.escapeHtml(extras.button.url)}" style="display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">${this.escapeHtml(extras.button.label)}</a></div>`
       : '';
-
-    const meetingRow = params.meetingUrl
-      ? `<tr><td style="padding:8px 0;color:#6B7280;width:120px">Enlace</td><td style="padding:8px 0"><a href="${this.escapeHtml(params.meetingUrl)}" style="color:#2563EB;text-decoration:none">${this.escapeHtml(params.meetingUrl)}</a></td></tr>`
+    const manage = extras.manageUrl
+      ? `<p style="margin:16px 0 0;font-size:13px"><a href="${this.escapeHtml(extras.manageUrl)}" style="color:#2563EB">Cambiar horario o cancelar</a></p>`
       : '';
-
-    const meetingButton = params.meetingUrl
-      ? `<div style="text-align:center;margin:24px 0"><a href="${this.escapeHtml(params.meetingUrl)}" style="display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">Unirse a la reunión</a></div>`
-      : '';
-
     return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden">
   <div style="background:#2563EB;padding:24px 32px">
-    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">${this.escapeHtml(params.orgName)}</h1>
+    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">${this.escapeHtml(orgName)}</h1>
   </div>
   <div style="padding:32px">
-    <p style="margin:0 0 16px;color:#111827;font-size:16px">Hola ${this.escapeHtml(params.contactName)},</p>
-    <p style="margin:0 0 24px;color:#6B7280;font-size:14px;line-height:1.6">Tu cita ha sido confirmada. Aquí tienes los detalles:</p>
-    <div style="background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:24px">
+    <p style="margin:0 0 16px;color:#111827;font-size:16px">Hola ${this.escapeHtml(contactName)},</p>
+    <p style="margin:0 0 24px;color:#6B7280;font-size:14px;line-height:1.6">${this.escapeHtml(intro)}</p>
+    <div style="background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px">
       <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr><td style="padding:8px 0;color:#6B7280;width:120px">Cita</td><td style="padding:8px 0;color:#111827;font-weight:600">${this.escapeHtml(params.title)}</td></tr>
-        <tr><td style="padding:8px 0;color:#6B7280;width:120px">Fecha</td><td style="padding:8px 0;color:#111827">${this.escapeHtml(params.date)}</td></tr>
-        <tr><td style="padding:8px 0;color:#6B7280;width:120px">Hora</td><td style="padding:8px 0;color:#111827">${this.escapeHtml(params.time)} – ${this.escapeHtml(params.endTime)} (${this.escapeHtml(params.timezone)})</td></tr>
-        ${locationRow}
-        ${meetingRow}
+        ${row('Cita', `<strong>${this.escapeHtml(data.title)}</strong>`)}
+        ${row('Fecha', this.escapeHtml(variables.date))}
+        ${row('Hora', `${this.escapeHtml(variables.time)} – ${this.escapeHtml(variables.end_time)} (${this.escapeHtml(data.timezone)})`)}
+        ${data.location ? row('Ubicación', this.escapeHtml(data.location)) : ''}
       </table>
     </div>
-    ${meetingButton}
-    <p style="margin:24px 0 0;color:#6B7280;font-size:13px;line-height:1.5">Si necesitas cancelar o reprogramar, por favor contáctanos.</p>
+    ${button}
+    ${manage}
+    ${extras.footer ? `<p style="margin:24px 0 0;color:#6B7280;font-size:13px;line-height:1.5">${this.escapeHtml(extras.footer)}</p>` : ''}
   </div>
   <div style="padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center">
-    <p style="margin:0;color:#9CA3AF;font-size:12px">${this.escapeHtml(params.orgName)}</p>
+    <p style="margin:0;color:#9CA3AF;font-size:12px">${this.escapeHtml(orgName)}</p>
   </div>
 </div>
 </body>
@@ -445,7 +456,7 @@ export class AppointmentEmailConsumer {
   }
 
   private escapeHtml(str: string): string {
-    return str
+    return String(str ?? '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
