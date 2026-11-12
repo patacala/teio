@@ -53,7 +53,7 @@ export function AppointmentsCard({ contactId }: Props) {
         variant="outline"
         size="sm"
         className="mt-4 w-full"
-        onClick={() => router.push('/agenda')}
+        onClick={() => router.push('/schedule')}
       >
         Open Calendar
       </Button>

@@ -18,6 +18,8 @@ interface MockApiOptions {
   data?: unknown;
   status?: number;
   message?: string;
+  /** Structured error details, as the API's exception filter returns them. */
+  errors?: Record<string, unknown>;
 }
 
 async function readBody(request: Request): Promise<unknown> {
@@ -32,7 +34,7 @@ async function readBody(request: Request): Promise<unknown> {
  * `{ data }` envelope (or an error / 204) and records every matching request.
  */
 export function mockApi(method: Method, path: string, options: MockApiOptions = {}) {
-  const { data = null, status = 200, message = 'Request failed' } = options;
+  const { data = null, status = 200, message = 'Request failed', errors } = options;
   const calls: CapturedRequest[] = [];
 
   server.use(
@@ -44,7 +46,7 @@ export function mockApi(method: Method, path: string, options: MockApiOptions = 
         body: await readBody(request),
       });
       if (status === 204) return new HttpResponse(null, { status });
-      if (status >= 400) return HttpResponse.json({ message }, { status });
+      if (status >= 400) return HttpResponse.json({ message, ...(errors ? { errors } : {}) }, { status });
       return HttpResponse.json({ data }, { status });
     }),
   );

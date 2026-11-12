@@ -6,6 +6,7 @@ import {
   type AppointmentListParams,
   type CreateAppointmentBody,
   type UpdateAppointmentBody,
+  type RescheduleAppointmentBody,
   type UpdateWorkScheduleBody,
   type AvailabilityParams,
   type CreateCalendarBody,
@@ -49,14 +50,52 @@ export function useCreateAppointment() {
   });
 }
 
-export function useUpdateAppointment() {
+function useInvalidateAgenda() {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    queryClient.invalidateQueries({ queryKey: ['appointment-metrics'] });
+    queryClient.invalidateQueries({ queryKey: ['availability'] });
+  };
+}
+
+export function useUpdateAppointment() {
+  const invalidate = useInvalidateAgenda();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateAppointmentBody }) =>
       schedulingService.updateAppointment(id, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useConfirmAppointment() {
+  const invalidate = useInvalidateAgenda();
+  return useMutation({
+    mutationFn: (id: string) => schedulingService.confirmAppointment(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCancelAppointment() {
+  const invalidate = useInvalidateAgenda();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: 'staff' | 'contact' }) =>
+      schedulingService.cancelAppointment(id, reason),
+    onSuccess: invalidate,
+  });
+}
+
+export function useMarkNoShow() {
+  const invalidate = useInvalidateAgenda();
+  return useMutation({
+    mutationFn: (id: string) => schedulingService.markNoShow(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useResendConfirmation() {
+  return useMutation({
+    mutationFn: (id: string) => schedulingService.resendConfirmation(id),
   });
 }
 
@@ -83,31 +122,11 @@ export function useCompleteAppointment() {
 }
 
 export function useRescheduleAppointment() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateAgenda();
   return useMutation({
-    mutationFn: ({ id, newStartTime }: { id: string; newStartTime: string }) =>
-      schedulingService.rescheduleAppointment(id, newStartTime),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
-    },
-  });
-}
-
-export function useWorkSchedule() {
-  return useQuery({
-    queryKey: ['work-schedule'],
-    queryFn: () => schedulingService.getWorkSchedule(),
-    staleTime: 5 * 60_000,
-  });
-}
-
-export function useUpdateWorkSchedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: UpdateWorkScheduleBody) => schedulingService.updateWorkSchedule(body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['work-schedule'] });
-    },
+    mutationFn: ({ id, body }: { id: string; body: RescheduleAppointmentBody }) =>
+      schedulingService.rescheduleAppointment(id, body),
+    onSuccess: invalidate,
   });
 }
 
@@ -176,9 +195,10 @@ export function useUpdateCalendarConfig() {
 export function useDeleteCalendar() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => schedulingService.deleteCalendar(id),
+    mutationFn: ({ id, moveTo }: { id: string; moveTo?: string }) => schedulingService.deleteCalendar(id, moveTo),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendars'] });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
     },
   });
 }

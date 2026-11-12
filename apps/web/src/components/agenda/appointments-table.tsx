@@ -6,40 +6,52 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { AppointmentStatusBadge } from './appointment-status-badge';
 import { AppointmentOriginBadge } from './appointment-origin-badge';
 import { AppointmentActionBadge } from './appointment-action-badge';
-import { Pencil, CheckCircle2, Trash2, Calendar } from 'lucide-react';
-import type { Appointment } from '@/services/scheduling.service';
+import { Pencil, CheckCircle2, Trash2, Calendar, CheckCheck, UserX, XCircle, Send } from 'lucide-react';
+import type { AgendaItem } from '@/services/scheduling.service';
+import { formatZonedTime, localDate } from '@/lib/timezone';
+import { isFollowUpStep, itemActions, needsOutcome } from './appointment-status';
 
 interface Props {
-  appointments: Appointment[];
+  appointments: AgendaItem[];
+  /** Times are shown on this calendar's wall clock. */
+  timeZone: string;
   isLoading: boolean;
-  onEdit: (appt: Appointment) => void;
-  onComplete: (id: string) => void;
-  onDelete: (id: string) => void;
+  onEdit: (item: AgendaItem) => void;
+  onComplete: (item: AgendaItem) => void;
+  onDelete: (item: AgendaItem) => void;
+  onConfirm: (item: AgendaItem) => void;
+  onCancel: (item: AgendaItem) => void;
+  onNoShow: (item: AgendaItem) => void;
+  onResend?: (item: AgendaItem) => void;
+  /** Owners/admins; the API refuses deletes from other roles. */
+  canDelete: boolean;
   page: number;
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const h = d.getHours();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${h12}:${pad(d.getMinutes())} ${ampm}`;
+function formatDate(iso: string, timeZone: string) {
+  const [y, m, d] = localDate(new Date(iso), timeZone).split('-');
+  return `${d}/${m}/${y} ${formatZonedTime(iso, timeZone)}`;
 }
 
-function getDurationMin(appt: Appointment) {
+function getDurationMin(appt: AgendaItem) {
   return Math.round((new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime()) / 60_000);
 }
 
 export function AppointmentsTable({
   appointments,
+  timeZone,
   isLoading,
   onEdit,
   onComplete,
   onDelete,
+  onConfirm,
+  onCancel,
+  onNoShow,
+  onResend,
+  canDelete,
   page,
   pageSize,
   total,
@@ -95,11 +107,12 @@ export function AppointmentsTable({
               const contactName = appt.contact
                 ? `${appt.contact.first_name} ${appt.contact.last_name ?? ''}`.trim()
                 : appt.contact_id;
-              const doneOrCancelled = appt.status === 'completed' || appt.status === 'cancelled';
+              const step = isFollowUpStep(appt);
+              const actions = itemActions(appt);
               return (
                 <tr key={appt.id} className="hover:bg-surface-raised transition-colors">
                   <td className="px-4 py-3 whitespace-nowrap text-primary">
-                    {formatDate(appt.starts_at)}
+                    {formatDate(appt.starts_at, timeZone)}
                   </td>
                   <td className="px-4 py-3 text-primary font-medium max-w-[140px] truncate">
                     {contactName}
@@ -109,12 +122,12 @@ export function AppointmentsTable({
                     {getDurationMin(appt)} min
                   </td>
                   <td className="px-4 py-3">
-                    <AppointmentStatusBadge status={appt.status} />
+                    <AppointmentStatusBadge status={appt.status} needsOutcome={needsOutcome(appt)} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-1">
                       <AppointmentOriginBadge origin={appt.origin} />
-                      <AppointmentActionBadge action={(appt as { action?: string }).action} />
+                      <AppointmentActionBadge action={appt.action} />
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -128,28 +141,76 @@ export function AppointmentsTable({
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      {!doneOrCancelled && (
+                      {actions.confirm && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-accent hover:text-accent"
+                          onClick={() => onConfirm(appt)}
+                          title="Confirm for the contact"
+                        >
+                          <CheckCheck className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {actions.resend && onResend && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => onResend(appt)}
+                          title="Resend confirmation link"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {actions.complete && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-success hover:text-success"
-                          onClick={() => onComplete(appt.id)}
-                          title="Complete"
+                          onClick={() => onComplete(appt)}
+                          title={step ? 'Mark done' : 'Complete'}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-danger hover:text-danger"
-                        onClick={() => {
-                          if (confirm('Delete this appointment?')) onDelete(appt.id);
-                        }}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {actions.noShow && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => onNoShow(appt)}
+                          title="No-show"
+                        >
+                          <UserX className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {actions.cancel && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-danger hover:text-danger"
+                          onClick={() => {
+                            if (confirm(step ? 'Skip this follow-up step?' : 'Cancel this appointment? The contact will be notified.')) onCancel(appt);
+                          }}
+                          title={step ? 'Skip step' : 'Cancel'}
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {actions.remove && (step || canDelete) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-danger hover:text-danger"
+                          onClick={() => {
+                            if (confirm(step ? 'Delete this follow-up step?' : 'Delete this appointment?')) onDelete(appt);
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

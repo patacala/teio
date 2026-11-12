@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { itCallsEndpoints, mockApi } from '@/test/msw/api';
 import { schedulingService } from './scheduling.service';
+import { ApiError } from '@/lib/auth-client';
 
 describe('schedulingService', () => {
   describe('appointments', () => {
@@ -62,11 +63,46 @@ describe('schedulingService', () => {
         },
       },
       {
-        name: 'updateAppointment',
-        call: () => schedulingService.updateAppointment('apt-1', { status: 'cancelled', notes: 'Client asked' }),
+        name: 'updateAppointment sends descriptive fields only',
+        call: () => schedulingService.updateAppointment('apt-1', { title: 'Follow-up visit', notes: 'Client asked' }),
         method: 'patch',
         path: '/appointments/apt-1',
-        body: { status: 'cancelled', notes: 'Client asked' },
+        body: { title: 'Follow-up visit', notes: 'Client asked' },
+      },
+      {
+        name: 'confirmAppointment',
+        call: () => schedulingService.confirmAppointment('apt-1'),
+        method: 'post',
+        path: '/appointments/apt-1/confirm',
+        body: {},
+      },
+      {
+        name: 'cancelAppointment defaults to a staff cancellation',
+        call: () => schedulingService.cancelAppointment('apt-1'),
+        method: 'post',
+        path: '/appointments/apt-1/cancel',
+        body: { reason: 'staff' },
+      },
+      {
+        name: 'markNoShow',
+        call: () => schedulingService.markNoShow('apt-1'),
+        method: 'post',
+        path: '/appointments/apt-1/no-show',
+        body: {},
+      },
+      {
+        name: 'resendConfirmation',
+        call: () => schedulingService.resendConfirmation('apt-1'),
+        method: 'post',
+        path: '/appointments/apt-1/resend-confirmation',
+        body: {},
+      },
+      {
+        name: 'getAppointments for bookings needing an outcome',
+        call: () => schedulingService.getAppointments({ calendar_id: 'cal-1', needs_outcome: true }),
+        method: 'get',
+        path: '/appointments',
+        query: { calendar_id: 'cal-1', needs_outcome: 'true' },
       },
       { name: 'deleteAppointment', call: () => schedulingService.deleteAppointment('apt-1'), method: 'delete', path: '/appointments/apt-1' },
       {
@@ -77,25 +113,22 @@ describe('schedulingService', () => {
         body: {},
       },
       {
-        name: 'rescheduleAppointment maps to new_start_time',
-        call: () => schedulingService.rescheduleAppointment('apt-1', '2026-03-21T16:00:00Z'),
+        name: 'rescheduleAppointment with a new duration and an admin override',
+        call: () =>
+          schedulingService.rescheduleAppointment('apt-1', {
+            starts_at: '2026-03-21T16:00:00Z',
+            duration_minutes: 45,
+            override: { reason: 'VIP' },
+          }),
         method: 'post',
         path: '/appointments/apt-1/reschedule',
-        body: { new_start_time: '2026-03-21T16:00:00Z' },
+        body: { starts_at: '2026-03-21T16:00:00Z', duration_minutes: 45, override: { reason: 'VIP' } },
       },
     ]);
   });
 
-  describe('work schedule and availability', () => {
+  describe('availability', () => {
     itCallsEndpoints([
-      { name: 'getWorkSchedule', call: () => schedulingService.getWorkSchedule(), method: 'get', path: '/appointments/config' },
-      {
-        name: 'updateWorkSchedule',
-        call: () => schedulingService.updateWorkSchedule({ work_days: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00' }),
-        method: 'put',
-        path: '/appointments/config',
-        body: { work_days: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '18:00' },
-      },
       {
         name: 'getAvailability with the required range only',
         call: () => schedulingService.getAvailability({ from: '2026-03-20', to: '2026-03-21' }),
@@ -141,20 +174,44 @@ describe('schedulingService', () => {
       },
       {
         name: 'updateCalendarConfig',
-        call: () => schedulingService.updateCalendarConfig('cal-1', { slot_duration_minutes: 45, buffer_minutes: 15 }),
+        call: () => schedulingService.updateCalendarConfig('cal-1', { slot_duration_minutes: 60, buffer_minutes: 15, hold_minutes: 90 }),
         method: 'put',
         path: '/calendars/cal-1/config',
-        body: { slot_duration_minutes: 45, buffer_minutes: 15 },
+        body: { slot_duration_minutes: 60, buffer_minutes: 15, hold_minutes: 90 },
       },
       { name: 'deleteCalendar', call: () => schedulingService.deleteCalendar('cal-1'), method: 'delete', path: '/calendars/cal-1' },
+      {
+        name: 'deleteCalendar moving past appointments',
+        call: () => schedulingService.deleteCalendar('cal-1', 'cal-2'),
+        method: 'delete',
+        path: '/calendars/cal-1',
+        query: { move_to: 'cal-2' },
+      },
     ]);
   });
 
-  it('rejects with the API message when the slot is taken', async () => {
-    mockApi('post', '/appointments', { status: 409, message: 'Time slot is no longer available' });
+  it('rejects with the API message and code when the slot is taken', async () => {
+    mockApi('post', '/appointments', {
+      status: 409,
+      message: 'That time overlaps another booking on this calendar',
+      errors: { code: 'SLOT_NOT_AVAILABLE', violations: ['conflict'] },
+    });
 
-    await expect(
-      schedulingService.createAppointment({ contact_id: 'c-1', title: 'Consultation', duration_minutes: 30, starts_at: '2026-03-20T15:00:00Z' }),
-    ).rejects.toThrow('Time slot is no longer available');
+    const error = await schedulingService
+      .createAppointment({
+        contact_id: 'c-1',
+        calendar_id: 'cal-1',
+        title: 'Consultation',
+        duration_minutes: 30,
+        starts_at: '2026-03-20T15:00:00Z',
+      })
+      .catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({
+      message: 'That time overlaps another booking on this calendar',
+      status: 409,
+      code: 'SLOT_NOT_AVAILABLE',
+      errors: { violations: ['conflict'] },
+    });
   });
 });

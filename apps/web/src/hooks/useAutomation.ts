@@ -2,18 +2,61 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { automationService } from '@/services/automation.service';
-import type { CreateFollowUpInput, CreateSequenceInput } from '@/services/automation.service';
+import type {
+  CreateFollowUpInput,
+  CreateSequenceInput,
+  FollowUpListParams,
+  UpdateFollowUpInput,
+} from '@/services/automation.service';
 
-export function useFollowUps(params?: {
-  status?: string;
-  action?: string;
-  contact_id?: string;
-  limit?: number;
-  offset?: number;
-}) {
+export function useFollowUps(params: FollowUpListParams | null) {
   return useQuery({
     queryKey: ['follow-ups', params],
-    queryFn: () => automationService.listFollowUps(params),
+    queryFn: () => automationService.listFollowUps(params ?? undefined),
+    enabled: params !== null,
+    staleTime: 30_000,
+  });
+}
+
+export function useFollowUpMetrics(calendarId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ['follow-up-metrics', calendarId],
+    queryFn: () => automationService.getFollowUpMetrics(calendarId ?? undefined),
+    enabled: enabled && !!calendarId,
+    staleTime: 60_000,
+  });
+}
+
+function useInvalidateFollowUps() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ['follow-ups'] });
+    qc.invalidateQueries({ queryKey: ['follow-up-metrics'] });
+    qc.invalidateQueries({ queryKey: ['contact-follow-ups'] });
+  };
+}
+
+export function useUpdateFollowUp() {
+  const invalidate = useInvalidateFollowUps();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateFollowUpInput }) => automationService.updateFollowUp(id, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useCompleteFollowUp() {
+  const invalidate = useInvalidateFollowUps();
+  return useMutation({
+    mutationFn: (id: string) => automationService.completeFollowUp(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteFollowUp() {
+  const invalidate = useInvalidateFollowUps();
+  return useMutation({
+    mutationFn: (id: string) => automationService.deleteFollowUp(id),
+    onSuccess: invalidate,
   });
 }
 
@@ -37,24 +80,18 @@ export function useContactFollowUps(
 }
 
 export function useCreateFollowUp() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidateFollowUps();
   return useMutation({
     mutationFn: (input: CreateFollowUpInput) => automationService.createFollowUp(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['follow-ups'] });
-      qc.invalidateQueries({ queryKey: ['appointments'] });
-    },
+    onSuccess: invalidate,
   });
 }
 
 export function useCancelFollowUp() {
-  const qc = useQueryClient();
+  const invalidate = useInvalidateFollowUps();
   return useMutation({
     mutationFn: (id: string) => automationService.cancelFollowUp(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['follow-ups'] });
-      qc.invalidateQueries({ queryKey: ['appointments'] });
-    },
+    onSuccess: invalidate,
   });
 }
 

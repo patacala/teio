@@ -3,82 +3,76 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Appointment } from '@/services/scheduling.service';
+import { addDays, daysBetween, localDate, weekdayOf } from '@/lib/timezone';
+import type { AgendaItem } from '@/services/scheduling.service';
+import { needsOutcome } from './appointment-status';
 
 const DAYS_HEADER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface Props {
-  appointments: Appointment[];
-  month: Date;
-  onMonthChange: (d: Date) => void;
-  onDayClick: (d: Date) => void;
-}
-
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-function daysInMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-}
-
-// Mon=0, Sun=6
-function dayOfWeekMon(d: Date) {
-  return (d.getDay() + 6) % 7;
-}
-
-function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+  appointments: AgendaItem[];
+  /** First local date of the month (YYYY-MM-01) in the calendar's time zone. */
+  month: string;
+  timeZone: string;
+  onPrev: () => void;
+  onNext: () => void;
+  onDayClick: (date: string) => void;
 }
 
 const statusColors: Record<string, string> = {
+  held: 'bg-warning/15 text-warning',
   pending: 'bg-warning/15 text-warning',
   scheduled: 'bg-warning/15 text-warning',
   confirmed: 'bg-olive-dark text-accent',
   completed: 'bg-success/15 text-success',
   cancelled: 'bg-danger/15 text-danger line-through',
   no_show: 'bg-surface-raised text-secondary',
+  awaiting_user: 'bg-danger/15 text-danger',
+  failed: 'bg-danger/15 text-danger',
 };
 
-export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }: Props) {
-  const today = new Date();
-  const firstDay = startOfMonth(month);
-  const totalDays = daysInMonth(month);
-  const leadingBlanks = dayOfWeekMon(firstDay);
+export function lastDayOfMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  const next = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+  return addDays(next, -1);
+}
 
-  const prevMonth = () => onMonthChange(new Date(month.getFullYear(), month.getMonth() - 1, 1));
-  const nextMonth = () => onMonthChange(new Date(month.getFullYear(), month.getMonth() + 1, 1));
+export function MonthCalendar({ appointments, month, timeZone, onPrev, onNext, onDayClick }: Props) {
+  const today = localDate(new Date(), timeZone);
+  const last = lastDayOfMonth(month);
+  const leadingBlanks = (weekdayOf(month) + 6) % 7;
+  const totalDays = daysBetween(month, last) + 1;
 
-  const cells: (Date | null)[] = [
-    ...Array(leadingBlanks).fill(null),
-    ...Array.from({ length: totalDays }, (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1)),
+  const cells: (string | null)[] = [
+    ...Array<null>(leadingBlanks).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => addDays(month, i)),
   ];
-  // Pad to complete grid (multiple of 7)
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const apptsByDay = (day: Date) =>
-    appointments.filter((a) => sameDay(new Date(a.starts_at), day));
+  const byDay = new Map<string, AgendaItem[]>();
+  for (const item of appointments) {
+    const day = localDate(new Date(item.starts_at), timeZone);
+    byDay.set(day, [...(byDay.get(day) ?? []), item]);
+  }
+
+  const label = new Date(`${month}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
   return (
     <div className="rounded-xl border border-subtle bg-surface overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-subtle">
         <span className="text-sm font-medium text-primary capitalize">
-          {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {label} <span className="text-xs font-normal text-muted">· {timeZone}</span>
         </span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={prevMonth}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onPrev} aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={nextMonth}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onNext} aria-label="Next month">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Day headers */}
       <div className="grid grid-cols-7 border-b border-subtle">
         {DAYS_HEADER.map((d) => (
           <div key={d} className="py-2 text-center text-xs font-medium text-muted">
@@ -87,57 +81,49 @@ export function MonthCalendar({ appointments, month, onMonthChange, onDayClick }
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-7">
         {cells.map((day, idx) => {
           const isLastCol = (idx + 1) % 7 === 0;
           if (!day) {
-            return <div key={`blank-${idx}`} className={cn('min-h-[90px] border-b border-subtle bg-surface-raised/50', !isLastCol && 'border-r')} />;
+            return (
+              <div key={`blank-${idx}`} className={cn('min-h-[90px] border-b border-subtle bg-surface-raised/50', !isLastCol && 'border-r')} />
+            );
           }
-          const dayAppts = apptsByDay(day);
-          const isToday = sameDay(day, today);
-          const isCurrentMonth = day.getMonth() === month.getMonth();
-          const visible = dayAppts.slice(0, 3);
-          const overflow = dayAppts.length - 3;
-
+          const items = byDay.get(day) ?? [];
+          const visible = items.slice(0, 3);
+          const overflow = items.length - visible.length;
           return (
             <div
-              key={day.toISOString()}
+              key={day}
+              data-testid={`month-day-${day}`}
               className={cn(
                 'min-h-[90px] p-1 border-b border-subtle cursor-pointer hover:bg-olive-dark/30 transition-colors',
                 !isLastCol && 'border-r',
-                !isCurrentMonth && 'bg-surface-raised/50',
               )}
               onClick={() => onDayClick(day)}
             >
               <span
                 className={cn(
                   'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium mb-1',
-                  isToday
-                    ? 'bg-accent text-on-accent'
-                    : isCurrentMonth
-                    ? 'text-primary'
-                    : 'text-muted',
+                  day === today ? 'bg-accent text-on-accent' : 'text-primary',
                 )}
               >
-                {day.getDate()}
+                {Number(day.slice(8))}
               </span>
               <div className="space-y-0.5">
-                {visible.map((appt) => (
+                {visible.map((item) => (
                   <div
-                    key={appt.id}
+                    key={item.id}
                     className={cn(
                       'truncate rounded-sm px-1 py-0.5 text-[10px] font-medium leading-tight',
-                      statusColors[appt.status] ?? statusColors.scheduled,
+                      needsOutcome(item) ? 'bg-danger/15 text-danger' : statusColors[item.status] ?? statusColors.scheduled,
                     )}
-                    title={appt.title}
+                    title={item.title}
                   >
-                    {appt.title}
+                    {item.title}
                   </div>
                 ))}
-                {overflow > 0 && (
-                  <p className="text-[10px] text-accent font-medium">+{overflow} more</p>
-                )}
+                {overflow > 0 && <p className="text-[10px] text-accent font-medium">+{overflow} more</p>}
               </div>
             </div>
           );

@@ -7,9 +7,12 @@ export interface AutomatedFollowUp {
   contact_id: string;
   title: string;
   description?: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
+  status: 'pending' | 'processing' | 'awaiting_user' | 'completed' | 'cancelled' | 'failed';
+  /** When the step runs (or is due for a person). */
+  due_at: string;
+  timezone?: string;
+  sequence_id?: string | null;
+  origin?: string;
   action: string;
   executor: string;
   channel_strategy: string;
@@ -40,13 +43,42 @@ export interface CreateFollowUpInput {
   channel_strategy?: string;
   message_content?: string;
   title?: string;
+  description?: string;
   source?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface UpdateFollowUpInput {
+  title?: string;
+  description?: string;
+  message_content?: string;
+  /** Moves a step that has not run yet. */
+  due_at?: string;
+}
+
+export interface FollowUpListParams {
+  status?: string;
+  action?: string;
+  contact_id?: string;
+  calendar_id?: string;
+  from?: string;
+  to?: string;
+  sort?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
 }
 
 export interface FollowUpListResponse {
   items: AutomatedFollowUp[];
   total: number;
+}
+
+export interface FollowUpMetrics {
+  today_count: number;
+  week_count: number;
+  pending_count: number;
+  completed_count: number;
+  awaiting_user_count: number;
 }
 
 export interface AutomationSequence {
@@ -126,29 +158,41 @@ export const automationService = {
     return authClient.post('/automation/follow-ups', input);
   },
 
-  async listFollowUps(params?: {
-    status?: string;
-    action?: string;
-    contact_id?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<FollowUpListResponse> {
+  async listFollowUps(params?: FollowUpListParams): Promise<FollowUpListResponse> {
     const searchParams = new URLSearchParams();
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.action) searchParams.set('action', params.action);
-    if (params?.contact_id) searchParams.set('contact_id', params.contact_id);
+    for (const key of ['status', 'action', 'contact_id', 'calendar_id', 'from', 'to', 'sort'] as const) {
+      if (params?.[key]) searchParams.set(key, String(params[key]));
+    }
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const qs = searchParams.toString();
     return authClient.get(`/automation/follow-ups${qs ? `?${qs}` : ''}`);
   },
 
+  async getFollowUpMetrics(calendarId?: string): Promise<FollowUpMetrics> {
+    return authClient.get(`/automation/follow-ups/metrics${calendarId ? `?calendar_id=${calendarId}` : ''}`);
+  },
+
   async getFollowUp(id: string): Promise<AutomatedFollowUp> {
     return authClient.get(`/automation/follow-ups/${id}`);
   },
 
-  async cancelFollowUp(id: string): Promise<{ success: boolean }> {
+  async updateFollowUp(id: string, input: UpdateFollowUpInput): Promise<AutomatedFollowUp> {
+    return authClient.patch(`/automation/follow-ups/${id}`, input);
+  },
+
+  /** Done (by the person it was handed to); the sequence moves on. */
+  async completeFollowUp(id: string): Promise<AutomatedFollowUp> {
+    return authClient.post(`/automation/follow-ups/${id}/complete`, {});
+  },
+
+  /** Skips the step; the sequence moves on. */
+  async cancelFollowUp(id: string): Promise<AutomatedFollowUp> {
     return authClient.patch(`/automation/follow-ups/${id}/cancel`, {});
+  },
+
+  async deleteFollowUp(id: string): Promise<void> {
+    return authClient.delete(`/automation/follow-ups/${id}`);
   },
 
   async getContactFollowUps(

@@ -9,6 +9,20 @@ export interface WorkSchedule {
   is_active: boolean;
   /** Service charged when booking into an appointments calendar. Null = free. */
   payment_service_id: string | null;
+  /** 'appointments' / 'follow_up' for the calendars the system manages. */
+  system_key?: string | null;
+  /** Minutes a slot stays reserved while the contact pays. */
+  hold_minutes?: number;
+  /** Reminders before the start, in minutes. */
+  reminder_offsets_minutes?: number[];
+  /** Staff member this calendar belongs to. */
+  owner_user_id?: string | null;
+  /** How soon a slot can be booked (minutes). */
+  min_notice_minutes?: number;
+  /** How far ahead a slot can be booked (days); null = no limit. */
+  max_advance_days?: number | null;
+  /** Days of free times a contact sees when changing a booking from their link. */
+  contact_reschedule_days?: number;
   work_days: number[];
   start_time: string;
   end_time: string;
@@ -25,6 +39,7 @@ export type Calendar = WorkSchedule;
 export interface CreateCalendarBody {
   name: string;
   color?: string;
+  type?: 'appointments' | 'custom';
 }
 
 export interface UpdateCalendarBody {
@@ -35,7 +50,17 @@ export interface UpdateCalendarBody {
   payment_service_id?: string | null;
 }
 
+/** Calendar settings; identity fields included so the screen saves everything in one call. */
 export interface UpdateWorkScheduleBody {
+  name?: string;
+  color?: string;
+  is_active?: boolean;
+  payment_service_id?: string | null;
+  owner_user_id?: string | null;
+  min_notice_minutes?: number;
+  max_advance_days?: number | null;
+  contact_reschedule_days?: number;
+  reminder_offsets_minutes?: number[];
   work_days?: number[];
   start_time?: string;
   end_time?: string;
@@ -43,6 +68,7 @@ export interface UpdateWorkScheduleBody {
   buffer_minutes?: number;
   timezone?: string;
   blocked_dates?: string[];
+  hold_minutes?: number;
 }
 
 export interface AvailabilitySlot {
@@ -55,6 +81,8 @@ export interface AvailabilityParams {
   to: string;
   duration_minutes?: number;
   calendar_id?: string;
+  /** The booking being moved: its own time does not count as busy. */
+  exclude_appointment_id?: string;
 }
 
 export interface Appointment {
@@ -70,20 +98,39 @@ export interface Appointment {
   description?: string;
   starts_at: string;
   ends_at: string;
-  status: 'pending' | 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-  origin: 'ai' | 'human' | 'webhook';
+  status: AppointmentStatusValue;
+  origin: 'ai' | 'human' | 'webhook' | 'automation';
+  assigned_to?: string | null;
   created_by?: string;
   timezone?: string;
   location?: string;
   meeting_url?: string;
   notes?: string;
   calendar_id?: string;
+  confirmed_at?: string | null;
+  confirmed_via?: 'email_link' | 'sms_link' | 'payment' | 'staff' | 'legacy' | null;
+  cancel_reason?: string | null;
+  override_at?: string | null;
+  override_reason?: string | null;
+  hold_expires_at?: string | null;
+  payment_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppointmentStatusValue = 'held' | 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+
+/**
+ * One row of the agenda: a booking, or a follow-up step shown on the
+ * follow-up calendar (steps have an `action` and end 15 minutes after they are due).
+ */
+export interface AgendaItem extends Omit<Appointment, 'status'> {
+  kind: 'booking' | 'step';
+  status: string;
   action?: string;
   executor?: string;
   channel_strategy?: string;
   message_content?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface AppointmentMetrics {
@@ -91,6 +138,7 @@ export interface AppointmentMetrics {
   week_count: number;
   pending_count: number;
   completed_count: number;
+  needs_outcome_count?: number;
 }
 
 export interface AppointmentListParams {
@@ -103,6 +151,9 @@ export interface AppointmentListParams {
   sort?: 'asc' | 'desc';
   cursor?: string;
   calendar_id?: string;
+  contact_id?: string;
+  /** Ended bookings nobody marked completed / no-show. */
+  needs_outcome?: boolean;
 }
 
 export interface AppointmentPage {
@@ -120,23 +171,26 @@ export interface CreateAppointmentBody {
   location?: string;
   meeting_url?: string;
   assigned_to?: string;
-  origin?: string;
-  calendar_id?: string;
-  action?: string;
-  executor?: string;
-  channel_strategy?: string;
-  message_content?: string;
+  calendar_id: string;
+  /** Admins only: book outside the calendar rules (reason is kept). */
+  override?: { reason: string };
+  /** Book on a charging calendar without asking for payment. */
+  waive_payment?: boolean;
 }
 
+/** Descriptive fields only; time changes go through reschedule. */
 export interface UpdateAppointmentBody {
   title?: string;
   description?: string;
-  starts_at?: string;
-  duration_minutes?: number;
-  status?: string;
   location?: string;
   meeting_url?: string;
   notes?: string;
+}
+
+export interface RescheduleAppointmentBody {
+  starts_at: string;
+  duration_minutes?: number;
+  override?: { reason: string };
 }
 
 export const schedulingService = {
@@ -150,6 +204,8 @@ export const schedulingService = {
     if (params?.sort) qs.set('sort', params.sort);
     if (params?.cursor) qs.set('cursor', params.cursor);
     if (params?.calendar_id) qs.set('calendar_id', params.calendar_id);
+    if (params?.contact_id) qs.set('contact_id', params.contact_id);
+    if (params?.needs_outcome) qs.set('needs_outcome', 'true');
     return authClient.get<AppointmentPage>(`/appointments?${qs.toString()}`);
   },
 
@@ -173,19 +229,26 @@ export const schedulingService = {
   completeAppointment: (id: string) =>
     authClient.post<Appointment>(`/appointments/${id}/complete`, {}),
 
-  rescheduleAppointment: (id: string, newStartTime: string) =>
-    authClient.post<Appointment>(`/appointments/${id}/reschedule`, { new_start_time: newStartTime }),
+  confirmAppointment: (id: string) =>
+    authClient.post<Appointment>(`/appointments/${id}/confirm`, {}),
 
-  getWorkSchedule: () =>
-    authClient.get<WorkSchedule>('/appointments/config'),
+  cancelAppointment: (id: string, reason: 'staff' | 'contact' = 'staff') =>
+    authClient.post<Appointment>(`/appointments/${id}/cancel`, { reason }),
 
-  updateWorkSchedule: (body: UpdateWorkScheduleBody) =>
-    authClient.put<WorkSchedule>('/appointments/config', body),
+  markNoShow: (id: string) =>
+    authClient.post<Appointment>(`/appointments/${id}/no-show`, {}),
+
+  resendConfirmation: (id: string) =>
+    authClient.post<Appointment>(`/appointments/${id}/resend-confirmation`, {}),
+
+  rescheduleAppointment: (id: string, body: RescheduleAppointmentBody) =>
+    authClient.post<Appointment>(`/appointments/${id}/reschedule`, body),
 
   getAvailability: (params: AvailabilityParams) => {
     const qs = new URLSearchParams({ from: params.from, to: params.to });
     if (params.duration_minutes) qs.set('duration_minutes', String(params.duration_minutes));
     if (params.calendar_id) qs.set('calendar_id', params.calendar_id);
+    if (params.exclude_appointment_id) qs.set('exclude_appointment_id', params.exclude_appointment_id);
     return authClient.get<AvailabilitySlot[]>(`/appointments/availability?${qs.toString()}`);
   },
 
@@ -206,6 +269,6 @@ export const schedulingService = {
   updateCalendarConfig: (id: string, body: UpdateWorkScheduleBody) =>
     authClient.put<Calendar>(`/calendars/${id}/config`, body),
 
-  deleteCalendar: (id: string) =>
-    authClient.delete<void>(`/calendars/${id}`),
+  deleteCalendar: (id: string, moveTo?: string) =>
+    authClient.delete<void>(`/calendars/${id}${moveTo ? `?move_to=${moveTo}` : ''}`),
 };

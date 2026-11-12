@@ -21,6 +21,22 @@ async function refreshToken(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
+/** Thrown for non-2xx responses; keeps the HTTP status and the API's structured `errors`. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly errors?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+
+  get code(): string | undefined {
+    return typeof this.errors?.code === 'string' ? this.errors.code : undefined;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
   const token = await getToken();
 
@@ -49,8 +65,12 @@ async function request<T>(path: string, options: RequestInit = {}, retry = true)
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error((error as { message?: string }).message ?? 'Request failed');
+    const error = (await response.json().catch(() => ({ message: 'Request failed' }))) as {
+      message?: string | string[];
+      errors?: Record<string, unknown>;
+    };
+    const message = Array.isArray(error.message) ? error.message.join(', ') : error.message;
+    throw new ApiError(message ?? 'Request failed', response.status, error.errors);
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {

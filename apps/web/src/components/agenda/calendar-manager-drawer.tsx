@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Settings2, Trash2, ArrowLeft, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,13 +15,15 @@ import {
   useCalendars,
   useCalendar,
   useCreateCalendar,
-  useUpdateCalendar,
   useUpdateCalendarConfig,
   useDeleteCalendar,
 } from '@/hooks/useAppointments';
 import { usePaymentServices } from '@/hooks/usePayments';
+import { useTeamMembers } from '@/hooks/useTeam';
+import { listTimeZones } from '@/lib/timezone';
 import type { UpdateWorkScheduleBody } from '@/services/scheduling.service';
 import { toast } from '@/hooks/useToast';
+import { ApiError } from '@/lib/auth-client';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -52,7 +54,28 @@ interface Props {
   defaultCalendarId?: string;
 }
 
-// ── Config view (schedule settings for a specific calendar) ──────────────────
+// ── Config view (all settings of one calendar, saved in one call) ───────────
+
+const NOTICE_OPTIONS = [
+  { value: 0, label: 'Any future time' },
+  { value: 60, label: '1 hour' },
+  { value: 120, label: '2 hours' },
+  { value: 240, label: '4 hours' },
+  { value: 720, label: '12 hours' },
+  { value: 1440, label: '1 day' },
+  { value: 2880, label: '2 days' },
+];
+
+const REMINDER_OPTIONS = [
+  { value: 10080, label: '1 week before' },
+  { value: 2880, label: '2 days before' },
+  { value: 1440, label: '1 day before' },
+  { value: 120, label: '2 hours before' },
+  { value: 60, label: '1 hour before' },
+];
+
+const inputClass =
+  'w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40';
 
 function CalendarConfigView({
   calendarId,
@@ -63,9 +86,13 @@ function CalendarConfigView({
 }) {
   const { data: calendar, isLoading } = useCalendar(calendarId);
   const updateConfig = useUpdateCalendarConfig();
-  const updateCalendar = useUpdateCalendar();
   const { data: paymentServices = [] } = usePaymentServices();
+  const { data: team = [] } = useTeamMembers();
+  const timeZones = useMemo(() => listTimeZones(), []);
 
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#2563EB');
+  const [isActive, setIsActive] = useState(true);
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('18:00');
@@ -75,9 +102,18 @@ function CalendarConfigView({
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [newDate, setNewDate] = useState('');
   const [paymentServiceId, setPaymentServiceId] = useState<string>('none');
+  const [holdMinutes, setHoldMinutes] = useState(60);
+  const [ownerId, setOwnerId] = useState<string>('none');
+  const [minNotice, setMinNotice] = useState(0);
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState('');
+  const [contactRescheduleDays, setContactRescheduleDays] = useState(14);
+  const [reminders, setReminders] = useState<number[]>([1440, 120]);
 
   useEffect(() => {
     if (!calendar) return;
+    setName(calendar.name);
+    setColor(calendar.color);
+    setIsActive(calendar.is_active);
     setWorkDays(calendar.work_days.map(Number));
     setStartTime(calendar.start_time.slice(0, 5));
     setEndTime(calendar.end_time.slice(0, 5));
@@ -86,6 +122,12 @@ function CalendarConfigView({
     setTimezone(calendar.timezone);
     setBlockedDates(calendar.blocked_dates ?? []);
     setPaymentServiceId(calendar.payment_service_id ?? 'none');
+    setHoldMinutes(calendar.hold_minutes ?? 60);
+    setOwnerId(calendar.owner_user_id ?? 'none');
+    setMinNotice(calendar.min_notice_minutes ?? 0);
+    setMaxAdvanceDays(calendar.max_advance_days ? String(calendar.max_advance_days) : '');
+    setContactRescheduleDays(calendar.contact_reschedule_days ?? 14);
+    setReminders(calendar.reminder_offsets_minutes ?? [1440, 120]);
   }, [calendar]);
 
   const toggleDay = (day: number) =>
@@ -93,17 +135,27 @@ function CalendarConfigView({
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
     );
 
+  const toggleReminder = (offset: number) =>
+    setReminders((prev) => (prev.includes(offset) ? prev.filter((r) => r !== offset) : [...prev, offset]));
+
   const addBlockedDate = () => {
     if (!newDate || blockedDates.includes(newDate)) return;
     setBlockedDates((prev) => [...prev, newDate].sort());
     setNewDate('');
   };
 
+  const isBooking = calendar?.type !== 'follow_up';
+  const charges = calendar?.type === 'appointments' && paymentServiceId !== 'none';
+
   const handleSave = async () => {
+    const advance = maxAdvanceDays.trim() ? Number(maxAdvanceDays) : null;
     try {
       await updateConfig.mutateAsync({
         id: calendarId,
         body: {
+          name: name.trim() || calendar?.name,
+          color,
+          is_active: isActive,
           work_days: workDays,
           start_time: startTime,
           end_time: endTime,
@@ -111,20 +163,24 @@ function CalendarConfigView({
           buffer_minutes: buffer,
           timezone,
           blocked_dates: blockedDates,
+          ...(isBooking
+            ? {
+                owner_user_id: ownerId === 'none' ? null : ownerId,
+                min_notice_minutes: minNotice,
+                max_advance_days: advance,
+                contact_reschedule_days: contactRescheduleDays,
+                reminder_offsets_minutes: reminders,
+              }
+            : {}),
+          ...(calendar?.type === 'appointments'
+            ? { payment_service_id: paymentServiceId === 'none' ? null : paymentServiceId, ...(charges ? { hold_minutes: holdMinutes } : {}) }
+            : {}),
         } satisfies UpdateWorkScheduleBody,
       });
-      if (calendar?.type === 'appointments') {
-        await updateCalendar.mutateAsync({
-          id: calendarId,
-          body: {
-            payment_service_id: paymentServiceId === 'none' ? null : paymentServiceId,
-          },
-        });
-      }
-      toast({ title: 'Schedule saved' });
+      toast({ title: 'Calendar saved' });
       onBack();
-    } catch {
-      toast({ title: 'Error saving schedule', variant: 'error' });
+    } catch (err) {
+      toast({ title: (err as Error)?.message || 'Error saving calendar', variant: 'error' });
     }
   };
 
@@ -138,9 +194,48 @@ function CalendarConfigView({
 
   return (
     <>
-      {/* Config body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        {/* Work days */}
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+          <div>
+            <label htmlFor="cal-name" className="block text-sm font-medium text-primary mb-1">Name</label>
+            <input id="cal-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </div>
+          <div className="flex gap-1.5 pb-1.5">
+            {COLOR_SWATCHES.map((swatch) => (
+              <button
+                key={swatch.value}
+                type="button"
+                title={swatch.label}
+                onClick={() => setColor(swatch.value)}
+                className={`w-6 h-6 rounded-full border-2 ${color === swatch.value ? 'border-strong scale-110' : 'border-transparent'}`}
+                style={{ backgroundColor: swatch.value }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-primary">
+          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+          Active (inactive calendars offer no free times)
+        </label>
+
+        <div>
+          <label htmlFor="cal-timezone" className="block text-sm font-medium text-primary mb-1">Time zone</label>
+          <input
+            id="cal-timezone"
+            list="cal-timezones"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className={inputClass}
+          />
+          <datalist id="cal-timezones">
+            {timeZones.map((tz) => (
+              <option key={tz} value={tz} />
+            ))}
+          </datalist>
+          {!timeZones.includes(timezone) && <p className="mt-1 text-xs text-danger">Pick a time zone from the list.</p>}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-primary mb-2">Work days</label>
           <div className="flex gap-2 flex-wrap">
@@ -161,80 +256,127 @@ function CalendarConfigView({
           </div>
         </div>
 
-        {/* Work hours */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-1">Start time</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
-            />
+            <label htmlFor="cal-start" className="block text-sm font-medium text-primary mb-1">Start time</label>
+            <input id="cal-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-primary mb-1">End time</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
-            />
+            <label htmlFor="cal-end" className="block text-sm font-medium text-primary mb-1">End time</label>
+            <input id="cal-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
           </div>
         </div>
 
-        {/* Slot duration */}
-        <div>
-          <label className="block text-sm font-medium text-primary mb-1">Slot duration</label>
-          <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
-            <SelectTrigger className="w-full bg-surface text-primary">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SLOT_DURATIONS.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">Slot duration</label>
+            <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
+              <SelectTrigger className="w-full bg-surface text-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SLOT_DURATIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">Buffer between appointments</label>
+            <Select value={String(buffer)} onValueChange={(v) => setBuffer(Number(v))}>
+              <SelectTrigger className="w-full bg-surface text-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BUFFER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Buffer */}
-        <div>
-          <label className="block text-sm font-medium text-primary mb-1">Buffer between appointments</label>
-          <Select value={String(buffer)} onValueChange={(v) => setBuffer(Number(v))}>
-            <SelectTrigger className="w-full bg-surface text-primary">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {BUFFER_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isBooking && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-primary mb-1">Staff member</label>
+              <Select value={ownerId} onValueChange={setOwnerId}>
+                <SelectTrigger className="w-full bg-surface text-primary">
+                  <SelectValue placeholder="Nobody in particular" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nobody in particular</SelectItem>
+                  {team.filter((m) => m.is_active).map((member) => (
+                    <SelectItem key={member.id} value={member.id}>{member.full_name || member.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted">Their bookings never overlap across all of their calendars.</p>
+            </div>
 
-        {/* Timezone */}
-        <div>
-          <label className="block text-sm font-medium text-primary mb-1">Timezone</label>
-          <input
-            type="text"
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            placeholder="e.g. America/New_York"
-            className="w-full rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
-          />
-        </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">Minimum notice</label>
+                <Select value={String(minNotice)} onValueChange={(v) => setMinNotice(Number(v))}>
+                  <SelectTrigger className="w-full bg-surface text-primary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NOTICE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="cal-advance" className="block text-sm font-medium text-primary mb-1">Book up to (days ahead)</label>
+                <input
+                  id="cal-advance"
+                  type="number"
+                  min={1}
+                  max={730}
+                  placeholder="No limit"
+                  value={maxAdvanceDays}
+                  onChange={(e) => setMaxAdvanceDays(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
 
-        {/* Payment service — only for real appointment calendars */}
+            <div>
+              <label htmlFor="cal-contact-days" className="block text-sm font-medium text-primary mb-1">
+                Contacts can move their booking up to (days ahead)
+              </label>
+              <input
+                id="cal-contact-days"
+                type="number"
+                min={1}
+                max={60}
+                value={contactRescheduleDays}
+                onChange={(e) => setContactRescheduleDays(Number(e.target.value))}
+                className={inputClass}
+              />
+              <p className="mt-1 text-xs text-muted">Free times shown on the contact&apos;s link when they choose a new time (1–60).</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary mb-2">Reminders to the contact</label>
+              <div className="flex flex-wrap gap-2">
+                {REMINDER_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-1.5 text-sm text-primary">
+                    <input type="checkbox" checked={reminders.includes(opt.value)} onChange={() => toggleReminder(opt.value)} />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted">Unconfirmed appointments get a reminder with the confirm button.</p>
+            </div>
+          </>
+        )}
+
         {calendar?.type === 'appointments' && (
           <div>
-            <label className="block text-sm font-medium text-primary mb-1">
-              Service charged at booking
-            </label>
+            <label className="block text-sm font-medium text-primary mb-1">Service charged at booking</label>
             <Select value={paymentServiceId} onValueChange={setPaymentServiceId}>
               <SelectTrigger className="w-full bg-surface text-primary">
                 <SelectValue placeholder="No charge" />
@@ -251,19 +393,28 @@ function CalendarConfigView({
             <p className="mt-1 text-xs text-muted">
               When the AI books into this calendar, it will request this payment before confirming the appointment.
             </p>
+            {charges && (
+              <div className="mt-3">
+                <label htmlFor="cal-hold" className="block text-sm font-medium text-primary mb-1">Hold the slot while paying (minutes)</label>
+                <input
+                  id="cal-hold"
+                  type="number"
+                  min={30}
+                  max={1440}
+                  value={holdMinutes}
+                  onChange={(e) => setHoldMinutes(Number(e.target.value))}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-muted">If the payment does not arrive in time, the slot is released (30–1440).</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Blocked dates */}
         <div>
           <label className="block text-sm font-medium text-primary mb-2">Blocked dates</label>
           <div className="flex gap-2 mb-2">
-            <input
-              type="date"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="flex-1 rounded-md border border-subtle bg-surface-raised text-primary px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-accent/40"
-            />
+            <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className={inputClass} />
             <Button type="button" variant="outline" size="sm" onClick={addBlockedDate} disabled={!newDate}>
               <Plus className="h-4 w-4" />
             </Button>
@@ -273,10 +424,7 @@ function CalendarConfigView({
           ) : (
             <ul className="space-y-1">
               {blockedDates.map((date) => (
-                <li
-                  key={date}
-                  className="flex items-center justify-between rounded-md bg-surface-raised px-3 py-1.5 text-sm"
-                >
+                <li key={date} className="flex items-center justify-between rounded-md bg-surface-raised px-3 py-1.5 text-sm">
                   <span className="text-primary">{date}</span>
                   <button
                     type="button"
@@ -292,7 +440,6 @@ function CalendarConfigView({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-6 py-4 border-t border-subtle flex justify-between gap-3">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" />
@@ -300,9 +447,13 @@ function CalendarConfigView({
         </Button>
         <Button
           onClick={handleSave}
-          disabled={updateConfig.isPending || updateCalendar.isPending}
+          disabled={
+            updateConfig.isPending ||
+            !timeZones.includes(timezone) ||
+            !(contactRescheduleDays >= 1 && contactRescheduleDays <= 60)
+          }
         >
-          {updateConfig.isPending || updateCalendar.isPending ? 'Saving...' : 'Save'}
+          {updateConfig.isPending ? 'Saving...' : 'Save'}
         </Button>
       </div>
     </>
@@ -320,6 +471,9 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#2563EB');
+  const [newType, setNewType] = useState<'appointments' | 'custom'>('appointments');
+  const [moveFrom, setMoveFrom] = useState<{ id: string; name: string; count: number } | null>(null);
+  const [moveTo, setMoveTo] = useState('');
 
   useEffect(() => {
     if (defaultCalendarId) {
@@ -334,7 +488,7 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
   const handleCreate = async () => {
     if (!newName.trim()) return;
     try {
-      await createCalendar.mutateAsync({ name: newName.trim(), color: newColor });
+      await createCalendar.mutateAsync({ name: newName.trim(), color: newColor, type: newType });
       toast({ title: 'Calendar created' });
       setShowCreateForm(false);
       setNewName('');
@@ -344,11 +498,20 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string, target?: string) => {
+    if (!target && !confirm(`Delete calendar "${name}"?`)) return;
     try {
-      await deleteCalendar.mutateAsync(id);
+      await deleteCalendar.mutateAsync({ id, moveTo: target });
       toast({ title: `"${name}" deleted` });
+      setMoveFrom(null);
+      setMoveTo('');
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'CALENDAR_MOVE_TARGET_REQUIRED') {
+        // Past appointments must live somewhere: ask where to move them.
+        setMoveFrom({ id, name, count: Number(err.errors?.count ?? 0) });
+        setMoveTo(calendars.find((c) => c.id !== id)?.id ?? '');
+        return;
+      }
       const msg = err instanceof Error ? err.message : 'Error deleting calendar';
       toast({ title: msg, variant: 'error' });
     }
@@ -448,6 +611,46 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                       </div>
                   ))}
 
+                  {moveFrom && (
+                    <div className="rounded-xl border border-danger/30 bg-danger/5 p-4 space-y-3">
+                      <p className="text-sm text-primary">
+                        &quot;{moveFrom.name}&quot; has {moveFrom.count} past appointment(s). Move them to:
+                      </p>
+                      <Select value={moveTo} onValueChange={setMoveTo}>
+                        <SelectTrigger className="w-full bg-surface text-primary">
+                          <SelectValue placeholder="Choose a calendar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {calendars
+                            .filter((c) => c.id !== moveFrom.id)
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setMoveFrom(null)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          disabled={!moveTo || deleteCalendar.isPending}
+                          onClick={() => handleDelete(moveFrom.id, moveFrom.name, moveTo)}
+                        >
+                          Move and delete
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Create form */}
                   {showCreateForm ? (
                     <div className="rounded-xl border border-dashed border-accent/30 bg-olive-dark/50 p-4 space-y-3">
@@ -477,6 +680,16 @@ export function CalendarManagerDrawer({ open, onClose, defaultCalendarId }: Prop
                           />
                         ))}
                       </div>
+
+                      <Select value={newType} onValueChange={(v) => setNewType(v as 'appointments' | 'custom')}>
+                        <SelectTrigger className="w-full bg-surface text-primary" aria-label="Calendar type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="appointments">Appointments (can charge)</SelectItem>
+                          <SelectItem value="custom">Other bookings (no charge)</SelectItem>
+                        </SelectContent>
+                      </Select>
 
                       <div className="flex gap-2 pt-1">
                         <Button
