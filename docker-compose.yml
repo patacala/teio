@@ -13,6 +13,11 @@
 #   - No definir `networks:` custom; Coolify crea la red y conecta Traefik.
 #   - Asigna dominios en la UI para `web` y `api` (o solo web si usas rewrites de Next).
 #   - Labels Traefik indican el puerto interno del contenedor (3000 / 3001).
+#   - DB: Supabase vía DATABASE_URL (no hay Postgres en este compose).
+#
+# Postgres local para pruebas (sin tocar Supabase):
+#   Ver docker-compose.override.yml — se aplica solo con `docker compose` local,
+#   Coolify no lo lee porque apunta directo a este archivo.
 
 services:
   redis:
