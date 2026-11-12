@@ -24,8 +24,8 @@ function formatDate(iso: string | null): string {
   }).format(new Date(iso));
 }
 
-function contactName(contact?: PaymentContact | null): string {
-  if (!contact) return 'Unknown contact';
+function contactName(contact?: PaymentContact | null, snapshot?: string | null): string {
+  if (!contact) return snapshot ?? 'Deleted contact';
   return [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Unnamed';
 }
 
@@ -38,6 +38,7 @@ const STATUS_META: Record<
   expired: { label: 'Expired', variant: 'default' },
   canceled: { label: 'Cancelled', variant: 'default' },
   failed: { label: 'Failed', variant: 'destructive' },
+  refunded: { label: 'Refunded', variant: 'default' },
 };
 
 const FILTERS: { value: 'all' | Payment['status']; label: string }[] = [
@@ -109,7 +110,7 @@ export function TransactionsTab() {
                 return (
                   <tr key={p.id} className="border-b border-subtle last:border-0 hover:bg-surface-raised">
                     <td className="px-4 py-2.5">
-                      <p className="font-medium text-primary">{contactName(p.contact)}</p>
+                      <p className="font-medium text-primary">{contactName(p.contact, p.contact_name)}</p>
                       {p.contact?.email && (
                         <p className="text-xs text-muted truncate">{p.contact.email}</p>
                       )}

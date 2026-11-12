@@ -7,6 +7,7 @@ import { ContactEntity } from '../client-management/contact.entity';
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { AppointmentEntity } from '../scheduling/appointment.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
+import { UserEntity } from '../users/user.entity';
 import { PaymentSettingsService } from './payment-settings.service';
 import { PaymentServiceService } from './payment-service.service';
 import { PaymentsService } from './payments.service';
@@ -27,6 +28,7 @@ import { SchedulingModule } from '../scheduling/scheduling.module';
       OrganizationEntity,
       AppointmentEntity,
       WorkScheduleEntity,
+      UserEntity,
     ]),
     IntegrationsModule,
     SchedulingModule,

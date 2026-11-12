@@ -1,4 +1,6 @@
 import {
+  IsIn,
+  MaxLength,
   IsUUID,
   IsOptional,
   IsString,
@@ -8,6 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PaymentResolution } from '@crm/shared';
 
 /** Slot the contact accepted. CRM holds it on the payment and creates the appointment only after Stripe pays. */
 export class PaymentBookingDto {
@@ -56,4 +59,19 @@ export class CreatePaymentDto {
   @ValidateNested()
   @Type(() => PaymentBookingDto)
   booking?: PaymentBookingDto;
+}
+
+export class ResolvePaymentDto {
+  @IsIn(Object.values(PaymentResolution))
+  resolution: PaymentResolution;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string;
+
+  /** Required for `rebooked`: the appointment the payment now covers. */
+  @IsOptional()
+  @IsUUID()
+  appointment_id?: string;
 }

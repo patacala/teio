@@ -74,12 +74,32 @@ export function usePayments(contactId?: string) {
 export function useCreatePayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: {
-      contact_id: string;
-      service_id: string;
-      conversation_id?: string;
-      appointment_id?: string;
-    }) => paymentsService.createPayment(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payments'] }),
+    mutationFn: (body: Parameters<typeof paymentsService.createPayment>[0]) => paymentsService.createPayment(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      // A payment link with a booking holds the slot on the agenda.
+      qc.invalidateQueries({ queryKey: ['appointments'] });
+    },
+  });
+}
+
+export function usePaymentsNeedingAttention(enabled = true) {
+  return useQuery({
+    queryKey: ['payments', 'attention'],
+    queryFn: () => paymentsService.getPaymentsNeedingAttention(),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useResolvePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof paymentsService.resolvePayment>[1] }) =>
+      paymentsService.resolvePayment(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['appointments'] });
+    },
   });
 }

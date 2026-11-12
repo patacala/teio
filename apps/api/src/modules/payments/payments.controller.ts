@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Query, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Query, Res, HttpStatus } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentDto, ResolvePaymentDto } from './dto/create-payment.dto';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '@crm/shared';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
@@ -46,7 +48,30 @@ export class PaymentsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually generate a Stripe Checkout link for a contact (same as the agent tool)' })
   create(@CurrentTenant() tenant: TenantContext, @Body() dto: CreatePaymentDto) {
-    return this.paymentsService.createCheckoutLink(tenant.organization_id, dto);
+    return this.paymentsService.createCheckoutLink(tenant.organization_id, dto, {
+      origin: tenant.role === 'api_key' ? 'webhook' : 'human',
+      userId: tenant.role === 'api_key' ? null : tenant.user_id,
+    });
+  }
+
+  @Get('attention')
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Paid payments whose booking could not be confirmed (manual follow-up, no auto refunds)' })
+  findNeedingAttention(@CurrentTenant() tenant: TenantContext) {
+    return this.paymentsService.findNeedingAttention(tenant.organization_id);
+  }
+
+  @Post(':id/resolve')
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Close a payment that needed attention: rebooked, refunded manually or dismissed' })
+  resolve(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ResolvePaymentDto,
+    @CurrentTenant() tenant: TenantContext,
+  ) {
+    return this.paymentsService.resolveAttention(tenant.organization_id, id, dto, tenant.user_id ?? null);
   }
 
   /**
