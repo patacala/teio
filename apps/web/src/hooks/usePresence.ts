@@ -11,25 +11,35 @@ export function usePresence(conversationId: string | null) {
   const [presentUsers, setPresentUsers] = useState<PresenceUser[]>([]);
 
   useEffect(() => {
-    if (!conversationId || !user) return;
+    if (!conversationId) return;
 
     const ch = client.getOrCreate(`conversation:${conversationId}`);
-    const myState: PresenceUser = {
-      userId: user.id,
-      userName: user.user_metadata?.full_name ?? user.email ?? 'Agent',
-      role: user.user_metadata?.role ?? 'agent',
-      onlineAt: new Date().toISOString(),
-    };
+    const myState: PresenceUser | null = user
+      ? {
+          userId: user.id,
+          userName: user.user_metadata?.full_name ?? user.email ?? 'Agent',
+          role: user.user_metadata?.role ?? 'agent',
+          onlineAt: new Date().toISOString(),
+        }
+      : null;
 
-    ch.on('presence', { event: 'sync' }, () => {
-      const state = ch.presenceState<PresenceUser>();
-      setPresentUsers(Object.values(state).flat());
-    }).subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') await ch.track(myState);
-    });
+    const syncPresence = () => {
+      setPresentUsers(Object.values(ch.presenceState<PresenceUser>()).flat());
+    };
+    const channelState = ch.state;
+    const alreadySubscribed =
+      channelState === 'joined' || channelState === 'joining' || channelState === 'leaving';
+
+    if (alreadySubscribed) {
+      if (myState) void ch.track(myState);
+    } else {
+      ch.on('presence', { event: 'sync' }, syncPresence).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && myState) await ch.track(myState);
+      });
+    }
 
     return () => {
-      ch.untrack();
+      void ch.untrack();
     };
   }, [conversationId, client, user]);
 

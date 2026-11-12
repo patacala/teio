@@ -8,7 +8,9 @@ type Listener = { type: string; event?: string; callback: (arg: unknown) => void
 export class FakeChannel {
   listeners: Listener[] = [];
   presence: Record<string, unknown[]> = {};
+  state: 'closed' | 'errored' | 'joined' | 'joining' | 'leaving' = 'closed';
   subscribe: Mock<(callback?: (status: string) => void) => FakeChannel> = vi.fn((callback) => {
+    this.state = 'joined';
     callback?.('SUBSCRIBED');
     return this;
   });
@@ -20,6 +22,9 @@ export class FakeChannel {
   constructor(public name: string) {}
 
   on(type: string, filter: { event?: string }, callback: (arg: unknown) => void) {
+    if ((this.state === 'joined' || this.state === 'joining') && type === 'presence') {
+      throw new Error(`cannot add \`${type}\` callbacks for realtime:${this.name} after \`subscribe()\`.`);
+    }
     this.listeners.push({ type, event: filter.event, callback });
     return this;
   }
