@@ -1,29 +1,43 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Columns3, List, Plus, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFunnels, useCreateFunnel, useFunnelStages } from '@/hooks/useFunnels';
 import { toast } from '@/hooks/useToast';
 import { FunnelTemplateSelector } from './_components/FunnelTemplateSelector';
-import { StageListView } from './_components/StageListView';
 import { FunnelKanbanView } from './_components/FunnelKanbanView';
+import { FunnelListView } from './_components/FunnelListView';
+import { StagesDrawer } from './_components/StagesDrawer';
 
-type View = 'list' | 'kanban';
+function PageHeader({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h1 className="text-lg font-semibold text-primary">Funnel</h1>
+        <p className="text-xs text-secondary mt-0.5">Track where every contact is and move them between stages.</p>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function ConfigFunnelPage() {
   const { data: funnels, isLoading: funnelsLoading } = useFunnels();
   const createFunnel = useCreateFunnel();
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
-  const [view, setView] = useState<View>('kanban');
+  const [configureOpen, setConfigureOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState('');
 
   const { data: stages = [] } = useFunnelStages(selectedFunnelId);
+  const selectedFunnel = funnels?.find((f) => f.id === selectedFunnelId);
 
-  // Auto-select first funnel when data loads
   useEffect(() => {
     if (funnels && funnels.length > 0 && !selectedFunnelId) {
       setSelectedFunnelId(funnels[0].id);
@@ -34,7 +48,7 @@ export default function ConfigFunnelPage() {
     e.preventDefault();
     if (!newFunnelName.trim()) return;
     try {
-      const funnel = await createFunnel.mutateAsync({ name: newFunnelName });
+      const funnel = await createFunnel.mutateAsync({ name: newFunnelName.trim() });
       setSelectedFunnelId(funnel.id);
       setCreateOpen(false);
       setNewFunnelName('');
@@ -45,20 +59,22 @@ export default function ConfigFunnelPage() {
 
   if (funnelsLoading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-6 w-6 animate-spin text-muted" />
+      <div className="space-y-5">
+        <PageHeader />
+        <Skeleton className="h-10 w-48" />
+        <div className="flex gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-80 w-72 shrink-0 rounded-card" />
+          ))}
+        </div>
       </div>
     );
   }
 
-  // Empty state — show template selector
   if (!funnels?.length) {
     return (
       <div className="space-y-5">
-        <div>
-          <h1 className="text-lg font-semibold text-primary">Funnel</h1>
-          <p className="text-xs text-secondary mt-0.5">Define and manage your sales pipelines.</p>
-        </div>
+        <PageHeader />
         <FunnelTemplateSelector onCreated={setSelectedFunnelId} />
       </div>
     );
@@ -66,74 +82,52 @@ export default function ConfigFunnelPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-lg font-semibold text-primary">Funnel</h1>
-          <p className="text-xs text-secondary mt-0.5">Define and manage your sales pipelines.</p>
-        </div>
+      <PageHeader>
         <div className="flex items-center gap-2">
-          {/* Funnel selector */}
-          <select
-            value={selectedFunnelId ?? ''}
-            onChange={(e) => setSelectedFunnelId(e.target.value)}
-            className="h-8 rounded-lg border border-subtle bg-surface-raised text-sm px-2 text-primary focus:outline-hidden focus:ring-2 focus:ring-accent/40"
-          >
-            {funnels.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-
-          {/* New funnel */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setCreateOpen(true)}
-            className="gap-1.5"
-          >
+          <Select value={selectedFunnelId ?? undefined} onValueChange={setSelectedFunnelId}>
+            <SelectTrigger aria-label="Funnel" className="h-8 w-48 text-sm">
+              <SelectValue placeholder="Select a funnel" />
+            </SelectTrigger>
+            <SelectContent>
+              {funnels.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" onClick={() => setConfigureOpen(true)} disabled={!selectedFunnel}>
+            <Settings2 className="h-3.5 w-3.5" /> Configure
+          </Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> New funnel
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
-      {/* View toggle — prominent row above content */}
       {selectedFunnelId && (
-        <div className="flex items-center gap-1 border-b border-subtle pb-4">
-          <button
-            onClick={() => setView('kanban')}
-            className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-              view === 'kanban'
-                ? 'border-accent/12 bg-olive-dark text-primary'
-                : 'border-transparent text-secondary hover:bg-surface-hover hover:text-primary'
-            }`}
-          >
-            Kanban
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-              view === 'list'
-                ? 'border-accent/12 bg-olive-dark text-primary'
-                : 'border-transparent text-secondary hover:bg-surface-hover hover:text-primary'
-            }`}
-          >
-            List
-          </button>
-        </div>
+        <Tabs defaultValue="board">
+          <TabsList className="mb-3">
+            <TabsTrigger value="board">
+              <Columns3 className="h-3.5 w-3.5" /> Board
+            </TabsTrigger>
+            <TabsTrigger value="list">
+              <List className="h-3.5 w-3.5" /> List
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="board">
+            <FunnelKanbanView stages={stages} onConfigure={() => setConfigureOpen(true)} />
+          </TabsContent>
+          <TabsContent value="list">
+            <FunnelListView stages={stages} onConfigure={() => setConfigureOpen(true)} />
+          </TabsContent>
+        </Tabs>
       )}
 
-      {/* Content */}
-      {selectedFunnelId && (
-        view === 'list' ? (
-          <StageListView funnelId={selectedFunnelId} />
-        ) : (
-          <FunnelKanbanView stages={stages} />
-        )
+      {selectedFunnel && (
+        <StagesDrawer funnel={selectedFunnel} open={configureOpen} onOpenChange={setConfigureOpen} />
       )}
 
-      {/* Create Funnel Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -141,8 +135,11 @@ export default function ConfigFunnelPage() {
           </DialogHeader>
           <form onSubmit={handleCreateFunnel} className="space-y-4 mt-2">
             <div>
-              <label className="block text-xs font-medium text-primary mb-1">Name</label>
+              <label htmlFor="new-funnel-name" className="block text-xs font-medium text-primary mb-1">
+                Name
+              </label>
               <Input
+                id="new-funnel-name"
                 required
                 value={newFunnelName}
                 onChange={(e) => setNewFunnelName(e.target.value)}
@@ -153,11 +150,7 @@ export default function ConfigFunnelPage() {
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={createFunnel.isPending}
-                className="bg-accent hover:bg-accent-hover text-on-accent"
-              >
+              <Button type="submit" disabled={createFunnel.isPending || !newFunnelName.trim()}>
                 {createFunnel.isPending ? 'Creating…' : 'Create'}
               </Button>
             </div>

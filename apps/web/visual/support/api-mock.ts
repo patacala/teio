@@ -10,6 +10,7 @@ import type {
 import { ORG_COMMUNICATION_EVENTS, PLATFORM_COMMUNICATION_EVENTS } from '@crm/shared';
 import { billingAccess } from '@/test/fixtures/billing';
 import { PLANS } from './data';
+import type { FunnelScenario } from './funnel';
 import { API_URL } from './env';
 import { testUser } from './session';
 
@@ -30,6 +31,7 @@ export interface Scenario {
   invoices?: Mocked<BillingInvoice[]>;
   demoDefaults?: Mocked<DemoLimitDefaults>;
   demoOrganizations?: Mocked<DemoOrganization[]>;
+  funnel?: FunnelScenario;
 }
 
 export const ORG_ID = '22222222-bbbb-4bbb-8bbb-222222222222';
@@ -140,8 +142,25 @@ export async function mockApi(page: Page, scenario: Scenario): Promise<{ unexpec
       case '/communications/templates':
         return respond(route, []);
       case '/conversations':
-      case '/contacts':
         return respond(route, paginated([]));
+      case '/contacts': {
+        const stageId = url.searchParams.get('stage_id');
+        const all = scenario.funnel?.contacts ?? [];
+        const items = stageId ? all.filter((c) => c.lead_stage === stageId) : all;
+        const limit = Number(url.searchParams.get('limit') ?? 20);
+        return respond(route, {
+          items: items.slice(0, limit),
+          meta: { total: items.length, page: 1, limit, total_pages: Math.ceil(items.length / limit), has_next: items.length > limit, has_prev: false },
+        });
+      }
+      case '/funnels':
+        return respond(route, scenario.funnel?.funnels ?? []);
+      case '/funnels/templates':
+        return respond(route, scenario.funnel?.templates ?? []);
+      case '/funnels/stages':
+        return respond(route, scenario.funnel?.stages ?? []);
+      case '/ai-agents':
+        return respond(route, []);
       case '/payments/services':
       case '/payments':
         return respond(route, []);
@@ -154,9 +173,14 @@ export async function mockApi(page: Page, scenario: Scenario): Promise<{ unexpec
           webhook_url: `https://api.acme.test/api/v1/webhooks/payments/stripe/${ORG_ID}`,
           updated_at: '2026-06-01T00:00:00.000Z',
         });
-      default:
+      default: {
+        const funnelStages = path.match(/^\/funnels\/([^/]+)\/stages$/);
+        if (funnelStages) {
+          return respond(route, (scenario.funnel?.stages ?? []).filter((st) => st.funnel_id === funnelStages[1]));
+        }
         unexpected.push(`${method} ${path}`);
         return respond(route, []);
+      }
     }
   });
 

@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import type { FunnelStage } from '@/services/funnels.service';
 import { useUpdateContactStage } from '@/hooks/useFunnels';
+import { toast } from '@/hooks/useToast';
 import { KanbanColumn } from './KanbanColumn';
+import { NoStages } from './NoStages';
 
 interface Props {
   stages: FunnelStage[];
+  onConfigure: () => void;
 }
 
-export function FunnelKanbanView({ stages }: Props) {
+export function FunnelKanbanView({ stages, onConfigure }: Props) {
   const [draggingContactId, setDraggingContactId] = useState<string | null>(null);
   const updateContactStage = useUpdateContactStage();
 
@@ -17,9 +20,14 @@ export function FunnelKanbanView({ stages }: Props) {
 
   const handleDrop = (stageId: string) => {
     if (!draggingContactId) return;
-    updateContactStage.mutate({ contactId: draggingContactId, stageId });
+    updateContactStage.mutate(
+      { contactId: draggingContactId, stageId },
+      { onError: () => toast({ title: 'Failed to move contact', variant: 'error' }) },
+    );
     setDraggingContactId(null);
   };
+
+  if (sorted.length === 0) return <NoStages onConfigure={onConfigure} />;
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 pt-1 min-h-96">
@@ -31,11 +39,6 @@ export function FunnelKanbanView({ stages }: Props) {
           onDrop={handleDrop}
         />
       ))}
-      {sorted.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-sm text-muted">
-          Add stages in the list view to use the Kanban board.
-        </div>
-      )}
     </div>
   );
 }
