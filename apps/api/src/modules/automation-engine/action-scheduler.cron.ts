@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject, Optional, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
-import { AutomatedAppointmentService } from './automated-appointment.service';
+import { ScheduledActionService } from './scheduled-action.service';
 import { ActionExecutionService } from './action-execution.service';
 import { AutomationSequenceService } from './automation-sequence.service';
 import { ACTION_EXECUTION_QUEUE } from './automation-engine.constants';
@@ -13,7 +13,7 @@ export class ActionSchedulerCron implements OnModuleInit {
   private useQueue = false;
 
   constructor(
-    private readonly automatedAppointmentService: AutomatedAppointmentService,
+    private readonly actions: ScheduledActionService,
     private readonly actionExecutionService: ActionExecutionService,
     private readonly sequenceService: AutomationSequenceService,
     @Optional() @Inject(ACTION_EXECUTION_QUEUE) private readonly queue?: Queue,
@@ -51,12 +51,12 @@ export class ActionSchedulerCron implements OnModuleInit {
     this.isRunning = true;
 
     try {
-      const due = await this.automatedAppointmentService.findDue(50);
+      const due = await this.actions.findDue(50);
       if (due.length === 0) return;
 
       let processed = 0;
       for (const appt of due) {
-        const locked = await this.automatedAppointmentService.markProcessing(appt.organization_id, appt.id);
+        const locked = await this.actions.markProcessing(appt.organization_id, appt.id);
         if (!locked) continue;
 
         if (this.useQueue && this.queue) {
@@ -97,11 +97,11 @@ export class ActionSchedulerCron implements OnModuleInit {
     const timeoutHours = Number(process.env.FOLLOW_UP_PROCESSING_TIMEOUT_HOURS ?? 6);
 
     try {
-      const stuck = await this.automatedAppointmentService.findStuckProcessing(timeoutHours);
+      const stuck = await this.actions.findStuckProcessing(timeoutHours);
       if (stuck.length === 0) return;
 
       for (const appt of stuck) {
-        const outcome = await this.automatedAppointmentService.markFailed(
+        const outcome = await this.actions.markFailed(
           appt.organization_id,
           appt.id,
           `No completion received within ${timeoutHours}h of dispatch`,

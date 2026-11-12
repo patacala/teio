@@ -4,9 +4,12 @@ import { ClientProxy } from '@nestjs/microservices';
 import { Repository, IsNull } from 'typeorm';
 import { FIRST_FOLLOW_UP_DELAY_HOURS, FOLLOW_UP_HOUR } from '@crm/shared';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
+import { CalendarSystemKey } from '@crm/shared';
 import type { CreateSequenceInput, SequenceStatus, CompletionReason } from '@crm/shared';
+import { ensureSystemCalendar, findOrganizationTimezone } from '../scheduling/system-calendars';
+import { addDays, localDate, weekdayOf, zonedTimeToUtc } from '../scheduling/domain/timezone';
 import { AutomationSequenceEntity } from './automation-sequence.entity';
-import { AppointmentEntity } from '../scheduling/appointment.entity';
+import { ScheduledActionEntity } from './scheduled-action.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
 import { ContactEntity } from '../client-management/contact.entity';
 import { ConversationEntity } from '../conversation-management/conversation.entity';
@@ -18,26 +21,19 @@ import { OrganizationEntity } from '../organizations/organization.entity';
 /** Fallback when a sequence has no cloned steps (created before migration 030). */
 const DEFAULT_STEP = { action: 'send_message', channel_strategy: 'auto', delay_hours: 24 };
 
-/** Returns next Mon-Fri at 10:00 UTC. Skips weekends. */
-function getNextBusinessDayAt10(): Date {
-  return addBusinessDelay(24);
-}
-
 /**
  * Advances `delayHours` from now, then lands on the next weekday at
- * FOLLOW_UP_HOUR. Sub-day delays keep their exact time so short cadences
- * (appointment reminders) are not pushed to the next morning.
+ * FOLLOW_UP_HOUR on the organization's wall clock. Sub-day delays keep their
+ * exact time so short cadences (appointment reminders) are not pushed to the
+ * next morning.
  */
-function addBusinessDelay(delayHours: number): Date {
-  const next = new Date(Date.now() + delayHours * 3600_000);
+export function addBusinessDelay(delayHours: number, timeZone = 'UTC', now = new Date()): Date {
+  const next = new Date(now.getTime() + delayHours * 3600_000);
   if (delayHours < 24) return next;
 
-  // Skip Saturday (6) and Sunday (0)
-  while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
-    next.setUTCDate(next.getUTCDate() + 1);
-  }
-  next.setUTCHours(FOLLOW_UP_HOUR, 0, 0, 0);
-  return next;
+  let date = localDate(next, timeZone);
+  while (weekdayOf(date) === 0 || weekdayOf(date) === 6) date = addDays(date, 1);
+  return zonedTimeToUtc(date, FOLLOW_UP_HOUR * 60, timeZone) ?? next;
 }
 
 @Injectable()
@@ -47,8 +43,8 @@ export class AutomationSequenceService {
   constructor(
     @InjectRepository(AutomationSequenceEntity)
     private readonly repo: Repository<AutomationSequenceEntity>,
-    @InjectRepository(AppointmentEntity)
-    private readonly appointmentRepo: Repository<AppointmentEntity>,
+    @InjectRepository(ScheduledActionEntity)
+    private readonly actionRepo: Repository<ScheduledActionEntity>,
     @InjectRepository(WorkScheduleEntity)
     private readonly calendarRepo: Repository<WorkScheduleEntity>,
     @InjectRepository(ContactEntity)
@@ -152,7 +148,7 @@ export class AutomationSequenceService {
   private async getStep(
     sequenceId: string,
     position: number,
-  ): Promise<{ action: string; channel_strategy: string; delay_hours: number }> {
+  ): Promise<{ action: string; channel_strategy: string; delay_hours: number; config?: Record<string, unknown> }> {
     const step = await this.stepRepo.findOne({
       where: { sequence_id: sequenceId, position },
     });
@@ -400,7 +396,7 @@ export class AutomationSequenceService {
     });
     const saved = await this.repo.save(sequence) as AutomationSequenceEntity;
 
-    // Clone the cadence before scheduling anything — createSequenceAppointment
+    // Clone the cadence before scheduling anything — createSequenceStep
     // reads step 1 from it. Also sets template_id and max_attempts.
     await this.cloneStepsFromTemplate(organizationId, saved, template);
 
@@ -421,7 +417,7 @@ export class AutomationSequenceService {
     const dueAt = dto.due_at
       ? new Date(dto.due_at)
       : new Date(now.getTime() + FIRST_FOLLOW_UP_DELAY_HOURS * 3600_000);
-    await this.createSequenceAppointment(organizationId, saved, dueAt, dto);
+    await this.createSequenceStep(organizationId, saved, dueAt, dto);
 
     const dueLabel = dto.due_at
       ? `at ${dueAt.toISOString()}`
@@ -448,13 +444,13 @@ export class AutomationSequenceService {
     await this.repo.save(seq);
 
     // Cancel pending appointment
-    await this.appointmentRepo
+    await this.actionRepo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({ status: 'cancelled' })
       .where('sequence_id = :sequenceId AND status IN (:...statuses)', {
         sequenceId,
-        statuses: ['pending', 'scheduled', 'processing'],
+        statuses: ['pending', 'processing', 'awaiting_user'],
       })
       .execute();
 
@@ -492,13 +488,13 @@ export class AutomationSequenceService {
     if (!seq || seq.status !== 'active') return;
 
     // Cancel current pending appointment — contact responded before execution, no longer needed
-    await this.appointmentRepo
+    await this.actionRepo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({ status: 'cancelled' })
       .where('sequence_id = :sequenceId AND status IN (:...statuses)', {
         sequenceId,
-        statuses: ['pending', 'scheduled', 'processing'],
+        statuses: ['pending', 'processing', 'awaiting_user'],
       })
       .execute();
 
@@ -508,7 +504,7 @@ export class AutomationSequenceService {
 
     // Schedule new follow-up at +2h
     const dueAt = new Date(Date.now() + FIRST_FOLLOW_UP_DELAY_HOURS * 3600_000);
-    await this.createSequenceAppointment(seq.organization_id, seq, dueAt);
+    await this.createSequenceStep(seq.organization_id, seq, dueAt);
 
     this.logger.log(`Sequence ${sequenceId} timer reset — contact responded, next follow-up in ${FIRST_FOLLOW_UP_DELAY_HOURS}h`);
   }
@@ -540,8 +536,9 @@ export class AutomationSequenceService {
 
     // Spacing comes from the next step's delay_hours (weekends still skipped)
     const nextStep = await this.getStep(seq.id, seq.current_attempt);
-    const dueAt = addBusinessDelay(nextStep.delay_hours);
-    await this.createSequenceAppointment(seq.organization_id, seq, dueAt);
+    const timeZone = await findOrganizationTimezone(this.calendarRepo, seq.organization_id);
+    const dueAt = addBusinessDelay(nextStep.delay_hours, timeZone);
+    await this.createSequenceStep(seq.organization_id, seq, dueAt);
 
     this.logger.log(
       `Sequence ${sequenceId} advanced to attempt ${seq.current_attempt}/${seq.max_attempts} (next due: ${dueAt.toISOString()})`,
@@ -565,14 +562,16 @@ export class AutomationSequenceService {
       .execute();
   }
 
-  async findByAppointmentId(organizationId: string, appointmentId: string): Promise<AutomationSequenceEntity | null> {
-    const appt = await this.appointmentRepo.findOne({
-      where: { id: appointmentId, organization_id: organizationId },
-      select: ['sequence_id'],
+  /** The sequence a follow-up step belongs to (n8n still calls the step id `appointment_id`). */
+  async findByActionId(organizationId: string, actionId: string): Promise<AutomationSequenceEntity | null> {
+    const step = await this.actionRepo.findOne({
+      where: { id: actionId, organization_id: organizationId },
+      select: ['id', 'sequence_id'],
     });
-    if (!appt?.sequence_id) return null;
-    return this.repo.findOne({ where: { id: appt.sequence_id, organization_id: organizationId } });
+    if (!step?.sequence_id) return null;
+    return this.repo.findOne({ where: { id: step.sequence_id, organization_id: organizationId } });
   }
+
 
   async findAll(
     organizationId: string,
@@ -618,41 +617,17 @@ export class AutomationSequenceService {
     });
   }
 
-  private async createSequenceAppointment(
+  private async createSequenceStep(
     organizationId: string,
     sequence: AutomationSequenceEntity,
     dueAt: Date,
     dto?: CreateSequenceInput,
-  ): Promise<AppointmentEntity> {
+  ): Promise<ScheduledActionEntity> {
     // The plan for this attempt — action and channel strategy both come from
     // the cloned step instead of being hardcoded.
     const step = await this.getStep(sequence.id, sequence.current_attempt);
 
-    // Find or create follow-up calendar
-    let calendar = await this.calendarRepo.findOne({
-      where: { organization_id: organizationId, type: 'follow_up' },
-    });
-    if (!calendar) {
-      calendar = await this.calendarRepo.save(
-        this.calendarRepo.create({
-          organization_id: organizationId,
-          name: 'Follow-up',
-          type: 'follow_up',
-          color: '#16a34a',
-          is_active: true,
-          work_days: [1, 2, 3, 4, 5],
-          start_time: '09:00',
-          end_time: '18:00',
-          slot_duration_minutes: 30,
-          buffer_minutes: 0,
-          timezone: 'UTC',
-          blocked_dates: [],
-        }),
-      );
-    }
-
-    const startsAt = dueAt;
-    const endsAt = new Date(startsAt.getTime() + 15 * 60_000);
+    const calendar = await ensureSystemCalendar(this.calendarRepo, organizationId, CalendarSystemKey.FOLLOW_UP);
 
     // Only the first attempt can carry a hand-written body — later ones are
     // scheduled without a dto and fall back to the generated message.
@@ -661,33 +636,33 @@ export class AutomationSequenceService {
     const messageContent =
       dto?.message_content ?? (dto?.metadata?.message_content as string | undefined);
 
-    const appt = this.appointmentRepo.create({
-      organization_id: organizationId,
-      calendar_id: calendar.id,
-      contact_id: sequence.contact_id,
-      title: `Sequence: ${sequence.sequence_type} #${sequence.current_attempt}`,
-      status: 'pending',
-      starts_at: startsAt,
-      ends_at: endsAt,
-      timezone: 'UTC',
-      origin: 'automation',
-      action: step.action,
-      executor: 'system',
-      channel_strategy: step.channel_strategy,
-      ...(messageContent ? { message_content: messageContent } : {}),
-      source: sequence.source,
-      sequence_id: sequence.id,
-      conversation_id: sequence.conversation_id ?? undefined,
-      metadata: {
-        sequence_type: sequence.sequence_type,
-        attempt: sequence.current_attempt,
-        // Cloned from the template's step count, so n8n can tell a middle
-        // touch from the last one instead of assuming the default of 7.
-        total_follow_ups: sequence.max_attempts,
-        ...(dto?.metadata ?? {}),
-      },
-    });
-
-    return this.appointmentRepo.save(appt);
+    return this.actionRepo.save(
+      this.actionRepo.create({
+        organization_id: organizationId,
+        calendar_id: calendar.id,
+        contact_id: sequence.contact_id,
+        title: `Sequence: ${sequence.sequence_type} #${sequence.current_attempt}`,
+        status: 'pending',
+        due_at: dueAt,
+        timezone: await findOrganizationTimezone(this.calendarRepo, organizationId),
+        origin: 'automation',
+        action: step.action,
+        // A template step can hand the touch to a person (config.executor = 'user').
+        executor: step.config?.executor === 'user' ? 'user' : 'system',
+        channel_strategy: step.channel_strategy,
+        message_content: messageContent ?? null,
+        source: sequence.source,
+        sequence_id: sequence.id,
+        conversation_id: sequence.conversation_id ?? null,
+        metadata: {
+          sequence_type: sequence.sequence_type,
+          attempt: sequence.current_attempt,
+          // Cloned from the template's step count, so n8n can tell a middle
+          // touch from the last one instead of assuming the default of 7.
+          total_follow_ups: sequence.max_attempts,
+          ...(dto?.metadata ?? {}),
+        },
+      }),
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AppointmentEntity } from '../scheduling/appointment.entity';
+import { ScheduledActionEntity } from './scheduled-action.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
 import type { CreateAutomatedAppointmentInput } from '@crm/shared';
 
@@ -18,8 +18,8 @@ export class AutomatedAppointmentService {
   private readonly logger = new Logger(AutomatedAppointmentService.name);
 
   constructor(
-    @InjectRepository(AppointmentEntity)
-    private readonly repo: Repository<AppointmentEntity>,
+    @InjectRepository(ScheduledActionEntity)
+    private readonly repo: Repository<ScheduledActionEntity>,
     @InjectRepository(WorkScheduleEntity)
     private readonly calendarRepo: Repository<WorkScheduleEntity>,
   ) {}
@@ -27,7 +27,7 @@ export class AutomatedAppointmentService {
   async create(
     organizationId: string,
     dto: CreateAutomatedAppointmentInput,
-  ): Promise<AppointmentEntity> {
+  ): Promise<ScheduledActionEntity> {
     let calendarId = dto.calendar_id;
 
     if (!calendarId) {
@@ -57,39 +57,41 @@ export class AutomatedAppointmentService {
       }
     }
 
-    const startsAt = new Date(dto.due_at);
-    const endsAt = new Date(startsAt.getTime() + 15 * 60_000); // 15min default
+    const dueAt = new Date(dto.due_at);
 
-    const appt = this.repo.create({
+    const action = this.repo.create({
       organization_id: organizationId,
       calendar_id: calendarId,
       contact_id: dto.contact_id,
+      conversation_id: (dto as any).conversation_id || null,
+      sequence_id: (dto as any).sequence_id || null,
       title: dto.title ?? ACTION_TITLES[dto.action] ?? 'Follow-up',
-      status: 'pending',
-      starts_at: startsAt,
-      ends_at: endsAt,
-      timezone: 'UTC',
-      origin: 'automation',
+      description: (dto as any).description || null,
       action: dto.action,
       executor: dto.executor ?? 'system',
       channel_strategy: dto.channel_strategy ?? 'auto',
       message_content: dto.message_content ?? undefined,
+      status: 'pending',
+      due_at: dueAt,
+      timezone: (dto as any).timezone ?? 'UTC',
       source: dto.source ?? 'manual',
+      origin: 'automation',
+      attempts: 0,
+      max_attempts: (dto as any).max_attempts ?? 3,
       metadata: dto.metadata ?? {},
     });
 
-    const saved = await this.repo.save(appt) as AppointmentEntity;
+    const saved = await this.repo.save(action);
     this.logger.log(`Created automated appointment ${saved.id} action=${dto.action} for contact=${dto.contact_id}`);
     return saved;
   }
 
-  async findDue(limit = 50): Promise<AppointmentEntity[]> {
+  async findDue(limit = 50): Promise<ScheduledActionEntity[]> {
     return this.repo
-      .createQueryBuilder('appt')
-      .where('appt.action IS NOT NULL')
-      .andWhere('appt.status IN (:...statuses)', { statuses: ['pending', 'scheduled'] })
-      .andWhere('appt.starts_at <= NOW()')
-      .orderBy('appt.starts_at', 'ASC')
+      .createQueryBuilder('action')
+      .where('action.status = :status', { status: 'pending' })
+      .andWhere('action.due_at <= NOW()')
+      .orderBy('action.due_at', 'ASC')
       .take(limit)
       .getMany();
   }
@@ -102,13 +104,12 @@ export class AutomatedAppointmentService {
    * never answers — a failed workflow, a call that went to voicemail — the
    * sequence stalls forever with no signal. These are what the reaper retries.
    */
-  async findStuckProcessing(olderThanHours: number, limit = 50): Promise<AppointmentEntity[]> {
+  async findStuckProcessing(olderThanHours: number, limit = 50): Promise<ScheduledActionEntity[]> {
     return this.repo
-      .createQueryBuilder('appt')
-      .where('appt.status = :status', { status: 'processing' })
-      .andWhere('appt.action IS NOT NULL')
-      .andWhere(`appt.updated_at < NOW() - (:hours * INTERVAL '1 hour')`, { hours: olderThanHours })
-      .orderBy('appt.updated_at', 'ASC')
+      .createQueryBuilder('action')
+      .where('action.status = :status', { status: 'processing' })
+      .andWhere(`action.updated_at < NOW() - (:hours * INTERVAL '1 hour')`, { hours: olderThanHours })
+      .orderBy('action.updated_at', 'ASC')
       .take(limit)
       .getMany();
   }
@@ -116,10 +117,10 @@ export class AutomatedAppointmentService {
   async markProcessing(organizationId: string, id: string): Promise<boolean> {
     const result = await this.repo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({ status: 'processing' })
       .where('id = :id AND organization_id = :orgId', { id, orgId: organizationId })
-      .andWhere('status IN (:...statuses)', { statuses: ['pending', 'scheduled'] })
+      .andWhere('status = :status', { status: 'pending' })
       .execute();
     return (result.affected ?? 0) > 0;
   }
@@ -127,29 +128,28 @@ export class AutomatedAppointmentService {
   async markCompleted(organizationId: string, id: string, resolvedChannel?: string): Promise<void> {
     await this.repo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({
         status: 'completed',
         completed_at: new Date(),
         resolved_channel: resolvedChannel ?? undefined,
-        reminder_sent: true,
       })
       .where('id = :id AND organization_id = :orgId', { id, orgId: organizationId })
       .execute();
   }
 
   async markFailed(organizationId: string, id: string, error: string): Promise<'retrying' | 'failed' | 'missing'> {
-    const appt = await this.repo.findOne({
+    const action = await this.repo.findOne({
       where: { id, organization_id: organizationId },
     });
-    if (!appt) return 'missing';
+    if (!action) return 'missing';
 
-    const newAttempts = appt.attempts + 1;
-    const newStatus = newAttempts < appt.max_attempts ? 'pending' : 'failed';
+    const newAttempts = action.attempts + 1;
+    const newStatus = newAttempts < action.max_attempts ? 'pending' : 'failed';
 
     await this.repo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({
         attempts: newAttempts,
         status: newStatus,
@@ -158,7 +158,7 @@ export class AutomatedAppointmentService {
       .where('id = :id AND organization_id = :orgId', { id, orgId: organizationId })
       .execute();
 
-    this.logger.warn(`Appointment ${id} attempt ${newAttempts}/${appt.max_attempts}: ${error} → ${newStatus}`);
+    this.logger.warn(`ScheduledAction ${id} attempt ${newAttempts}/${action.max_attempts}: ${error} → ${newStatus}`);
     return newStatus === 'failed' ? 'failed' : 'retrying';
   }
 
@@ -174,7 +174,7 @@ export class AutomatedAppointmentService {
     }
   }
 
-  async findProcessingBySequence(organizationId: string, sequenceId: string): Promise<AppointmentEntity | null> {
+  async findProcessingBySequence(organizationId: string, sequenceId: string): Promise<ScheduledActionEntity | null> {
     return this.repo.findOne({
       where: { organization_id: organizationId, sequence_id: sequenceId, status: 'processing' },
     });
@@ -190,7 +190,7 @@ export class AutomatedAppointmentService {
     organizationId: string,
     contactId: string,
     action: string,
-  ): Promise<AppointmentEntity | null> {
+  ): Promise<ScheduledActionEntity | null> {
     return this.repo.findOne({
       where: {
         organization_id: organizationId,
@@ -198,14 +198,14 @@ export class AutomatedAppointmentService {
         action,
         status: 'processing',
       },
-      order: { starts_at: 'DESC' },
+      order: { due_at: 'DESC' },
     });
   }
 
   async cancel(id: string, organizationId: string): Promise<void> {
     await this.repo
       .createQueryBuilder()
-      .update(AppointmentEntity)
+      .update(ScheduledActionEntity)
       .set({ status: 'cancelled' })
       .where('id = :id AND organization_id = :orgId', { id, orgId: organizationId })
       .execute();
@@ -215,19 +215,18 @@ export class AutomatedAppointmentService {
     organizationId: string,
     contactId: string,
     filters?: { status?: string; action?: string },
-  ): Promise<AppointmentEntity[]> {
+  ): Promise<ScheduledActionEntity[]> {
     const qb = this.repo
-      .createQueryBuilder('appt')
-      .where('appt.organization_id = :orgId', { orgId: organizationId })
-      .andWhere('appt.contact_id = :contactId', { contactId })
-      .andWhere('appt.action IS NOT NULL')
-      .orderBy('appt.starts_at', 'DESC');
+      .createQueryBuilder('action')
+      .where('action.organization_id = :orgId', { orgId: organizationId })
+      .andWhere('action.contact_id = :contactId', { contactId })
+      .orderBy('action.due_at', 'DESC');
 
     if (filters?.status) {
-      qb.andWhere('appt.status = :status', { status: filters.status });
+      qb.andWhere('action.status = :status', { status: filters.status });
     }
     if (filters?.action) {
-      qb.andWhere('appt.action = :action', { action: filters.action });
+      qb.andWhere('action.action = :action', { action: filters.action });
     }
 
     return qb.getMany();
@@ -236,22 +235,21 @@ export class AutomatedAppointmentService {
   async findAllFollowUps(
     organizationId: string,
     filters?: { status?: string; action?: string; contact_id?: string; limit?: number; offset?: number },
-  ): Promise<{ items: AppointmentEntity[]; total: number }> {
+  ): Promise<{ items: ScheduledActionEntity[]; total: number }> {
     const qb = this.repo
-      .createQueryBuilder('appt')
-      .leftJoinAndSelect('appt.contact', 'contact')
-      .where('appt.organization_id = :orgId', { orgId: organizationId })
-      .andWhere('appt.action IS NOT NULL')
-      .orderBy('appt.starts_at', 'DESC');
+      .createQueryBuilder('action')
+      .leftJoinAndSelect('action.contact', 'contact')
+      .where('action.organization_id = :orgId', { orgId: organizationId })
+      .orderBy('action.due_at', 'DESC');
 
     if (filters?.status) {
-      qb.andWhere('appt.status = :status', { status: filters.status });
+      qb.andWhere('action.status = :status', { status: filters.status });
     }
     if (filters?.action) {
-      qb.andWhere('appt.action = :action', { action: filters.action });
+      qb.andWhere('action.action = :action', { action: filters.action });
     }
     if (filters?.contact_id) {
-      qb.andWhere('appt.contact_id = :contactId', { contactId: filters.contact_id });
+      qb.andWhere('action.contact_id = :contactId', { contactId: filters.contact_id });
     }
 
     const total = await qb.getCount();
@@ -263,7 +261,7 @@ export class AutomatedAppointmentService {
     return { items, total };
   }
 
-  async findById(id: string, organizationId: string): Promise<AppointmentEntity | null> {
+  async findById(id: string, organizationId: string): Promise<ScheduledActionEntity | null> {
     return this.repo.findOne({
       where: { id, organization_id: organizationId },
       relations: ['contact'],

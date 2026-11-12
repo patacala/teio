@@ -1,6 +1,6 @@
 export type ActionType = 'send_message' | 'send_email' | 'notify_agent' | 'create_task' | 'call';
 export type ExecutorType = 'system' | 'user';
-export type ActionStatus = 'pending' | 'scheduled' | 'processing' | 'completed' | 'failed' | 'cancelled';
+export type ActionStatus = 'pending' | 'processing' | 'awaiting_user' | 'completed' | 'failed' | 'cancelled';
 export type ChannelStrategy =
   | 'auto'
   | 'same_channel'

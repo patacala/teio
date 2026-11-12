@@ -25,7 +25,7 @@ export class AppointmentEntity {
   @Column({ type: 'uuid' })
   contact_id: string;
 
-  @ManyToOne(() => ContactEntity, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => ContactEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'contact_id' })
   contact: ContactEntity;
 
@@ -59,9 +59,6 @@ export class AppointmentEntity {
   @Column({ nullable: true })
   meeting_url: string;
 
-  @Column({ default: false })
-  reminder_sent: boolean;
-
   @Column({ type: 'text', nullable: true })
   notes: string;
 
@@ -74,39 +71,51 @@ export class AppointmentEntity {
   @Column({ type: 'uuid', nullable: true })
   created_by: string;
 
-  // ── Automation fields ──────────────────────────────────────────────────
-  @Column({ length: 20, nullable: true })
-  action: string;
-
-  @Column({ length: 10, nullable: true, default: 'system' })
-  executor: string;
-
-  @Column({ length: 20, nullable: true, default: 'auto' })
-  channel_strategy: string;
-
-  @Column({ type: 'text', nullable: true })
-  message_content: string;
-
-  @Column({ length: 50, nullable: true, default: 'manual' })
-  source: string;
-
-  @Column({ type: 'int', default: 0 })
-  attempts: number;
-
-  @Column({ type: 'int', default: 3 })
-  max_attempts: number;
-
-  @Column({ type: 'text', nullable: true })
-  last_error: string;
-
-  @Column({ length: 50, nullable: true })
-  resolved_channel: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  sequence_id: string;
-
   @Column({ type: 'timestamptz', nullable: true })
   completed_at: Date;
+
+  // ── Booking lifecycle ──────────────────────────────────────────────────
+  @Column({ type: 'timestamptz', nullable: true })
+  confirmed_at: Date | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  confirmed_via: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  confirmed_by: string | null;
+
+  /** Bumped on every reschedule so confirmation links for the old time stop working. */
+  @Column({ type: 'int', default: 1 })
+  confirmation_version: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  cancelled_at: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  cancelled_by: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  cancel_reason: string | null;
+
+  /** Set when an admin booked outside the calendar rules; such rows are exempt from the overlap constraint. */
+  @Column({ type: 'timestamptz', nullable: true })
+  override_at: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  override_by: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  override_reason: string | null;
+
+  /** Only for status = 'held': the slot is released after this instant. */
+  @Column({ type: 'timestamptz', nullable: true })
+  hold_expires_at: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  payment_id: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  payment_waived_by: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;

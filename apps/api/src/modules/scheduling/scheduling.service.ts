@@ -1,69 +1,43 @@
-import { Injectable, NotFoundException, BadRequestException, Optional, Inject, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ClientProxy } from '@nestjs/microservices';
-import { Repository } from 'typeorm';
+import { EntityManager, In, QueryFailedError, Repository } from 'typeorm';
+import {
+  AppointmentCancelReason,
+  AppointmentConfirmedVia,
+  AppointmentStatus,
+  PaymentAttentionReason,
+} from '@crm/shared';
 import { AppointmentEntity } from './appointment.entity';
+import { AppointmentReminderEntity } from './appointment-reminder.entity';
 import { WorkScheduleEntity } from './work-schedule.entity';
-import { WebhookDispatcherService } from '../integrations/webhook-dispatcher.service';
-import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
-import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
-import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
-
-export interface CreateAppointmentDto {
-  calendar_id?: string;
-  contact_id: string;
-  title: string;
-  duration_minutes: number;
-  starts_at: string;
-  description?: string;
-  timezone?: string;
-  location?: string;
-  meeting_url?: string;
-  assigned_to?: string;
-  conversation_id?: string;
-  origin?: string;
-  created_by?: string;
-  action?: string;
-  executor?: string;
-  channel_strategy?: string;
-  message_content?: string;
-}
-
-export interface CreateConfirmedFromPaymentInput {
-  calendar_id: string;
-  contact_id: string;
-  conversation_id?: string | null;
-  title: string;
-  starts_at: string;
-  duration_minutes: number;
-  timezone?: string;
-  payment_id: string;
-}
-
-export interface UpdateAppointmentDto {
-  title?: string;
-  description?: string;
-  starts_at?: string;
-  ends_at?: string;
-  status?: string;
-  location?: string;
-  meeting_url?: string;
-  notes?: string;
-  duration_minutes?: number;
-}
-
-export interface AppointmentFilters {
-  from?: string;
-  to?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
-  /** Newest-first by default; calendar grids ask for 'asc' to read top-to-bottom. */
-  sort?: 'asc' | 'desc';
-  cursor?: string;
-  calendar_id?: string;
-  contact_id?: string;
-}
+import { ContactEntity } from '../client-management/contact.entity';
+import { CalendarService } from './calendar.service';
+import { AvailabilityResult, AvailabilityService } from './availability.service';
+import { BookingLinksService } from './booking-links.service';
+import { AppointmentEventsPublisher } from './appointment-events.publisher';
+import { ACTIVE_BOOKING_STATUSES, canTransition, isReschedulable } from './domain/lifecycle';
+import { addDays, localDate } from './domain/timezone';
+import {
+  BookingTx,
+  SchedulingActor,
+  SlotUnavailableException,
+  isAdminActor,
+  originForActor,
+  userIdOf,
+} from './scheduling.types';
+import type {
+  CreateAppointmentDto,
+  ListAppointmentsQueryDto,
+  RescheduleAppointmentDto,
+  UpdateAppointmentDto,
+} from './dto/appointment.dto';
 
 export interface AppointmentPage {
   items: AppointmentEntity[];
@@ -75,41 +49,66 @@ export interface AppointmentMetrics {
   week_count: number;
   pending_count: number;
   completed_count: number;
+  needs_outcome_count: number;
 }
 
-export interface UpdateWorkScheduleDto {
-  work_days?: number[];
-  start_time?: string;
-  end_time?: string;
-  slot_duration_minutes?: number;
-  buffer_minutes?: number;
+export interface HoldInput {
+  calendarId: string;
+  contactId: string;
+  conversationId?: string | null;
+  title: string;
+  startsAt: Date;
+  durationMinutes: number;
   timezone?: string;
-  blocked_dates?: string[];
+  origin: 'ai' | 'human' | 'webhook';
+  createdBy?: string | null;
 }
 
-export interface CreateCalendarDto {
-  name: string;
-  color?: string;
+export interface PaidBookingInput {
+  calendarId: string;
+  contactId: string;
+  conversationId?: string | null;
+  title: string;
+  startsAt: Date;
+  durationMinutes: number;
+  timezone?: string;
+  paymentId: string;
 }
 
-export interface UpdateCalendarDto {
-  name?: string;
-  color?: string;
-  is_active?: boolean;
-  /** Service to charge when booking here. `null` clears it (no charge). */
-  payment_service_id?: string | null;
+export type PaymentBookingOutcome =
+  | { outcome: 'confirmed'; appointment: AppointmentEntity }
+  | { outcome: 'already_confirmed'; appointment: AppointmentEntity }
+  | { outcome: 'slot_unavailable'; appointment?: AppointmentEntity }
+  | { outcome: 'appointment_cancelled'; appointment: AppointmentEntity }
+  | { outcome: 'not_found' };
+
+export type ContactConfirmationResult =
+  | 'confirmed'
+  | 'already_confirmed'
+  | 'cancelled'
+  | 'closed'
+  | 'awaiting_payment'
+  | 'outdated'
+  | 'expired'
+  | 'invalid';
+
+/** What the contact's link can do with the booking right now. */
+export interface ContactLinkView {
+  state: ContactConfirmationResult;
+  appointment?: AppointmentEntity;
+  canConfirm: boolean;
+  canChange: boolean;
 }
 
-export interface AvailabilitySlot {
-  starts_at: string;
-  ends_at: string;
-}
+export type ContactActionResult =
+  | { state: 'rescheduled' | 'cancelled'; appointment: AppointmentEntity }
+  | { state: Exclude<ContactConfirmationResult, 'confirmed' | 'already_confirmed'>; appointment?: AppointmentEntity }
+  | { state: 'slot_unavailable'; appointment: AppointmentEntity };
 
-export interface AvailabilityQuery {
-  from: string;
-  to: string;
-  duration_minutes?: number;
-  calendar_id?: string;
+/** Raw `UPDATE … RETURNING` through EntityManager.query resolves to [rows, affectedCount] on Postgres. */
+function returnedRows<T>(result: unknown): T[] {
+  if (Array.isArray(result) && Array.isArray(result[0])) return result[0] as T[];
+  return Array.isArray(result) ? (result as T[]) : [];
 }
 
 @Injectable()
@@ -119,76 +118,66 @@ export class SchedulingService {
   constructor(
     @InjectRepository(AppointmentEntity)
     private readonly repo: Repository<AppointmentEntity>,
-    @InjectRepository(WorkScheduleEntity)
-    private readonly scheduleRepo: Repository<WorkScheduleEntity>,
-    @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
-    @Optional() @Inject(RABBITMQ_SERVICE) private readonly rmqClient?: ClientProxy,
-    @Optional() private readonly sequenceService?: AutomationSequenceService,
-    @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
+    @InjectRepository(ContactEntity)
+    private readonly contactRepo: Repository<ContactEntity>,
+    private readonly calendars: CalendarService,
+    private readonly availability: AvailabilityService,
+    private readonly links: BookingLinksService,
+    private readonly events: AppointmentEventsPublisher,
   ) {}
 
-  async findAll(organizationId: string, filters: AppointmentFilters = {}): Promise<AppointmentPage> {
-    const {
-      from,
-      to,
-      status,
-      cursor,
-      calendar_id,
-      contact_id,
-      sort = 'desc',
-    } = filters;
+  // ── Transactions ────────────────────────────────────────────────────────
 
+  /** Runs `fn` in a transaction; effects registered with afterCommit run only if it commits. */
+  async inTransaction<T>(fn: (tx: BookingTx) => Promise<T>): Promise<T> {
+    const effects: Array<() => void> = [];
+    const result = await this.repo.manager.transaction((manager) =>
+      fn({ manager, afterCommit: (effect) => effects.push(effect) }),
+    );
+    for (const effect of effects) {
+      try {
+        effect();
+      } catch (err) {
+        this.logger.warn(`Post-commit effect failed: ${(err as Error).message}`);
+      }
+    }
+    return result;
+  }
+
+  // ── Reads ───────────────────────────────────────────────────────────────
+
+  async findAll(organizationId: string, filters: ListAppointmentsQueryDto = {}): Promise<AppointmentPage> {
+    const { from, to, status, cursor, calendar_id, contact_id, needs_outcome, sort = 'desc' } = filters;
     const limit = Math.min(Math.max(Number(filters.limit) || 50, 1), 200);
     const offset = Math.max(Number(filters.offset) || 0, 0);
     const direction = sort === 'asc' ? 'ASC' : 'DESC';
-
-    // Sequence steps live on the follow-up calendar and must stay visible there,
-    // including after they are cancelled. Other calendars only show real bookings.
-    const calendar = calendar_id
-      ? await this.scheduleRepo.findOne({
-          where: { id: calendar_id, organization_id: organizationId },
-          select: ['id', 'type'],
-        })
-      : null;
-    const showSequenceSteps = calendar?.type === 'follow_up';
 
     const qb = this.repo
       .createQueryBuilder('appt')
       .leftJoinAndSelect('appt.contact', 'contact')
       .where('appt.organization_id = :orgId', { orgId: organizationId })
       .orderBy('appt.starts_at', direction)
-      // starts_at collides constantly for batch-created follow-ups; without a
-      // tiebreaker rows shuffle between pages and some are never shown.
+      // starts_at collides for back-to-back bookings; without a tiebreaker
+      // rows shuffle between pages.
       .addOrderBy('appt.id', direction);
 
-    if (!showSequenceSteps) {
-      qb.andWhere('appt.action IS NULL');
-    }
-
     if (cursor) {
-      qb.andWhere(
-        direction === 'ASC' ? 'appt.starts_at > :cursor' : 'appt.starts_at < :cursor',
-        { cursor: new Date(cursor) },
-      );
+      qb.andWhere(direction === 'ASC' ? 'appt.starts_at > :cursor' : 'appt.starts_at < :cursor', {
+        cursor: new Date(cursor),
+      });
     }
-    if (from) {
-      qb.andWhere('appt.starts_at >= :from', { from: new Date(from) });
-    }
-    if (to) {
-      qb.andWhere('appt.starts_at <= :to', { to: new Date(to) });
-    }
-    if (status) {
-      qb.andWhere('appt.status = :status', { status });
-    }
-    if (calendar_id) {
-      qb.andWhere('appt.calendar_id = :calId', { calId: calendar_id });
-    }
-    if (contact_id) {
-      qb.andWhere('appt.contact_id = :contactId', { contactId: contact_id });
+    if (from) qb.andWhere('appt.starts_at >= :from', { from: new Date(from) });
+    if (to) qb.andWhere('appt.starts_at <= :to', { to: new Date(to) });
+    if (status) qb.andWhere('appt.status = :status', { status });
+    if (calendar_id) qb.andWhere('appt.calendar_id = :calId', { calId: calendar_id });
+    if (contact_id) qb.andWhere('appt.contact_id = :contactId', { contactId: contact_id });
+    if (needs_outcome) {
+      qb.andWhere('appt.status IN (:...open)', {
+        open: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED, 'pending'],
+      }).andWhere('appt.ends_at < NOW()');
     }
 
     const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
-
     return { items, meta: { total, limit, offset } };
   }
 
@@ -203,639 +192,833 @@ export class SchedulingService {
     return appt;
   }
 
-  async create(organizationId: string, dto: CreateAppointmentDto): Promise<AppointmentEntity> {
-    const startsAt = new Date(dto.starts_at);
-    const endsAt = new Date(startsAt.getTime() + dto.duration_minutes * 60_000);
-
-    // Auto-resolve timezone from calendar configuration
-    let timezone = dto.timezone;
-    if (!timezone || timezone === 'UTC') {
-      if (dto.calendar_id) {
-        const calendar = await this.scheduleRepo.findOne({
-          where: { id: dto.calendar_id, organization_id: organizationId },
-          select: ['timezone'],
-        });
-        if (calendar?.timezone && calendar.timezone !== 'UTC') {
-          timezone = calendar.timezone;
-        }
-      }
-      // If still no timezone, try org's first calendar
-      if (!timezone || timezone === 'UTC') {
-        const firstCal = await this.scheduleRepo.findOne({
-          where: { organization_id: organizationId },
-          order: { created_at: 'ASC' },
-          select: ['timezone'],
-        });
-        if (firstCal?.timezone && firstCal.timezone !== 'UTC') {
-          timezone = firstCal.timezone;
-        }
-      }
-    }
-    timezone = timezone || 'UTC';
-
-    const origin = dto.origin ?? 'human';
-
-    // A human admin booking directly is authorizing (comping) the appointment,
-    // so they bypass payment. Any non-human origin (the AI agent / self-service)
-    // must go through create_payment_link: on a charging calendar the appointment
-    // is only created once Stripe confirms the charge (createConfirmedFromPayment),
-    // so no unpaid agenda row is ever persisted.
-    if (origin !== 'human' && dto.calendar_id) {
-      const paymentServiceId = await this.findCalendarPaymentServiceId(
-        organizationId,
-        dto.calendar_id,
-      );
-      if (paymentServiceId) {
-        throw new BadRequestException(
-          'use create_payment_link; appointment is created after payment',
-        );
-      }
-    }
-
-    const appt = this.repo.create({
-      organization_id: organizationId,
-      timezone,
-      origin,
-      calendar_id: dto.calendar_id ?? undefined,
-      contact_id: dto.contact_id,
-      title: dto.title,
-      description: dto.description,
-      location: dto.location,
-      meeting_url: dto.meeting_url,
-      assigned_to: dto.assigned_to,
-      conversation_id: dto.conversation_id,
-      created_by: dto.created_by,
-      starts_at: startsAt,
-      ends_at: endsAt,
-      ...(dto.action ? {
-        action: dto.action,
-        executor: dto.executor ?? 'system',
-        channel_strategy: dto.channel_strategy ?? 'auto',
-        message_content: dto.message_content,
-      } : {}),
-    });
-    const saved = await this.repo.save(appt);
-    this.emitAppointmentCreated(organizationId, saved);
-    this.emitAppointmentConfirmed(organizationId, saved);
-    return saved;
-  }
-
-  /**
-   * Materializes a paid booking as a confirmed appointment.
-   * Does not park as pending — Stripe already confirmed the charge.
-   */
-  async createConfirmedFromPayment(
-    organizationId: string,
-    input: CreateConfirmedFromPaymentInput,
-  ): Promise<AppointmentEntity> {
-    const startsAt = new Date(input.starts_at);
-    if (Number.isNaN(startsAt.getTime())) {
-      throw new BadRequestException(`Invalid starts_at: ${input.starts_at}`);
-    }
-    const endsAt = new Date(startsAt.getTime() + input.duration_minutes * 60_000);
-    const timezone = await this.resolveTimezone(organizationId, input.calendar_id, input.timezone);
-
-    const saved = await this.repo.save(
-      this.repo.create({
-        organization_id: organizationId,
-        calendar_id: input.calendar_id,
-        contact_id: input.contact_id,
-        conversation_id: input.conversation_id ?? undefined,
-        title: input.title,
-        status: 'confirmed',
-        origin: 'ai',
-        starts_at: startsAt,
-        ends_at: endsAt,
-        timezone,
-        metadata: {
-          payment_id: input.payment_id,
-          created_from: 'payment_booking',
-        },
-      }),
-    );
-
-    this.emitAppointmentCreated(organizationId, saved);
-    this.emitAppointmentConfirmed(organizationId, saved);
-    this.logger.log(
-      `Appointment ${saved.id} created as confirmed from payment ${input.payment_id}`,
-    );
-    return saved;
-  }
-
-  /** Flips a legacy payment-gated appointment to confirmed and sends the confirmation email. */
-  async confirmAfterPayment(organizationId: string, appointmentId: string): Promise<boolean> {
-    const appointment = await this.repo.findOne({
-      where: { id: appointmentId, organization_id: organizationId },
-    });
-    if (!appointment) {
-      this.logger.warn(`Paid appointment ${appointmentId} not found (org ${organizationId})`);
-      return false;
-    }
-
-    if (appointment.status === 'confirmed') return true;
-
-    appointment.status = 'confirmed';
-    const saved = await this.repo.save(appointment);
-    this.emitAppointmentConfirmed(organizationId, saved);
-    this.logger.log(`Appointment ${appointmentId} confirmed after payment`);
-    return true;
-  }
-
-  async update(id: string, organizationId: string, dto: UpdateAppointmentDto): Promise<AppointmentEntity> {
-    const appt = await this.findById(id, organizationId);
-
-    if (dto.starts_at !== undefined || dto.duration_minutes !== undefined) {
-      const startsAt = dto.starts_at ? new Date(dto.starts_at) : appt.starts_at;
-      const currentDuration = Math.round(
-        (appt.ends_at.getTime() - appt.starts_at.getTime()) / 60_000,
-      );
-      const duration = dto.duration_minutes ?? currentDuration;
-      appt.starts_at = startsAt;
-      appt.ends_at = new Date(startsAt.getTime() + duration * 60_000);
-    }
-
-    const { starts_at: _s, ends_at: _e, duration_minutes: _d, ...rest } = dto;
-    Object.assign(appt, rest);
-    const updated = await this.repo.save(appt);
-    void this.webhookDispatcher?.dispatch('appointment.updated', organizationId, {
-      appointment_id: updated.id,
-    });
-    // A direct PATCH to no_show (e.g. from the agenda UI) is the funnel signal —
-    // complete()/cancel() have their own dedicated events and never hit this.
-    if (rest.status === 'no_show') {
-      this.emitAppointmentLifecycle(RABBITMQ_QUEUES.APPOINTMENT_NO_SHOW, organizationId, updated);
-    }
-    return updated;
-  }
-
-  async cancel(id: string, organizationId: string): Promise<AppointmentEntity> {
-    const appt = await this.update(id, organizationId, { status: 'cancelled' });
-    this.rmqClient?.emit(RABBITMQ_QUEUES.APPOINTMENT_CANCELLED, {
-      organization_id: organizationId,
-      appointment_id: appt.id,
-      contact_id: appt.contact_id,
-      title: appt.title,
-      starts_at: appt.starts_at,
-      ends_at: appt.ends_at,
-      timezone: appt.timezone ?? 'UTC',
-    });
-    return appt;
-  }
-
-  async complete(id: string, organizationId: string): Promise<AppointmentEntity> {
-    const appt = await this.update(id, organizationId, { status: 'completed' });
-    this.emitAppointmentLifecycle(RABBITMQ_QUEUES.APPOINTMENT_COMPLETED, organizationId, appt);
-    if (appt.sequence_id && this.sequenceService) {
-      void this.sequenceService.cancel(organizationId, appt.sequence_id, 'manual').catch((err) => {
-        this.logger.warn(`Failed to cancel sequence ${appt.sequence_id} on appointment complete: ${err}`);
-      });
-    }
-    return appt;
-  }
-
-  async reschedule(id: string, organizationId: string, newStartTime: string): Promise<AppointmentEntity> {
-    const appt = await this.findById(id, organizationId);
-    const currentDuration = Math.round(
-      (appt.ends_at.getTime() - appt.starts_at.getTime()) / 60_000,
-    );
-    const startsAt = new Date(newStartTime);
-    appt.starts_at = startsAt;
-    appt.ends_at = new Date(startsAt.getTime() + currentDuration * 60_000);
-    const saved = await this.repo.save(appt);
-    this.rmqClient?.emit(RABBITMQ_QUEUES.APPOINTMENT_RESCHEDULED, {
-      organization_id: organizationId,
-      appointment_id: saved.id,
-      contact_id: saved.contact_id,
-      title: saved.title,
-      starts_at: saved.starts_at,
-      ends_at: saved.ends_at,
-      timezone: saved.timezone ?? 'UTC',
-    });
-    return saved;
-  }
-
-  async delete(id: string, organizationId: string): Promise<void> {
-    const appt = await this.findById(id, organizationId);
-    if (appt.sequence_id && this.sequenceService) {
-      void this.sequenceService.cancel(organizationId, appt.sequence_id, 'manual').catch((err) => {
-        this.logger.warn(`Failed to cancel sequence ${appt.sequence_id} on appointment delete: ${err}`);
-      });
-    }
-    await this.repo.delete({ id, organization_id: organizationId });
-  }
-
-  async findUpcomingForContact(
-    organizationId: string,
-    contactId: string,
-    limit = 5,
-  ): Promise<AppointmentEntity[]> {
+  /** Upcoming bookings — also the AI agent's context. */
+  async findUpcomingForContact(organizationId: string, contactId: string, limit = 5): Promise<AppointmentEntity[]> {
     return this.repo
       .createQueryBuilder('appt')
       .where('appt.organization_id = :orgId', { orgId: organizationId })
       .andWhere('appt.contact_id = :contactId', { contactId })
-      .andWhere('appt.starts_at >= NOW()')
-      .andWhere('appt.status NOT IN (:...excluded)', { excluded: ['cancelled', 'no_show', 'completed'] })
+      .andWhere('appt.ends_at >= NOW()')
+      .andWhere('appt.status IN (:...active)', { active: [...ACTIVE_BOOKING_STATUSES] })
+      .andWhere(`(appt.status <> 'held' OR appt.hold_expires_at > NOW())`)
       .orderBy('appt.starts_at', 'ASC')
       .take(limit)
       .getMany();
   }
 
-  // ── Calendar CRUD ────────────────────────────────────────────────────────
-
-  async listCalendars(organizationId: string): Promise<WorkScheduleEntity[]> {
-    const calendars = await this.scheduleRepo.find({
-      where: { organization_id: organizationId },
-      order: { created_at: 'ASC' },
-    });
-    const result = calendars.length === 0
-      ? await this.seedDefaultCalendars(organizationId)
-      : calendars;
-
-    // Assign any legacy appointments (calendar_id IS NULL) to the first calendar.
-    // Wrapped in try-catch so a pending DB migration doesn't break the list endpoint.
-    try {
-      await this.repo
-        .createQueryBuilder()
-        .update(AppointmentEntity)
-        .set({ calendar_id: result[0].id })
-        .where('organization_id = :orgId', { orgId: organizationId })
-        .andWhere('calendar_id IS NULL')
-        .execute();
-    } catch {
-      // FK constraint not yet updated (021_fix_calendar_fk.sql not run).
-      // Calendars still load correctly; appointments will be assigned after migration.
-    }
-
-    return result;
-  }
-
-  async seedDefaultCalendars(organizationId: string): Promise<WorkScheduleEntity[]> {
-    const defaults = [
-      { name: 'Appointments', color: '#2563EB', type: 'appointments' },
-      { name: 'Follow-up', color: '#16a34a', type: 'follow_up' },
-    ] as const;
-    const created: WorkScheduleEntity[] = [];
-    for (const def of defaults) {
-      const cal = this.scheduleRepo.create({
-        organization_id: organizationId,
-        name: def.name,
-        color: def.color,
-        type: def.type,
-        is_active: true,
-        work_days: [1, 2, 3, 4, 5],
-        start_time: '09:00',
-        end_time: '18:00',
-        slot_duration_minutes: 30,
-        buffer_minutes: 0,
-        timezone: 'UTC',
-        blocked_dates: [],
-      });
-      created.push(await this.scheduleRepo.save(cal));
-    }
-    return created;
-  }
-
-  async createCalendar(organizationId: string, dto: CreateCalendarDto): Promise<WorkScheduleEntity> {
-    const cal = this.scheduleRepo.create({
-      organization_id: organizationId,
-      name: dto.name,
-      color: dto.color ?? '#2563EB',
-      is_active: true,
-      work_days: [1, 2, 3, 4, 5],
-      start_time: '09:00',
-      end_time: '18:00',
-      slot_duration_minutes: 30,
-      buffer_minutes: 0,
-      timezone: 'UTC',
-      blocked_dates: [],
-    });
-    return this.scheduleRepo.save(cal);
-  }
-
-  async getCalendarById(organizationId: string, id: string): Promise<WorkScheduleEntity> {
-    const cal = await this.scheduleRepo.findOne({ where: { id, organization_id: organizationId } });
-    if (!cal) throw new NotFoundException(`Calendar ${id} not found`);
-    return cal;
-  }
-
-  /** `null` when the calendar is unknown or charges nothing. Never throws. */
-  async findCalendarPaymentServiceId(
-    organizationId: string,
-    calendarId: string,
-  ): Promise<string | null> {
-    const cal = await this.scheduleRepo.findOne({
-      where: { id: calendarId, organization_id: organizationId },
-      select: ['payment_service_id'],
-    });
-    return cal?.payment_service_id ?? null;
-  }
-
-  /**
-   * The appointments calendar that charges this service, or `null` when the
-   * service is not used for booking. A partial UNIQUE index
-   * (035_unique_calendar_payment_service.sql) guarantees at most one, so this
-   * never has to disambiguate.
-   */
-  async findAppointmentsCalendarForPaymentService(
-    organizationId: string,
-    paymentServiceId: string,
-  ): Promise<WorkScheduleEntity | null> {
-    const calendars = await this.scheduleRepo.find({
-      where: {
-        organization_id: organizationId,
-        payment_service_id: paymentServiceId,
-        type: 'appointments',
-      },
-    });
-    const active = calendars.filter((c) => c.is_active !== false);
-    const list = active.length ? active : calendars;
-    return list[0] ?? null;
-  }
-
-  /** The org's only active appointments calendar, or null if none/ambiguous. */
-  async findDefaultAppointmentsCalendar(
-    organizationId: string,
-  ): Promise<WorkScheduleEntity | null> {
-    const calendars = await this.scheduleRepo.find({
-      where: { organization_id: organizationId, type: 'appointments', is_active: true },
-    });
-    return calendars.length === 1 ? calendars[0] : null;
-  }
-
-  async updateCalendar(organizationId: string, id: string, dto: UpdateCalendarDto): Promise<WorkScheduleEntity> {
-    const cal = await this.getCalendarById(organizationId, id);
-    if (dto.name !== undefined) cal.name = dto.name;
-    if (dto.color !== undefined) cal.color = dto.color;
-    if (dto.is_active !== undefined) cal.is_active = dto.is_active;
-    if (dto.payment_service_id !== undefined) {
-      // Follow-up cadences must never ask a contact for money — only the
-      // calendar the agent books real appointments into can charge.
-      if (dto.payment_service_id && cal.type !== 'appointments') {
-        throw new BadRequestException(
-          'Solo los calendarios de citas pueden cobrar un servicio',
-        );
-      }
-      // A service maps to exactly one appointments calendar (uq_work_schedules_
-      // payment_service). Surface a friendly error before hitting the DB constraint.
-      if (dto.payment_service_id) {
-        const other = await this.scheduleRepo.findOne({
-          where: {
-            organization_id: organizationId,
-            payment_service_id: dto.payment_service_id,
-            type: 'appointments',
-          },
-          select: ['id'],
-        });
-        if (other && other.id !== cal.id) {
-          throw new BadRequestException(
-            'Ese servicio ya está ligado a otro calendario de citas',
-          );
-        }
-      }
-      cal.payment_service_id = dto.payment_service_id;
-    }
-    return this.scheduleRepo.save(cal);
-  }
-
-  async updateCalendarConfig(organizationId: string, id: string, dto: UpdateWorkScheduleDto): Promise<WorkScheduleEntity> {
-    const cal = await this.getCalendarById(organizationId, id);
-    if (dto.work_days !== undefined) cal.work_days = dto.work_days;
-    if (dto.start_time !== undefined) cal.start_time = dto.start_time;
-    if (dto.end_time !== undefined) cal.end_time = dto.end_time;
-    if (dto.slot_duration_minutes !== undefined) cal.slot_duration_minutes = dto.slot_duration_minutes;
-    if (dto.buffer_minutes !== undefined) cal.buffer_minutes = dto.buffer_minutes;
-    if (dto.timezone !== undefined) cal.timezone = dto.timezone;
-    if (dto.blocked_dates !== undefined) cal.blocked_dates = dto.blocked_dates;
-    return this.scheduleRepo.save(cal);
-  }
-
-  async deleteCalendar(organizationId: string, id: string): Promise<void> {
-    await this.getCalendarById(organizationId, id);
-    const total = await this.scheduleRepo.count({ where: { organization_id: organizationId } });
-    if (total <= 1) throw new BadRequestException('No se puede eliminar el último calendario');
-    await this.scheduleRepo.delete({ id, organization_id: organizationId });
-  }
-
-  // ── Legacy single-schedule methods (backward compat) ─────────────────────
-
-  async getWorkSchedule(organizationId: string): Promise<WorkScheduleEntity> {
-    const calendars = await this.listCalendars(organizationId);
-    return calendars[0];
-  }
-
-  async upsertWorkSchedule(organizationId: string, dto: UpdateWorkScheduleDto): Promise<WorkScheduleEntity> {
-    const schedule = await this.getWorkSchedule(organizationId);
-    return this.updateCalendarConfig(organizationId, schedule.id, dto);
-  }
-
-  async getAvailableSlots(organizationId: string, query: AvailabilityQuery): Promise<AvailabilitySlot[]> {
-    // ── Input validation ────────────────────────────────────────────────────
-    if (!query.from || !query.to) {
-      throw new BadRequestException('from and to query params are required');
-    }
-    const fromDate = new Date(query.from);
-    const toDate = new Date(query.to);
-    if (isNaN(fromDate.getTime())) throw new BadRequestException(`Invalid from date: ${query.from}`);
-    if (isNaN(toDate.getTime())) throw new BadRequestException(`Invalid to date: ${query.to}`);
-
-    // Anchor to UTC day boundaries
-    fromDate.setUTCHours(0, 0, 0, 0);
-    toDate.setUTCHours(23, 59, 59, 999);
-
-    // ── Load work schedule ──────────────────────────────────────────────────
-    const schedule = query.calendar_id
-      ? await this.getCalendarById(organizationId, query.calendar_id)
-      : await this.getWorkSchedule(organizationId);
-
-    // duration_minutes arrives as string from @Query() — coerce to number
-    const duration = Math.max(1, Number(query.duration_minutes ?? schedule.slot_duration_minutes) || 1);
-    const buffer = Number(schedule.buffer_minutes) || 0;
-
-    const workDays = (schedule.work_days ?? []).map(Number).filter((n) => !isNaN(n));
-
-    // blocked_dates: Postgres DATE[] may return Date objects or 'YYYY-MM-DD' strings
-    const blockedDates = new Set<string>(
-      (schedule.blocked_dates ?? []).map((d) => {
-        const val = d as unknown;
-        return val instanceof Date ? val.toISOString().slice(0, 10) : String(d).slice(0, 10);
-      }),
-    );
-
-    // Postgres TIME column may return 'HH:MM' or 'HH:MM:SS' — handle both
-    const parseTimeToMinutes = (t: unknown): number => {
-      const parts = String(t ?? '00:00').split(':').map(Number);
-      const h = isNaN(parts[0]) ? 0 : parts[0];
-      const m = isNaN(parts[1]) ? 0 : parts[1];
-      return h * 60 + m;
-    };
-    const startMinutes = parseTimeToMinutes(schedule.start_time);
-    const endMinutes = parseTimeToMinutes(schedule.end_time);
-
-    // Guard: nothing to generate if schedule is misconfigured
-    if (startMinutes >= endMinutes || duration > endMinutes - startMinutes) return [];
-
-    // ── Generate slot candidates ────────────────────────────────────────────
-    const slots: AvailabilitySlot[] = [];
-    const current = new Date(fromDate);
-
-    while (current <= toDate) {
-      const dayOfWeek = current.getUTCDay(); // 0=Sun...6=Sat (UTC)
-      const dateStr = current.toISOString().slice(0, 10); // YYYY-MM-DD
-
-      if (workDays.includes(dayOfWeek) && !blockedDates.has(dateStr)) {
-        const year = current.getUTCFullYear();
-        const month = current.getUTCMonth();
-        const day = current.getUTCDate();
-
-        let slotStart = startMinutes;
-        while (slotStart + duration <= endMinutes) {
-          const slotStartMs = Date.UTC(year, month, day, Math.floor(slotStart / 60), slotStart % 60, 0, 0);
-          const slotEndMs = slotStartMs + duration * 60_000;
-          slots.push({
-            starts_at: new Date(slotStartMs).toISOString(),
-            ends_at: new Date(slotEndMs).toISOString(),
-          });
-          slotStart += duration;
-        }
-      }
-      current.setUTCDate(current.getUTCDate() + 1);
-    }
-
-    // ── Load existing appointments in range (exclude cancelled/no_show) ─────
-    const appointments = await this.repo
-      .createQueryBuilder('appt')
-      .where('appt.organization_id = :orgId', { orgId: organizationId })
-      .andWhere('appt.starts_at < :to', { to: toDate.toISOString() })
-      .andWhere('appt.ends_at > :from', { from: fromDate.toISOString() })
-      .andWhere('appt.status NOT IN (:...excluded)', { excluded: ['cancelled', 'no_show'] })
-      .select(['appt.starts_at', 'appt.ends_at'])
-      .getMany();
-
-    // ── Filter slots that overlap with existing appointments (+ buffer) ─────
-    const bufferMs = buffer * 60_000;
-    return slots.filter((slot) => {
-      const slotStart = new Date(slot.starts_at).getTime();
-      const slotEnd = new Date(slot.ends_at).getTime();
-      return !appointments.some((appt) => {
-        const apptStart = appt.starts_at.getTime() - bufferMs;
-        const apptEnd = appt.ends_at.getTime() + bufferMs;
-        return slotStart < apptEnd && slotEnd > apptStart;
-      });
-    });
-  }
-
+  /** Counts in the calendar's time zone (the organization's when no calendar is given). */
   async getMetrics(organizationId: string, calendarId?: string): Promise<AppointmentMetrics> {
+    const calendar = calendarId ? await this.calendars.getCalendarById(organizationId, calendarId) : null;
+    const timezone = calendar?.timezone ?? (await this.calendars.getOrganizationTimezone(organizationId));
+
+    const localStart = `(appt.starts_at AT TIME ZONE :tz)`;
+    const weekStart = `date_trunc('week', NOW() AT TIME ZONE :tz)`;
     const qb = this.repo
       .createQueryBuilder('appt')
       .select([
-        `COUNT(CASE WHEN appt.starts_at::date = CURRENT_DATE THEN 1 END)::int AS today_count`,
-        `COUNT(CASE WHEN appt.starts_at >= date_trunc('week', NOW()) AND appt.starts_at < date_trunc('week', NOW()) + INTERVAL '7 days' THEN 1 END)::int AS week_count`,
-        `COUNT(CASE WHEN appt.status IN ('pending', 'scheduled') THEN 1 END)::int AS pending_count`,
-        `COUNT(CASE WHEN appt.status = 'completed' THEN 1 END)::int AS completed_count`,
+        `COUNT(*) FILTER (WHERE appt.status <> 'cancelled' AND ${localStart}::date = (NOW() AT TIME ZONE :tz)::date)::int AS today_count`,
+        `COUNT(*) FILTER (WHERE appt.status <> 'cancelled' AND ${localStart} >= ${weekStart} AND ${localStart} < ${weekStart} + INTERVAL '7 days')::int AS week_count`,
+        `COUNT(*) FILTER (WHERE appt.status IN ('held', 'scheduled', 'pending') AND appt.ends_at >= NOW())::int AS pending_count`,
+        `COUNT(*) FILTER (WHERE appt.status = 'completed')::int AS completed_count`,
+        `COUNT(*) FILTER (WHERE appt.status IN ('scheduled', 'confirmed', 'pending') AND appt.ends_at < NOW())::int AS needs_outcome_count`,
       ])
-      .where('appt.organization_id = :orgId', { orgId: organizationId });
+      .where('appt.organization_id = :orgId', { orgId: organizationId })
+      .setParameter('tz', timezone);
+    if (calendarId) qb.andWhere('appt.calendar_id = :calId', { calId: calendarId });
 
-    if (calendarId) {
-      qb.andWhere('appt.calendar_id = :calId', { calId: calendarId });
-    }
-
-    const result = await qb.getRawOne<{
-        today_count: string;
-        week_count: string;
-        pending_count: string;
-        completed_count: string;
-      }>();
-
+    const row = await qb.getRawOne<Record<string, string | number>>();
+    const n = (key: string) => Number(row?.[key] ?? 0);
     return {
-      today_count: parseInt(result?.today_count ?? '0', 10),
-      week_count: parseInt(result?.week_count ?? '0', 10),
-      pending_count: parseInt(result?.pending_count ?? '0', 10),
-      completed_count: parseInt(result?.completed_count ?? '0', 10),
+      today_count: n('today_count'),
+      week_count: n('week_count'),
+      pending_count: n('pending_count'),
+      completed_count: n('completed_count'),
+      needs_outcome_count: n('needs_outcome_count'),
     };
   }
 
-  private async resolveTimezone(
+  // ── Booking creation ────────────────────────────────────────────────────
+
+  /** Books an appointment (status `scheduled`, awaiting the contact's confirmation). */
+  async createBooking(
     organizationId: string,
-    calendarId?: string,
-    requested?: string,
-  ): Promise<string> {
-    let timezone = requested;
-    if (!timezone || timezone === 'UTC') {
-      if (calendarId) {
-        const calendar = await this.scheduleRepo.findOne({
-          where: { id: calendarId, organization_id: organizationId },
-          select: ['timezone'],
-        });
-        if (calendar?.timezone && calendar.timezone !== 'UTC') {
-          timezone = calendar.timezone;
-        }
-      }
-      if (!timezone || timezone === 'UTC') {
-        const firstCal = await this.scheduleRepo.findOne({
-          where: { organization_id: organizationId },
-          order: { created_at: 'ASC' },
-          select: ['timezone'],
-        });
-        if (firstCal?.timezone && firstCal.timezone !== 'UTC') {
-          timezone = firstCal.timezone;
-        }
-      }
+    dto: CreateAppointmentDto,
+    actor: SchedulingActor,
+  ): Promise<AppointmentEntity> {
+    const calendar = await this.calendars.getCalendarById(organizationId, dto.calendar_id);
+    await this.assertContact(organizationId, dto.contact_id);
+    if (dto.conversation_id) await this.assertConversation(organizationId, dto.conversation_id);
+
+    if (dto.override && !isAdminActor(actor)) {
+      throw new ForbiddenException('Only owners and admins can override calendar rules');
     }
-    return timezone || 'UTC';
-  }
 
-  private appointmentEventPayload(organizationId: string, appt: AppointmentEntity) {
-    return {
-      organization_id: organizationId,
-      appointment_id: appt.id,
-      contact_id: appt.contact_id,
-      conversation_id: appt.conversation_id ?? null,
-      title: appt.title,
-      starts_at: appt.starts_at,
-      ends_at: appt.ends_at,
-      location: appt.location,
-      meeting_url: appt.meeting_url,
-      timezone: appt.timezone ?? 'UTC',
-      created_by: appt.created_by,
-      description: appt.description,
-      origin: appt.origin,
-    };
-  }
+    let paymentWaivedBy: string | null = null;
+    if (calendar.payment_service_id) {
+      if (actor.kind !== 'user') {
+        throw new BadRequestException('use create_payment_link; appointment is created after payment');
+      }
+      if (!dto.waive_payment) {
+        throw new ConflictException({
+          message: 'This calendar charges for bookings: send a payment link or book it without charge',
+          errors: { code: 'PAYMENT_REQUIRED', payment_service_id: calendar.payment_service_id },
+        });
+      }
+      paymentWaivedBy = actor.userId ?? null;
+    }
 
-  private emitAppointmentCreated(organizationId: string, appt: AppointmentEntity): void {
-    void this.webhookDispatcher?.dispatch('appointment.created', organizationId, {
-      appointment_id: appt.id,
-      title: appt.title,
-      starts_at: appt.starts_at,
+    const startsAt = new Date(dto.starts_at);
+    const endsAt = new Date(startsAt.getTime() + dto.duration_minutes * 60_000);
+
+    return this.inTransaction(async (tx) => {
+      const locked = await this.lockCalendar(tx.manager, organizationId, calendar.id);
+      await this.releaseExpiredHolds(tx, locked.id);
+      const violations = await this.availability.assertBookable(tx.manager, locked, startsAt, endsAt, {
+        override: !!dto.override,
+      });
+
+      const saved = await this.insert(
+        tx.manager,
+        tx.manager.getRepository(AppointmentEntity).create({
+          organization_id: organizationId,
+          calendar_id: locked.id,
+          contact_id: dto.contact_id,
+          conversation_id: dto.conversation_id,
+          assigned_to: dto.assigned_to ?? locked.owner_user_id ?? undefined,
+          title: dto.title,
+          description: dto.description,
+          location: dto.location,
+          meeting_url: dto.meeting_url,
+          status: AppointmentStatus.SCHEDULED,
+          starts_at: startsAt,
+          ends_at: endsAt,
+          timezone: dto.timezone ?? locked.timezone,
+          origin: originForActor(actor),
+          created_by: userIdOf(actor) ?? undefined,
+          payment_waived_by: paymentWaivedBy,
+          ...this.overrideFields(violations, dto.override?.reason, actor),
+        }),
+      );
+
+      await this.syncReminders(tx.manager, saved, locked);
+      await this.events.created(tx, saved);
+      await this.requestConfirmation(tx, saved);
+      return saved;
     });
-    this.rmqClient?.emit(
-      RABBITMQ_QUEUES.APPOINTMENT_CREATED,
-      this.appointmentEventPayload(organizationId, appt),
-    );
-    void this.realtimeBroadcast?.notifyOrg(organizationId, {
-      type: 'appointment',
-      title: `Nueva cita: ${appt.title}`,
-      href: '/schedule',
-      appointmentId: appt.id,
-      contactId: appt.contact_id,
-      conversationId: appt.conversation_id ?? undefined,
-      actorUserId: appt.created_by ?? undefined,
+  }
+
+  /**
+   * Reserves a slot while the contact pays. The hold blocks the slot until
+   * `hold_expires_at` (calendar `hold_minutes`) and is released if unpaid.
+   */
+  async createHold(organizationId: string, input: HoldInput): Promise<AppointmentEntity> {
+    const calendar = await this.calendars.getCalendarById(organizationId, input.calendarId);
+    await this.assertContact(organizationId, input.contactId);
+    const endsAt = new Date(input.startsAt.getTime() + input.durationMinutes * 60_000);
+
+    return this.inTransaction(async (tx) => {
+      const locked = await this.lockCalendar(tx.manager, organizationId, calendar.id);
+      await this.releaseExpiredHolds(tx, locked.id);
+      await this.availability.assertBookable(tx.manager, locked, input.startsAt, endsAt);
+
+      return this.insert(
+        tx.manager,
+        tx.manager.getRepository(AppointmentEntity).create({
+          organization_id: organizationId,
+          calendar_id: locked.id,
+          contact_id: input.contactId,
+          conversation_id: input.conversationId ?? undefined,
+          assigned_to: locked.owner_user_id ?? undefined,
+          title: input.title,
+          status: AppointmentStatus.HELD,
+          hold_expires_at: new Date(Date.now() + locked.hold_minutes * 60_000),
+          starts_at: input.startsAt,
+          ends_at: endsAt,
+          timezone: input.timezone ?? locked.timezone,
+          origin: input.origin,
+          created_by: input.createdBy ?? undefined,
+        }),
+      );
     });
   }
 
-  private emitAppointmentConfirmed(organizationId: string, appt: AppointmentEntity): void {
-    this.rmqClient?.emit(
-      RABBITMQ_QUEUES.APPOINTMENT_CONFIRMED,
-      this.appointmentEventPayload(organizationId, appt),
-    );
-  }
-
-  /** Generic emitter for lifecycle events (completed, no_show, …). */
-  private emitAppointmentLifecycle(
-    queue: string,
+  /** Links a hold to its payment; the hold lasts as long as the checkout does. */
+  async attachPayment(
     organizationId: string,
+    appointmentId: string,
+    paymentId: string,
+    holdUntil?: Date | null,
+  ): Promise<void> {
+    await this.repo.update(
+      { id: appointmentId, organization_id: organizationId },
+      { payment_id: paymentId, ...(holdUntil ? { hold_expires_at: holdUntil } : {}) },
+    );
+  }
+
+  /** Frees a hold right away (checkout expired, payment failed, link could not be created). */
+  async releaseHold(organizationId: string, appointmentId: string): Promise<void> {
+    await this.inTransaction(async (tx) => {
+      const rows = returnedRows<AppointmentEntity>(
+        await tx.manager.query(
+          `UPDATE scheduling.appointments
+              SET status = 'cancelled', cancel_reason = 'payment_not_received', cancelled_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'held'
+            RETURNING *`,
+          [appointmentId, organizationId],
+        ),
+      );
+      for (const row of rows) await this.events.holdReleased(tx, this.hydrate(row));
+    });
+  }
+
+  /** Releases unpaid holds past their expiry (one calendar, or all when omitted). */
+  async releaseExpiredHolds(tx: BookingTx, calendarId?: string): Promise<number> {
+    const rows = returnedRows<AppointmentEntity>(
+      await tx.manager.query(
+        `UPDATE scheduling.appointments
+            SET status = 'cancelled', cancel_reason = 'payment_not_received', cancelled_at = NOW()
+          WHERE status = 'held' AND hold_expires_at <= NOW() ${calendarId ? 'AND calendar_id = $1' : ''}
+          RETURNING *`,
+        calendarId ? [calendarId] : [],
+      ),
+    );
+    for (const row of rows) await this.events.holdReleased(tx, this.hydrate(row));
+    return rows.length;
+  }
+
+  // ── Payment confirmation (runs inside the payment webhook transaction) ──
+
+  /** Confirms the appointment a payment was for. Never throws for booking problems. */
+  async confirmFromPayment(
+    tx: BookingTx,
+    organizationId: string,
+    appointmentId: string,
+    paymentId: string,
+  ): Promise<PaymentBookingOutcome> {
+    const appts = tx.manager.getRepository(AppointmentEntity);
+    const appt = await appts
+      .createQueryBuilder('a')
+      .setLock('pessimistic_write')
+      .where('a.id = :id AND a.organization_id = :orgId', { id: appointmentId, orgId: organizationId })
+      .getOne();
+    if (!appt) return { outcome: 'not_found' };
+
+    // A hold (or a hold released moments ago) only becomes a real booking now.
+    const becomesBooking =
+      appt.status === AppointmentStatus.HELD || appt.cancel_reason === AppointmentCancelReason.PAYMENT_NOT_RECEIVED;
+
+    if (appt.status === AppointmentStatus.CANCELLED) {
+      if (appt.cancel_reason !== AppointmentCancelReason.PAYMENT_NOT_RECEIVED || !appt.calendar_id) {
+        return { outcome: 'appointment_cancelled', appointment: appt };
+      }
+      // The hold expired just before the payment arrived: take the slot back if it is still free.
+      const calendar = await this.lockCalendar(tx.manager, organizationId, appt.calendar_id);
+      await this.releaseExpiredHolds(tx, calendar.id);
+      const violations = await this.availability.assertBookable(tx.manager, calendar, appt.starts_at, appt.ends_at, {
+        excludeId: appt.id,
+        override: true,
+      });
+      if (violations.includes('conflict') || violations.includes('in_past')) {
+        return { outcome: 'slot_unavailable', appointment: appt };
+      }
+      appt.cancelled_at = null;
+      appt.cancel_reason = null;
+    } else if (
+      appt.status === AppointmentStatus.CONFIRMED ||
+      appt.status === AppointmentStatus.COMPLETED ||
+      appt.status === AppointmentStatus.NO_SHOW
+    ) {
+      if (!appt.payment_id) {
+        appt.payment_id = paymentId;
+        await appts.save(appt);
+      }
+      return { outcome: 'already_confirmed', appointment: appt };
+    }
+
+    appt.status = AppointmentStatus.CONFIRMED;
+    appt.confirmed_at = new Date();
+    appt.confirmed_via = AppointmentConfirmedVia.PAYMENT;
+    appt.payment_id = paymentId;
+    const saved = await appts.save(appt);
+
+    await this.syncReminders(tx.manager, saved);
+    if (becomesBooking) await this.events.created(tx, saved);
+    await this.events.confirmed(tx, saved, this.links.pair(saved));
+    return { outcome: 'confirmed', appointment: saved };
+  }
+
+  /**
+   * Books a paid slot from a link created before holds existed (the booking
+   * only lives in the payment metadata).
+   */
+  async createConfirmedFromPayment(
+    tx: BookingTx,
+    organizationId: string,
+    input: PaidBookingInput,
+  ): Promise<PaymentBookingOutcome> {
+    const calendar = await this.lockCalendar(tx.manager, organizationId, input.calendarId);
+    await this.releaseExpiredHolds(tx, calendar.id);
+    const endsAt = new Date(input.startsAt.getTime() + input.durationMinutes * 60_000);
+    const violations = await this.availability.assertBookable(tx.manager, calendar, input.startsAt, endsAt, {
+      override: true,
+    });
+    if (violations.includes('conflict') || violations.includes('in_past')) return { outcome: 'slot_unavailable' };
+
+    const saved = await tx.manager.getRepository(AppointmentEntity).save(
+      tx.manager.getRepository(AppointmentEntity).create({
+        organization_id: organizationId,
+        calendar_id: calendar.id,
+        contact_id: input.contactId,
+        conversation_id: input.conversationId ?? undefined,
+        assigned_to: calendar.owner_user_id ?? undefined,
+        title: input.title,
+        status: AppointmentStatus.CONFIRMED,
+        confirmed_at: new Date(),
+        confirmed_via: AppointmentConfirmedVia.PAYMENT,
+        origin: 'ai',
+        starts_at: input.startsAt,
+        ends_at: endsAt,
+        timezone: input.timezone ?? calendar.timezone,
+        payment_id: input.paymentId,
+        metadata: { payment_id: input.paymentId, created_from: 'payment_booking' },
+      }),
+    );
+    await this.syncReminders(tx.manager, saved, calendar);
+    await this.events.created(tx, saved);
+    await this.events.confirmed(tx, saved, this.links.pair(saved));
+    return { outcome: 'confirmed', appointment: saved };
+  }
+
+  // ── The contact's own link (no CRM session) ─────────────────────────────
+
+  /** What a link points to and what the contact may do, without changing anything (GET). */
+  async describeConfirmation(token: string): Promise<ContactLinkView> {
+    const verified = this.links.verify(token);
+    if (!verified.ok) {
+      return { state: verified.error === 'expired' ? 'expired' : 'invalid', canConfirm: false, canChange: false };
+    }
+    const appt = await this.repo.findOne({ where: { id: verified.claims.appointmentId } });
+    if (!appt) return { state: 'invalid', canConfirm: false, canChange: false };
+    const state = this.confirmationState(appt, verified.claims.version);
+    const changeable = state === 'confirmed' || state === 'already_confirmed';
+    return { state, appointment: appt, canConfirm: state === 'confirmed', canChange: changeable };
+  }
+
+  /** Confirms the booking a link was issued for (POST from the confirmation page). */
+  async confirmByContact(
+    token: string,
+    channel: 'email' | 'sms',
+  ): Promise<{ state: ContactConfirmationResult; appointment?: AppointmentEntity }> {
+    const verified = this.links.verify(token);
+    if (!verified.ok) return { state: verified.error === 'expired' ? 'expired' : 'invalid' };
+
+    return this.inTransaction(async (tx) => {
+      const appt = await tx.manager
+        .getRepository(AppointmentEntity)
+        .createQueryBuilder('a')
+        .setLock('pessimistic_write')
+        .where('a.id = :id', { id: verified.claims.appointmentId })
+        .getOne();
+      if (!appt) return { state: 'invalid' as const };
+
+      const state = this.confirmationState(appt, verified.claims.version);
+      if (state !== 'confirmed') return { state, appointment: appt };
+
+      appt.status = AppointmentStatus.CONFIRMED;
+      appt.confirmed_at = new Date();
+      appt.confirmed_via = channel === 'sms' ? AppointmentConfirmedVia.SMS_LINK : AppointmentConfirmedVia.EMAIL_LINK;
+      appt.confirmed_by = null;
+      const saved = await tx.manager.getRepository(AppointmentEntity).save(appt);
+      await this.events.confirmed(tx, saved, this.links.pair(saved));
+      return { state: 'confirmed' as const, appointment: saved };
+    });
+  }
+
+  /**
+   * Free slots the contact may move their booking to (same calendar and
+   * length), for the calendar's `contact_reschedule_days`. Its booking horizon
+   * (`max_advance_days`) still applies on top.
+   */
+  async availabilityForContact(token: string): Promise<{ view: ContactLinkView; availability?: AvailabilityResult }> {
+    const view = await this.describeConfirmation(token);
+    if (!view.canChange || !view.appointment) return { view };
+    const appt = view.appointment;
+    if (!appt.calendar_id) return { view: { ...view, canChange: false } };
+    const calendar = await this.calendars.getCalendarById(appt.organization_id, appt.calendar_id);
+    const from = localDate(new Date(), calendar.timezone);
+    const days = Math.min(Math.max(calendar.contact_reschedule_days || 14, 1), 60);
+    const availability = await this.availability.getAvailability(appt.organization_id, {
+      calendar_id: calendar.id,
+      from,
+      to: addDays(from, days - 1),
+      duration_minutes: Math.round((appt.ends_at.getTime() - appt.starts_at.getTime()) / 60_000),
+      exclude_appointment_id: appt.id,
+    });
+    return { view, availability };
+  }
+
+  /** The contact picks a new time from their link; choosing it confirms it. */
+  async rescheduleByContact(token: string, startsAtRaw: string, channel: 'email' | 'sms'): Promise<ContactActionResult> {
+    const verified = this.links.verify(token);
+    if (!verified.ok) return { state: verified.error === 'expired' ? 'expired' : 'invalid' };
+    const startsAt = new Date(startsAtRaw);
+    if (Number.isNaN(startsAt.getTime())) return { state: 'invalid' };
+
+    return this.inTransaction(async (tx) => {
+      const appt = await tx.manager.getRepository(AppointmentEntity).findOne({ where: { id: verified.claims.appointmentId } });
+      if (!appt) return { state: 'invalid' as const };
+      const current = await this.lockAppointment(tx.manager, appt.organization_id, appt.id);
+      const state = this.confirmationState(current, verified.claims.version);
+      if (state !== 'confirmed' && state !== 'already_confirmed') return { state, appointment: current };
+      if (!current.calendar_id) return { state: 'closed' as const, appointment: current };
+
+      try {
+        const saved = await this.moveBooking(tx, current, startsAt, undefined, { kind: 'contact' }, undefined);
+        saved.status = AppointmentStatus.CONFIRMED;
+        saved.confirmed_at = new Date();
+        saved.confirmed_via = channel === 'sms' ? AppointmentConfirmedVia.SMS_LINK : AppointmentConfirmedVia.EMAIL_LINK;
+        saved.confirmed_by = null;
+        const confirmed = await tx.manager.getRepository(AppointmentEntity).save(saved);
+        await this.events.rescheduled(tx, confirmed, this.links.pair(confirmed));
+        return { state: 'rescheduled' as const, appointment: confirmed };
+      } catch (err) {
+        if (err instanceof SlotUnavailableException) return { state: 'slot_unavailable' as const, appointment: current };
+        throw err;
+      }
+    });
+  }
+
+  /** The contact cancels from their link. */
+  async cancelByContact(token: string): Promise<ContactActionResult> {
+    const verified = this.links.verify(token);
+    if (!verified.ok) return { state: verified.error === 'expired' ? 'expired' : 'invalid' };
+    const appt = await this.repo.findOne({ where: { id: verified.claims.appointmentId } });
+    if (!appt) return { state: 'invalid' };
+    const state = this.confirmationState(appt, verified.claims.version);
+    if (state !== 'confirmed' && state !== 'already_confirmed') return { state, appointment: appt };
+    const cancelled = await this.cancel(appt.organization_id, appt.id, { kind: 'contact' }, 'contact');
+    return { state: 'cancelled', appointment: cancelled };
+  }
+
+  /** 'confirmed' means "can be confirmed now". */
+  private confirmationState(appt: AppointmentEntity, version: number): ContactConfirmationResult {
+    if (appt.confirmation_version !== version) return 'outdated';
+    switch (appt.status) {
+      case AppointmentStatus.SCHEDULED:
+      case 'pending':
+        return appt.starts_at.getTime() <= Date.now() ? 'expired' : 'confirmed';
+      case AppointmentStatus.CONFIRMED:
+        return appt.starts_at.getTime() <= Date.now() ? 'closed' : 'already_confirmed';
+      case AppointmentStatus.CANCELLED:
+        return 'cancelled';
+      case AppointmentStatus.HELD:
+        return 'awaiting_payment';
+      default:
+        return 'closed';
+    }
+  }
+
+  // ── Transitions ─────────────────────────────────────────────────────────
+
+  async confirmByStaff(organizationId: string, id: string, actor: SchedulingActor): Promise<AppointmentEntity> {
+    return this.transition(organizationId, id, AppointmentStatus.CONFIRMED, (appt) => {
+      if (appt.status === AppointmentStatus.HELD) {
+        throw new ConflictException({
+          message: 'This booking is waiting for payment; it is confirmed when the payment arrives',
+          errors: { code: 'AWAITING_PAYMENT' },
+        });
+      }
+      appt.confirmed_at = new Date();
+      appt.confirmed_via = AppointmentConfirmedVia.STAFF;
+      appt.confirmed_by = userIdOf(actor);
+    }, (tx, saved) => this.events.confirmed(tx, saved, this.links.pair(saved)));
+  }
+
+  async cancel(
+    organizationId: string,
+    id: string,
+    actor: SchedulingActor,
+    reason?: 'staff' | 'contact',
+  ): Promise<AppointmentEntity> {
+    let wasHeld = false;
+    return this.transition(
+      organizationId,
+      id,
+      AppointmentStatus.CANCELLED,
+      async (appt, tx) => {
+        wasHeld = appt.status === AppointmentStatus.HELD;
+        appt.cancelled_at = new Date();
+        appt.cancelled_by = userIdOf(actor);
+        appt.cancel_reason =
+          reason ??
+          (actor.kind === 'ai'
+            ? AppointmentCancelReason.AI
+            : actor.kind === 'contact'
+              ? AppointmentCancelReason.CONTACT
+              : AppointmentCancelReason.STAFF);
+        if (appt.payment_id) await this.flagPaymentForAttention(tx, appt, PaymentAttentionReason.APPOINTMENT_CANCELLED);
+      },
+      (tx, saved) => (wasHeld ? this.events.holdReleased(tx, saved) : this.events.cancelled(tx, saved)),
+    );
+  }
+
+  async complete(organizationId: string, id: string, actor: SchedulingActor): Promise<AppointmentEntity> {
+    return this.transition(organizationId, id, AppointmentStatus.COMPLETED, (appt) => {
+      this.assertStarted(appt, 'completed');
+      appt.completed_at = new Date();
+    }, (tx, saved) => this.events.completed(tx, saved));
+  }
+
+  async markNoShow(organizationId: string, id: string, actor: SchedulingActor): Promise<AppointmentEntity> {
+    return this.transition(organizationId, id, AppointmentStatus.NO_SHOW, (appt) => {
+      this.assertStarted(appt, 'marked as no-show');
+    }, (tx, saved) => this.events.noShow(tx, saved));
+  }
+
+  /**
+   * Moves a booking (same rules as booking). Staff and integrations moving a
+   * confirmed, unpaid booking need the contact to confirm the new time; the
+   * AI does it at the contact's request, so the booking stays confirmed.
+   */
+  async reschedule(
+    organizationId: string,
+    id: string,
+    dto: RescheduleAppointmentDto,
+    actor: SchedulingActor,
+  ): Promise<AppointmentEntity> {
+    const startsRaw = dto.starts_at ?? dto.new_start_time;
+    if (!startsRaw) throw new BadRequestException('starts_at is required');
+    if (dto.override && !isAdminActor(actor)) {
+      throw new ForbiddenException('Only owners and admins can override calendar rules');
+    }
+    const startsAt = new Date(startsRaw);
+
+    return this.inTransaction(async (tx) => {
+      const current = await this.lockAppointment(tx.manager, organizationId, id);
+      const saved = await this.moveBooking(tx, current, startsAt, dto.duration_minutes, actor, dto.override?.reason);
+      await this.events.rescheduled(tx, saved, this.links.pair(saved));
+      if (saved.status === AppointmentStatus.SCHEDULED) await this.requestConfirmation(tx, saved, { rescheduled: true });
+      return saved;
+    });
+  }
+
+  async updateDetails(organizationId: string, id: string, dto: UpdateAppointmentDto): Promise<AppointmentEntity> {
+    const appt = await this.findById(id, organizationId);
+    const fields: Array<keyof UpdateAppointmentDto> = ['title', 'description', 'location', 'meeting_url', 'notes'];
+    for (const field of fields) {
+      if (dto[field] !== undefined) (appt as unknown as Record<string, unknown>)[field] = dto[field];
+    }
+    const saved = await this.repo.save(appt);
+    await this.events.updated(null, saved);
+    return saved;
+  }
+
+  async resendConfirmation(organizationId: string, id: string): Promise<AppointmentEntity> {
+    const appt = await this.findById(id, organizationId);
+    if (appt.status !== AppointmentStatus.SCHEDULED) {
+      throw new ConflictException('Only bookings awaiting confirmation can be sent a new link');
+    }
+    if (appt.starts_at.getTime() <= Date.now()) throw new ConflictException('The appointment has already started');
+    await this.requestConfirmation(null, appt);
+    return appt;
+  }
+
+  /** Owners/admins only, never paid bookings and never upcoming ones (cancel first so the contact is told). */
+  async delete(organizationId: string, id: string, actor: SchedulingActor): Promise<void> {
+    const appt = await this.findById(id, organizationId);
+
+    if (!isAdminActor(actor)) throw new ForbiddenException('Only owners and admins can delete appointments');
+    if (appt.payment_id) {
+      throw new ConflictException({
+        message: 'Paid appointments cannot be deleted; cancel it instead',
+        errors: { code: 'APPOINTMENT_PAID' },
+      });
+    }
+    if (ACTIVE_BOOKING_STATUSES.includes(appt.status) && appt.ends_at.getTime() > Date.now()) {
+      throw new ConflictException({
+        message: 'Cancel this upcoming appointment first so the contact is notified',
+        errors: { code: 'APPOINTMENT_UPCOMING' },
+      });
+    }
+    await this.repo.delete({ id, organization_id: organizationId });
+  }
+
+  // ── Scheduled jobs ──────────────────────────────────────────────────────
+
+  async releaseAllExpiredHolds(): Promise<number> {
+    return this.inTransaction((tx) => this.releaseExpiredHolds(tx));
+  }
+
+  /**
+   * Sends the reminders that are due. Claiming the reminder and storing its
+   * event happen in one transaction, so each reminder is sent exactly once
+   * even with several instances running.
+   */
+  async sendDueReminders(batchSize = 200): Promise<number> {
+    return this.inTransaction(async (tx) => {
+      // Bookings that stopped being active never send their pending reminders.
+      await tx.manager.query(
+        `UPDATE scheduling.appointment_reminders r SET status = 'cancelled'
+          WHERE r.status = 'pending' AND r.due_at <= NOW()
+            AND NOT EXISTS (
+              SELECT 1 FROM scheduling.appointments a
+               WHERE a.id = r.appointment_id AND a.status IN ('scheduled', 'confirmed') AND a.starts_at > NOW())`,
+      );
+      const claimed = returnedRows<{ id: string; appointment_id: string; offset_minutes: number }>(
+        await tx.manager.query(
+          `UPDATE scheduling.appointment_reminders r SET status = 'sent', sent_at = NOW()
+            WHERE r.id IN (
+              SELECT r2.id FROM scheduling.appointment_reminders r2
+               WHERE r2.status = 'pending' AND r2.due_at <= NOW()
+               ORDER BY r2.due_at
+               LIMIT $1
+               FOR UPDATE SKIP LOCKED)
+            RETURNING r.id, r.appointment_id, r.offset_minutes`,
+          [batchSize],
+        ),
+      );
+      if (!claimed.length) return 0;
+      const appts = await tx.manager
+        .getRepository(AppointmentEntity)
+        .findBy({ id: In([...new Set(claimed.map((r) => r.appointment_id))]) });
+      const byId = new Map(appts.map((a) => [a.id, a]));
+      for (const reminder of claimed) {
+        const appt = byId.get(reminder.appointment_id);
+        if (!appt) continue;
+        const links = this.links.pair(appt);
+        await this.events.reminderDue(tx, appt, {
+          reminderId: reminder.id,
+          offsetMinutes: reminder.offset_minutes,
+          manageUrlEmail: links.email,
+          manageUrlSms: links.sms,
+          ...(appt.status === AppointmentStatus.SCHEDULED
+            ? { confirmUrlEmail: links.email, confirmUrlSms: links.sms }
+            : {}),
+        });
+      }
+      return claimed.length;
+    });
+  }
+
+  // ── Internals ───────────────────────────────────────────────────────────
+
+  /** Changes time (and duration) under the calendar rules; keeps reminders and links in sync. */
+  private async moveBooking(
+    tx: BookingTx,
+    current: AppointmentEntity,
+    startsAt: Date,
+    durationMinutes: number | undefined,
+    actor: SchedulingActor,
+    overrideReason: string | undefined,
+  ): Promise<AppointmentEntity> {
+    if (!isReschedulable(current.status)) {
+      throw new ConflictException({
+        message: `A ${current.status} appointment cannot be rescheduled`,
+        errors: { code: 'INVALID_TRANSITION', from: current.status, to: 'rescheduled' },
+      });
+    }
+    if (!current.calendar_id) throw new ConflictException('Appointment has no calendar');
+
+    const duration =
+      durationMinutes ?? Math.round((current.ends_at.getTime() - current.starts_at.getTime()) / 60_000);
+    const endsAt = new Date(startsAt.getTime() + duration * 60_000);
+    const calendar = await this.lockCalendar(tx.manager, current.organization_id, current.calendar_id);
+    await this.releaseExpiredHolds(tx, calendar.id);
+    const violations = await this.availability.assertBookable(tx.manager, calendar, startsAt, endsAt, {
+      excludeId: current.id,
+      override: !!overrideReason,
+    });
+
+    current.starts_at = startsAt;
+    current.ends_at = endsAt;
+    current.confirmation_version = (current.confirmation_version ?? 1) + 1;
+    const needsReconfirmation = actor.kind === 'user' || actor.kind === 'api_key' || actor.kind === 'system';
+    if (needsReconfirmation && current.status === AppointmentStatus.CONFIRMED && !current.payment_id) {
+      current.status = AppointmentStatus.SCHEDULED;
+      current.confirmed_at = null;
+      current.confirmed_via = null;
+      current.confirmed_by = null;
+    }
+    Object.assign(current, this.overrideFields(violations, overrideReason, actor));
+
+    const saved = await this.save(tx.manager.getRepository(AppointmentEntity), current);
+    await this.syncReminders(tx.manager, saved, calendar);
+    return saved;
+  }
+
+  /**
+   * Keeps the booking's reminders in line with its time and status: one per
+   * calendar offset still in the future while it is scheduled or confirmed,
+   * none otherwise. A reminder already sent is re-armed after a reschedule.
+   */
+  private async syncReminders(
+    manager: EntityManager,
     appt: AppointmentEntity,
-  ): void {
-    this.rmqClient?.emit(queue, this.appointmentEventPayload(organizationId, appt));
+    calendar?: WorkScheduleEntity,
+  ): Promise<void> {
+    const reminders = manager.getRepository(AppointmentReminderEntity);
+    const active = appt.status === AppointmentStatus.SCHEDULED || appt.status === AppointmentStatus.CONFIRMED;
+    const cal =
+      active && appt.calendar_id
+        ? calendar ?? (await manager.getRepository(WorkScheduleEntity).findOne({ where: { id: appt.calendar_id } }))
+        : null;
+    const now = Date.now();
+    const wanted = (cal?.reminder_offsets_minutes ?? [])
+      .map((offset) => ({ offset, due: new Date(appt.starts_at.getTime() - offset * 60_000) }))
+      .filter((r) => r.due.getTime() > now);
+
+    await reminders
+      .createQueryBuilder()
+      .update(AppointmentReminderEntity)
+      .set({ status: 'cancelled' })
+      .where(`appointment_id = :id AND status = 'pending'`, { id: appt.id })
+      .andWhere(wanted.length ? 'offset_minutes NOT IN (:...offsets)' : 'TRUE', {
+        offsets: wanted.map((r) => r.offset),
+      })
+      .execute();
+
+    for (const reminder of wanted) {
+      await manager.query(
+        `INSERT INTO scheduling.appointment_reminders (organization_id, appointment_id, offset_minutes, due_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (appointment_id, offset_minutes)
+         DO UPDATE SET due_at = EXCLUDED.due_at, status = 'pending', sent_at = NULL`,
+        [appt.organization_id, appt.id, reminder.offset, reminder.due],
+      );
+    }
+  }
+
+  private async requestConfirmation(
+    tx: BookingTx | null,
+    appt: AppointmentEntity,
+    opts: { reminder?: boolean; rescheduled?: boolean } = {},
+  ): Promise<void> {
+    if (appt.starts_at.getTime() <= Date.now()) return;
+    const links = this.links.pair(appt);
+    await this.events.confirmationRequested(tx, appt, {
+      confirmUrlEmail: links.email,
+      confirmUrlSms: links.sms,
+      manageUrlEmail: links.email,
+      manageUrlSms: links.sms,
+      ...opts,
+    });
+  }
+
+  private async transition(
+    organizationId: string,
+    id: string,
+    to: AppointmentStatus,
+    mutate: (appt: AppointmentEntity, tx: BookingTx) => void | Promise<void>,
+    publish: (tx: BookingTx, saved: AppointmentEntity) => Promise<void>,
+  ): Promise<AppointmentEntity> {
+    return this.inTransaction(async (tx) => {
+      const appt = await this.lockAppointment(tx.manager, organizationId, id);
+      if (!canTransition(appt.status, to)) {
+        throw new ConflictException({
+          message: `Cannot move a ${appt.status} appointment to ${to}`,
+          errors: { code: 'INVALID_TRANSITION', from: appt.status, to },
+        });
+      }
+      await mutate(appt, tx);
+      appt.status = to;
+      const saved = await this.save(tx.manager.getRepository(AppointmentEntity), appt);
+      await this.syncReminders(tx.manager, saved);
+      await publish(tx, saved);
+      return saved;
+    });
+  }
+
+  private assertStarted(appt: AppointmentEntity, verb: string): void {
+    if (appt.starts_at.getTime() > Date.now()) {
+      throw new ConflictException({
+        message: `An appointment that has not started cannot be ${verb}`,
+        errors: { code: 'NOT_STARTED' },
+      });
+    }
+  }
+
+  private overrideFields(violations: string[], reason: string | undefined, actor: SchedulingActor) {
+    if (!violations.length || !reason) return {};
+    return {
+      override_at: new Date(),
+      override_by: userIdOf(actor),
+      override_reason: `${reason} [${violations.join(', ')}]`,
+    };
+  }
+
+  private async flagPaymentForAttention(tx: BookingTx, appt: AppointmentEntity, reason: PaymentAttentionReason): Promise<void> {
+    const result: unknown = await tx.manager.query(
+      `UPDATE payments.payments
+          SET attention_reason = $1, attention_at = NOW(), resolution = NULL, resolved_at = NULL, resolved_by = NULL
+        WHERE id = $2 AND organization_id = $3 AND status = 'paid'
+        RETURNING id`,
+      [reason, appt.payment_id, appt.organization_id],
+    );
+    if (returnedRows(result).length) tx.afterCommit(() => this.events.paymentNeedsAttention(appt, reason));
+  }
+
+  /**
+   * Locks the calendar row and, for a staff calendar, its owner, so two
+   * bookings for the same person (on any of their calendars) never interleave.
+   */
+  private async lockCalendar(manager: EntityManager, organizationId: string, calendarId: string): Promise<WorkScheduleEntity> {
+    const cal = await manager
+      .getRepository(WorkScheduleEntity)
+      .createQueryBuilder('c')
+      .setLock('pessimistic_write')
+      .where('c.id = :id AND c.organization_id = :orgId', { id: calendarId, orgId: organizationId })
+      .getOne();
+    if (!cal) throw new NotFoundException(`Calendar ${calendarId} not found`);
+    if (cal.owner_user_id) {
+      await manager.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`owner:${cal.owner_user_id}`]);
+    }
+    return cal;
+  }
+
+  private async lockAppointment(manager: EntityManager, organizationId: string, id: string): Promise<AppointmentEntity> {
+    const appt = await manager
+      .getRepository(AppointmentEntity)
+      .createQueryBuilder('a')
+      .setLock('pessimistic_write')
+      .where('a.id = :id AND a.organization_id = :orgId', { id, orgId: organizationId })
+      .getOne();
+    if (!appt) throw new NotFoundException(`Appointment ${id} not found`);
+    return appt;
+  }
+
+  /** Raw rows (RETURNING *) into entities; timestamps already come back as Dates. */
+  private hydrate(row: AppointmentEntity): AppointmentEntity {
+    return this.repo.create(row);
+  }
+
+  private async insert(manager: EntityManager, appt: AppointmentEntity): Promise<AppointmentEntity> {
+    return this.save(manager.getRepository(AppointmentEntity), appt);
+  }
+
+  /** Maps the overlap constraint to the same 409 the service check raises. */
+  private async save(repo: Repository<AppointmentEntity>, appt: AppointmentEntity): Promise<AppointmentEntity> {
+    try {
+      return await repo.save(appt);
+    } catch (err) {
+      const code = (err as QueryFailedError & { driverError?: { code?: string; constraint?: string } }).driverError;
+      if (err instanceof QueryFailedError && code?.code === '23P01') throw new SlotUnavailableException(['conflict']);
+      if (err instanceof QueryFailedError && code?.code === '23503' && code.constraint === 'appointments_contact_same_org_fkey') {
+        throw new NotFoundException('Contact not found');
+      }
+      throw err;
+    }
+  }
+
+  private async assertContact(organizationId: string, contactId: string): Promise<void> {
+    const exists = await this.contactRepo.exists({ where: { id: contactId, organization_id: organizationId } });
+    if (!exists) throw new NotFoundException(`Contact ${contactId} not found`);
+  }
+
+  private async assertConversation(organizationId: string, conversationId: string): Promise<void> {
+    const [row] = await this.repo.manager.query(
+      'SELECT 1 FROM conversations.conversations WHERE id = $1 AND organization_id = $2',
+      [conversationId, organizationId],
+    );
+    if (!row) throw new NotFoundException(`Conversation ${conversationId} not found`);
   }
 }

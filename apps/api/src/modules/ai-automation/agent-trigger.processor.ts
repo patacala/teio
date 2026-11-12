@@ -133,9 +133,11 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
               const appointments = await this.schedulingService.findUpcomingForContact(organization_id, contact_id);
               upcomingAppointments = appointments.map((a) => ({
                 id: a.id,
+                calendar_id: a.calendar_id,
                 title: a.title,
                 starts_at: a.starts_at,
                 ends_at: a.ends_at,
+                timezone: a.timezone,
                 status: a.status,
                 location: a.location,
                 meeting_url: a.meeting_url,

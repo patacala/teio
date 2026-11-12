@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { IActionHandler, ActionResult } from './action-handler.interface';
-import { AppointmentEntity } from '../../scheduling/appointment.entity';
+import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
 import { RealtimeBroadcastService } from '../../../infrastructure/realtime/realtime-broadcast.service';
@@ -16,7 +16,7 @@ export class NotifyAgentHandler implements IActionHandler {
   ) {}
 
   async execute(
-    appointment: AppointmentEntity,
+    appointment: ScheduledActionEntity,
     contact: ContactEntity,
     _resolved: ResolvedChannel | null,
     _org: OrganizationEntity,

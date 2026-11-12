@@ -2,7 +2,7 @@ import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { AutomationSequenceService } from './automation-sequence.service';
-import { AutomatedAppointmentService } from './automated-appointment.service';
+import { ScheduledActionService } from './scheduled-action.service';
 import { ClientManagementService } from '../client-management/client-management.service';
 import { ChannelType } from '@crm/shared';
 import type { CallCompletedEvent } from '@crm/shared';
@@ -26,7 +26,7 @@ export class OutboundMessageConsumer {
 
   constructor(
     private readonly sequenceService: AutomationSequenceService,
-    private readonly appointmentService: AutomatedAppointmentService,
+    private readonly actions: ScheduledActionService,
     private readonly clientService: ClientManagementService,
   ) {}
 
@@ -58,16 +58,17 @@ export class OutboundMessageConsumer {
     try {
       // Keyed on the contact and on action='call', so an unrelated inbound call
       // to a contact whose pending step is a message still cannot advance it.
-      const appt = await this.appointmentService.findProcessingByContactAndAction(
+      const appt = await this.actions.findProcessingByContactAndAction(
         data.organization_id,
         data.contact_id,
         'call',
       );
       if (!appt) return;
 
-      await this.appointmentService.markCompleted(data.organization_id, appt.id, 'voice');
+      // Only the caller that actually closed the step moves the sequence on.
+      const closed = await this.actions.markCompleted(data.organization_id, appt.id, 'voice');
 
-      if (appt.sequence_id) {
+      if (closed && appt.sequence_id) {
         const seq = await this.sequenceService.findActive(data.organization_id, data.contact_id);
         if (seq?.id === appt.sequence_id) {
           await this.sequenceService.advanceOrComplete(data.organization_id, seq.id);
@@ -89,11 +90,11 @@ export class OutboundMessageConsumer {
       const active = await this.sequenceService.findActive(data.organization_id, data.contact_id);
       if (!active) return;
 
-      const appt = await this.appointmentService.findProcessingBySequence(data.organization_id, active.id);
+      const appt = await this.actions.findProcessingBySequence(data.organization_id, active.id);
       if (!appt) return;
 
-      await this.appointmentService.markCompleted(data.organization_id, appt.id);
-      await this.sequenceService.advanceOrComplete(data.organization_id, active.id);
+      const closed = await this.actions.markCompleted(data.organization_id, appt.id);
+      if (closed) await this.sequenceService.advanceOrComplete(data.organization_id, active.id);
 
       this.logger.log(
         `Auto-completed follow-up appointment ${appt.id} and advanced sequence ${active.id} for contact ${data.contact_id}`,

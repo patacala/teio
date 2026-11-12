@@ -3,10 +3,11 @@ import { ClientProxy } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ContactEntity } from '../client-management/contact.entity';
+import { ScheduledActionEntity } from './scheduled-action.entity';
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
-import { AutomatedAppointmentService } from './automated-appointment.service';
+import { ScheduledActionService } from './scheduled-action.service';
 import { AutomationSequenceService } from './automation-sequence.service';
 import { ChannelStrategyResolverService } from './channel-strategy-resolver.service';
 import type { IActionHandler } from './handlers/action-handler.interface';
@@ -32,7 +33,7 @@ export class ActionExecutionService {
   private readonly handlerMap = new Map<string, IActionHandler>();
 
   constructor(
-    private readonly automatedAppointmentService: AutomatedAppointmentService,
+    private readonly actions: ScheduledActionService,
     private readonly sequenceService: AutomationSequenceService,
     private readonly channelResolver: ChannelStrategyResolverService,
     @InjectRepository(ContactEntity)
@@ -64,17 +65,21 @@ export class ActionExecutionService {
   async execute(appointmentId: string): Promise<void> {
     this.logger.debug(`Processing action for appointment ${appointmentId}`);
 
-    const appt = await this.automatedAppointmentService['repo'].findOne({
-      where: { id: appointmentId },
-    });
+    const appt = await this.actions.findForExecution(appointmentId);
 
     if (!appt) {
-      this.logger.warn(`Appointment ${appointmentId} not found — skipping`);
+      this.logger.warn(`Follow-up step ${appointmentId} not found — skipping`);
       return;
     }
 
     if (appt.status !== 'processing') {
-      this.logger.debug(`Appointment ${appointmentId} status=${appt.status} — skipping`);
+      this.logger.debug(`Follow-up step ${appointmentId} status=${appt.status} — skipping`);
+      return;
+    }
+
+    // A person does this step: it waits in the agenda for them instead of running.
+    if (appt.executor === 'user' || appt.action === 'create_task') {
+      await this.handOver(appt);
       return;
     }
 
@@ -138,7 +143,7 @@ export class ActionExecutionService {
       }
 
       if (result.completed) {
-        await this.automatedAppointmentService.markCompleted(appt.organization_id, appointmentId, result.channel ?? resolved?.channel);
+        await this.actions.markCompleted(appt.organization_id, appointmentId, result.channel ?? resolved?.channel);
 
         // If sequence appointment, advance or complete
         if (appt.sequence_id) {
@@ -185,8 +190,26 @@ export class ActionExecutionService {
    * are exhausted the step is over, so the sequence must schedule the next
    * agenda or close. Leaving it active with no appointment drops the cadence.
    */
+  /** Leaves the step to a person and tells the team it is due. */
+  private async handOver(step: ScheduledActionEntity): Promise<void> {
+    const moved = await this.actions.markAwaitingUser(step.organization_id, step.id);
+    if (!moved) return;
+    const contact = await this.contactRepo.findOne({ where: { id: step.contact_id }, select: ['id', 'first_name', 'last_name'] });
+    const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'a contact';
+    await this.realtimeService
+      ?.notifyOrg(step.organization_id, {
+        type: 'system',
+        title: `Follow-up due: ${step.title}`,
+        description: `${name} — mark it done in the agenda when finished`,
+        href: '/schedule',
+        contactId: step.contact_id,
+      })
+      .catch(() => undefined);
+    this.logger.log(`Follow-up step ${step.id} handed to the team (${step.action})`);
+  }
+
   private async failStep(appt: { id: string; organization_id: string; sequence_id?: string | null }, error: string): Promise<void> {
-    const outcome = await this.automatedAppointmentService.markFailed(appt.organization_id, appt.id, error);
+    const outcome = await this.actions.markFailed(appt.organization_id, appt.id, error);
     if (outcome === 'failed' && appt.sequence_id) {
       await this.sequenceService.advanceOrComplete(appt.organization_id, appt.sequence_id);
     }

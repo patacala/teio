@@ -195,9 +195,9 @@ describe('AI calls', () => {
 
 describe('automated actions', () => {
   function setup(action: string, allowed: boolean) {
-    const appt = { id: 'appt-1', organization_id: ORG, contact_id: 'c1', status: 'processing', action, sequence_id: null };
+    const appt = { id: 'appt-1', organization_id: ORG, contact_id: 'c1', status: 'processing', action, executor: 'system', sequence_id: null };
     const appointments = {
-      repo: { findOne: jest.fn(async () => appt) },
+      findForExecution: jest.fn(async () => appt),
       markFailed: jest.fn(async () => 'failed'),
     };
     const billingAccess = {

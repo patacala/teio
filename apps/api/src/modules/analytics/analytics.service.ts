@@ -305,28 +305,19 @@ export class AnalyticsService {
            UNION ALL
            SELECT 'pay_paid_prev', amount, NULL FROM payments.payments WHERE organization_id = $1 AND status = 'paid' AND paid_at >= $3 AND paid_at < $2
            UNION ALL
-           -- action IS NULL on all three: same Follow-up Engine bookkeeping
-           -- exclusion as appt_upcoming below — without it, an active
-           -- contact's dozens of auto-created/auto-cancelled "no_response"
-           -- reminders (see appt_upcoming's comment) swamp real customer
-           -- appointments in both the total and the cancellation rate.
-           SELECT 'appt_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND action IS NULL
+           SELECT 'appt_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6
            UNION ALL
-           SELECT 'appt_cancelled_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'cancelled' AND action IS NULL
+           SELECT 'appt_cancelled_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'cancelled'
            UNION ALL
-           SELECT 'appt_completed_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'completed' AND action IS NULL
+           SELECT 'appt_completed_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'completed'
            UNION ALL
-           SELECT 'appt_no_show_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'no_show' AND action IS NULL
+           SELECT 'appt_no_show_cur', 0, NULL FROM scheduling.appointments WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $6 AND status = 'no_show'
            UNION ALL
-           SELECT 'appt_deposit_cur', 0, NULL FROM scheduling.appointments a WHERE a.organization_id = $1 AND a.created_at >= $2 AND a.created_at <= $6 AND a.action IS NULL
+           SELECT 'appt_deposit_cur', 0, NULL FROM scheduling.appointments a WHERE a.organization_id = $1 AND a.created_at >= $2 AND a.created_at <= $6
              AND EXISTS (SELECT 1 FROM payments.payments p WHERE p.appointment_id = a.id AND p.status = 'paid')
            UNION ALL
-           -- action IS NULL excludes the Follow-up Engine's own bookkeeping
-           -- rows (e.g. "Sequence: no_response #3") — those are internal
-           -- reminders the engine schedules for itself, not customer-facing
-           -- appointments, and this card is captioned "Upcoming Appointments".
            SELECT 'appt_upcoming', 0, NULL FROM scheduling.appointments WHERE organization_id = $1
-             AND starts_at >= NOW() AND starts_at <= $5 AND status != 'cancelled' AND action IS NULL
+             AND starts_at >= NOW() AND starts_at <= $5 AND status != 'cancelled'
          ) sub`,
         [organizationId, rangeStart, prevStart, todayStart, upcomingWindowEnd, now],
       ),
@@ -480,7 +471,7 @@ export class AnalyticsService {
               COALESCE(NULLIF(TRIM(ct.first_name || ' ' || COALESCE(ct.last_name, '')), ''), 'Anonymous') AS contact_name
          FROM scheduling.appointments a
          LEFT JOIN clients.contacts ct ON ct.id = a.contact_id
-        WHERE a.organization_id = $1 AND a.starts_at >= NOW() AND a.status != 'cancelled' AND a.action IS NULL
+        WHERE a.organization_id = $1 AND a.starts_at >= NOW() AND a.status != 'cancelled'
         ORDER BY a.starts_at ASC
         LIMIT 1`,
       [organizationId],
@@ -528,7 +519,7 @@ export class AnalyticsService {
                   a.starts_at
              FROM scheduling.appointments a
              LEFT JOIN clients.contacts ct2 ON ct2.id = a.contact_id
-            WHERE a.organization_id = $1 AND a.status = 'pending' AND a.action IS NULL
+            WHERE a.organization_id = $1 AND a.status = 'scheduled'
               AND a.starts_at BETWEEN NOW() AND NOW() + INTERVAL '48 hours'
          ) g
          LEFT JOIN clients.contacts c ON c.id = g.contact_id

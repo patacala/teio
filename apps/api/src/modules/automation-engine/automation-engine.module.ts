@@ -2,7 +2,6 @@ import { Module, Global, Logger } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { AppointmentEntity } from '../scheduling/appointment.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
 import { ContactEntity } from '../client-management/contact.entity';
 import { ConversationEntity } from '../conversation-management/conversation.entity';
@@ -14,7 +13,8 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AIAgentsModule } from '../ai-agents/ai-agents.module';
 import { ACTION_EXECUTION_QUEUE, ACTION_EXECUTION_QUEUE_NAME } from './automation-engine.constants';
-import { AutomatedAppointmentService } from './automated-appointment.service';
+import { ScheduledActionService } from './scheduled-action.service';
+import { ScheduledActionEntity } from './scheduled-action.entity';
 import { ChannelStrategyResolverService } from './channel-strategy-resolver.service';
 import { ActionExecutionService } from './action-execution.service';
 import { ActionExecutionProcessor } from './action-execution.processor';
@@ -40,7 +40,7 @@ const logger = new Logger('AutomationEngineModule');
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      AppointmentEntity,
+      ScheduledActionEntity,
       WorkScheduleEntity,
       ContactEntity,
       ConversationEntity,
@@ -88,7 +88,7 @@ const logger = new Logger('AutomationEngineModule');
     },
     // Services
     AutomationSequenceService,
-    AutomatedAppointmentService,
+    ScheduledActionService,
     ChannelStrategyResolverService,
     ActionExecutionService,
     // Processor (Phase 2: BullMQ worker, only active when Redis is available)
@@ -104,6 +104,6 @@ const logger = new Logger('AutomationEngineModule');
     CallHandler,
   ],
   controllers: [AutomationEngineController, OutboundMessageConsumer],
-  exports: [AutomatedAppointmentService, AutomationSequenceService, ACTION_EXECUTION_QUEUE],
+  exports: [ScheduledActionService, AutomationSequenceService, ACTION_EXECUTION_QUEUE],
 })
 export class AutomationEngineModule {}

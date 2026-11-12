@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { AppointmentEntity } from '../../scheduling/appointment.entity';
+import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { ConversationManagementService } from '../../conversation-management/conversation-management.service';
 import { PaymentServiceService } from '../../payments/payment-service.service';
@@ -16,6 +16,7 @@ const DEFAULT_MAX_FOLLOW_UPS = 7;
  */
 export interface FollowUpContext {
   appointment_id: string;
+  action_id: string;
   contact_id: string;
   conversation_id: string | null;
   action: string;
@@ -58,7 +59,7 @@ export class FollowUpContextBuilder {
   ) {}
 
   async build(
-    appointment: AppointmentEntity,
+    appointment: ScheduledActionEntity,
     contact: ContactEntity,
     action: string,
     channel: string,
@@ -106,7 +107,9 @@ export class FollowUpContextBuilder {
     }
 
     return {
+      // n8n calls complete_follow_up with this id; kept as appointment_id for existing workflows.
       appointment_id: appointment.id,
+      action_id: appointment.id,
       contact_id: contact.id,
       conversation_id: conversationId,
       action,
@@ -125,7 +128,7 @@ export class FollowUpContextBuilder {
       recent_messages: recentMessages,
       payment_services: paymentServices,
       payment_currency: paymentCurrency,
-      payment_pending: appointment.status === 'pending' && !appointment.action,
+      payment_pending: false,
     };
   }
 }

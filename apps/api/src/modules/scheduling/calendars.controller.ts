@@ -1,49 +1,62 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import {
-  SchedulingService,
-  CreateCalendarDto,
-  UpdateCalendarDto,
-  UpdateWorkScheduleDto,
-} from './scheduling.service';
-import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
+import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CalendarService } from './calendar.service';
+import {
+  CreateCalendarDto,
+  DeleteCalendarQueryDto,
+  UpdateCalendarConfigDto,
+  UpdateCalendarDto,
+} from './dto/calendar.dto';
+
+const ID = new ParseUUIDPipe();
 
 @ApiTags('Calendars')
 @ApiBearerAuth()
 @Controller({ path: 'calendars', version: '1' })
 export class CalendarsController {
-  constructor(private readonly service: SchedulingService) {}
+  constructor(private readonly service: CalendarService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all calendars for the organization (auto-seeds defaults if none)' })
-  @ApiResponse({ status: 200, description: 'Array of calendars with their schedule config' })
+  @ApiOperation({ summary: 'List calendars (creates the default ones for a new organization)' })
   listCalendars(@CurrentTenant() tenant: TenantContext) {
     return this.service.listCalendars(tenant.organization_id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new calendar' })
-  @ApiResponse({ status: 201, description: 'Calendar created' })
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Create a calendar (inherits the organization time zone)' })
   createCalendar(@Body() dto: CreateCalendarDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.createCalendar(tenant.organization_id, dto);
   }
 
   @Get(':calendarId')
-  @ApiOperation({ summary: 'Get a specific calendar by ID' })
   @ApiParam({ name: 'calendarId', description: 'Calendar UUID' })
-  @ApiResponse({ status: 200, description: 'Calendar with schedule config' })
-  @ApiResponse({ status: 404, description: 'Calendar not found' })
-  getCalendar(@Param('calendarId') calendarId: string, @CurrentTenant() tenant: TenantContext) {
+  getCalendar(@Param('calendarId', ID) calendarId: string, @CurrentTenant() tenant: TenantContext) {
     return this.service.getCalendarById(tenant.organization_id, calendarId);
   }
 
   @Patch(':calendarId')
-  @ApiOperation({ summary: 'Update calendar name, color or active state' })
-  @ApiParam({ name: 'calendarId', description: 'Calendar UUID' })
-  @ApiResponse({ status: 200, description: 'Updated calendar' })
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update name, color, active state or the service charged at booking' })
   updateCalendar(
-    @Param('calendarId') calendarId: string,
+    @Param('calendarId', ID) calendarId: string,
     @Body() dto: UpdateCalendarDto,
     @CurrentTenant() tenant: TenantContext,
   ) {
@@ -51,24 +64,29 @@ export class CalendarsController {
   }
 
   @Put(':calendarId/config')
-  @ApiOperation({ summary: 'Update schedule config (work days, hours, slots, buffer, timezone, blocked dates)' })
-  @ApiParam({ name: 'calendarId', description: 'Calendar UUID' })
-  @ApiResponse({ status: 200, description: 'Updated calendar config' })
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update rules: work days, hours, slots, buffer, time zone, blocked dates, hold length' })
   updateCalendarConfig(
-    @Param('calendarId') calendarId: string,
-    @Body() dto: UpdateWorkScheduleDto,
+    @Param('calendarId', ID) calendarId: string,
+    @Body() dto: UpdateCalendarConfigDto,
     @CurrentTenant() tenant: TenantContext,
   ) {
     return this.service.updateCalendarConfig(tenant.organization_id, calendarId, dto);
   }
 
   @Delete(':calendarId')
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a calendar (cannot delete the last one)' })
-  @ApiParam({ name: 'calendarId', description: 'Calendar UUID' })
-  @ApiResponse({ status: 204, description: 'Calendar deleted' })
-  @ApiResponse({ status: 400, description: 'Cannot delete the last calendar' })
-  async deleteCalendar(@Param('calendarId') calendarId: string, @CurrentTenant() tenant: TenantContext) {
-    await this.service.deleteCalendar(tenant.organization_id, calendarId);
+  @ApiOperation({
+    summary:
+      'Delete a calendar. Refused while it has upcoming bookings; its past appointments move to `move_to`.',
+  })
+  @ApiResponse({ status: 409, description: 'CALENDAR_HAS_UPCOMING_BOOKINGS, CALENDAR_MOVE_TARGET_REQUIRED or CALENDAR_IS_SYSTEM' })
+  async deleteCalendar(
+    @Param('calendarId', ID) calendarId: string,
+    @Query() query: DeleteCalendarQueryDto,
+    @CurrentTenant() tenant: TenantContext,
+  ) {
+    await this.service.deleteCalendar(tenant.organization_id, calendarId, query.move_to);
   }
 }

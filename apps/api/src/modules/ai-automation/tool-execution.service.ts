@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
@@ -7,8 +7,12 @@ import { AgentTriggerService } from './agent-trigger.service';
 import { ConversationManagementService } from '../conversation-management/conversation-management.service';
 import { ClientManagementService } from '../client-management/client-management.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
+import { AvailabilityService } from '../scheduling/availability.service';
+import { CalendarService } from '../scheduling/calendar.service';
+import { AI_ACTOR } from '../scheduling/scheduling.types';
+import { isValidTimeZone, localDate, localMinutes } from '../scheduling/domain/timezone';
 import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
-import { AutomatedAppointmentService } from '../automation-engine/automated-appointment.service';
+import { ScheduledActionService } from '../automation-engine/scheduled-action.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentServiceService } from '../payments/payment-service.service';
 import { PaymentSettingsService } from '../payments/payment-settings.service';
@@ -16,12 +20,10 @@ import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq
 import { MailService } from '../../infrastructure/mail/mail.service';
 import { SmsService } from '../../infrastructure/sms/sms.service';
 import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
-import { CommunicationEventType } from '@crm/shared';
 import type {
   CreateContactDto,
   UpdateContactDto,
 } from '../client-management/client-management.service';
-import type { AvailabilityQuery, CreateAppointmentDto } from '../scheduling/scheduling.service';
 import type { CreateSequenceInput } from '@crm/shared';
 
 interface ToolContext {
@@ -29,8 +31,10 @@ interface ToolContext {
   conversationService: ConversationManagementService;
   clientService: ClientManagementService;
   schedulingService: SchedulingService;
+  availabilityService: AvailabilityService;
+  calendarService: CalendarService;
   automationSequenceService?: AutomationSequenceService;
-  automatedAppointmentService?: AutomatedAppointmentService;
+  scheduledActionService?: ScheduledActionService;
   paymentsService?: PaymentsService;
   paymentServiceService?: PaymentServiceService;
   paymentSettingsService?: PaymentSettingsService;
@@ -38,6 +42,32 @@ interface ToolContext {
   smsService: SmsService;
   communicationDispatch: CommunicationDispatchService;
   logger: Logger;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function requireUuid(input: Record<string, unknown>, key: string): string {
+  const value = input[key];
+  if (typeof value !== 'string' || !UUID_RE.test(value)) throw new BadRequestException(`${key} must be a UUID`);
+  return value;
+}
+
+function optionalUuid(input: Record<string, unknown>, key: string): string | undefined {
+  return input[key] === undefined || input[key] === null || input[key] === '' ? undefined : requireUuid(input, key);
+}
+
+/** The agent may only touch the appointments of the contact it is talking to. */
+async function assertAppointmentOfContact(ctx: ToolContext, appointmentId: string, contactId?: string): Promise<void> {
+  const appointment = await ctx.schedulingService.findById(appointmentId, ctx.orgId);
+  if (contactId && appointment.contact_id !== contactId) {
+    throw new NotFoundException(`Appointment ${appointmentId} not found for this contact`);
+  }
+}
+
+/** 'YYYY-MM-DD HH:MM' on the calendar's wall clock, so the agent never converts time zones itself. */
+function formatLocal(instant: Date, timeZone: string): string {
+  const minutes = localMinutes(instant, timeZone);
+  return `${localDate(instant, timeZone)} ${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
 type ToolFn = (input: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>;
@@ -72,59 +102,131 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
   [
     'create_appointment',
     async (input, ctx) => {
-      // SchedulingService.create() is the single guard: for a non-human origin
-      // it throws 'use create_payment_link' when the calendar charges a service.
-      // origin is forced to 'ai' so the model can't pass origin:'human' to skip payment.
-      const appointment = await ctx.schedulingService.create(ctx.orgId, {
-        ...(input as unknown as CreateAppointmentDto),
-        origin: 'ai',
-      });
+      // Same rules as any booking: calendar hours, no overlaps, and on a
+      // charging calendar it refuses with 'use create_payment_link'.
+      const calendarId = requireUuid(input, 'calendar_id');
+      const contactId = requireUuid(input, 'contact_id');
+      const startsAt = new Date(String(input.starts_at ?? ''));
+      if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('starts_at must be an ISO 8601 datetime');
+      const timezone = typeof input.timezone === 'string' && isValidTimeZone(input.timezone) ? input.timezone : undefined;
+      const calendar = await ctx.calendarService.getCalendarById(ctx.orgId, calendarId);
+
+      const appointment = await ctx.schedulingService.createBooking(
+        ctx.orgId,
+        {
+          contact_id: contactId,
+          calendar_id: calendarId,
+          title: String(input.title ?? '').trim() || calendar.name,
+          starts_at: startsAt.toISOString(),
+          duration_minutes: Number(input.duration_minutes) || calendar.slot_duration_minutes,
+          description: typeof input.description === 'string' ? input.description : undefined,
+          conversation_id: optionalUuid(input, 'conversation_id'),
+          timezone,
+        },
+        AI_ACTOR,
+      );
 
       // Cancel active sequence when appointment is booked — goal achieved
-      if (ctx.automationSequenceService && input.contact_id) {
-        const active = await ctx.automationSequenceService.findActive(
-          ctx.orgId,
-          input.contact_id as string,
-        );
+      if (ctx.automationSequenceService) {
+        const active = await ctx.automationSequenceService.findActive(ctx.orgId, contactId);
         if (active) {
           await ctx.automationSequenceService.cancel(ctx.orgId, active.id, 'appointment_booked');
         }
       }
 
-      // Automatic confirmation SMS via the org's template — best effort, never
-      // fails the booking. No template configured for the org → dispatch no-ops.
-      if (input.contact_id) {
-        try {
-          const contact = await ctx.clientService.findById(input.contact_id as string, ctx.orgId);
-          const phone = contact.phone as string | undefined;
-          if (phone) {
-            const tz = (appointment.timezone as string) || 'UTC';
-            const startsAt = appointment.starts_at as unknown as string;
-            await ctx.communicationDispatch.dispatch({
-              organizationId: ctx.orgId,
-              eventType: CommunicationEventType.APPOINTMENT_CREATED,
-              channelType: 'sms',
-              recipient: phone,
-              variables: {
-                title: String(appointment.title ?? ''),
-                starts_at: startsAt ? String(startsAt) : '',
-                date: startsAt ? new Date(startsAt).toLocaleDateString('es', { timeZone: tz }) : '',
-                time: startsAt ? new Date(startsAt).toLocaleTimeString('es', { timeZone: tz }) : '',
-              },
-            });
-          }
-        } catch (err) {
-          ctx.logger.warn(`Confirmation SMS skipped: ${(err as Error).message}`);
-        }
-      }
-
-      return appointment;
+      return {
+        id: appointment.id,
+        title: appointment.title,
+        status: appointment.status,
+        starts_at: appointment.starts_at,
+        ends_at: appointment.ends_at,
+        timezone: appointment.timezone,
+        local_start: formatLocal(appointment.starts_at, appointment.timezone),
+        note: 'The contact receives a confirmation link by email/SMS; the appointment is confirmed when they use it.',
+      };
     },
   ],
   [
     'get_available_slots',
-    async (input, ctx) =>
-      ctx.schedulingService.getAvailableSlots(ctx.orgId, input as unknown as AvailabilityQuery),
+    async (input, ctx) => {
+      const from = (input.from ?? input.start_date) as string | undefined;
+      const to = (input.to ?? input.end_date ?? from) as string | undefined;
+      if (!from || !to) throw new BadRequestException('from and to are required (YYYY-MM-DD)');
+      const result = await ctx.availabilityService.getAvailability(ctx.orgId, {
+        from,
+        to,
+        calendar_id: optionalUuid(input, 'calendar_id'),
+        duration_minutes: Number(input.duration_minutes) || undefined,
+      });
+      return {
+        calendar_id: result.calendar_id,
+        timezone: result.timezone,
+        duration_minutes: result.duration_minutes,
+        slots: result.slots.map((slot) => ({
+          ...slot,
+          local_start: formatLocal(new Date(slot.starts_at), result.timezone),
+        })),
+      };
+    },
+  ],
+  [
+    'get_calendars',
+    async (_input, ctx) => {
+      const calendars = await ctx.calendarService.listCalendars(ctx.orgId);
+      const services = ctx.paymentServiceService ? await ctx.paymentServiceService.findAll(ctx.orgId, true) : [];
+      const serviceById = new Map(services.map((svc) => [svc.id, svc]));
+      return {
+        calendars: calendars
+          .filter((cal) => cal.is_active !== false && cal.type !== 'follow_up')
+          .map((cal) => {
+            const service = cal.payment_service_id ? serviceById.get(cal.payment_service_id) : undefined;
+            return {
+              id: cal.id,
+              name: cal.name,
+              timezone: cal.timezone,
+              slot_duration_minutes: cal.slot_duration_minutes,
+              min_notice_minutes: cal.min_notice_minutes,
+              max_advance_days: cal.max_advance_days,
+              is_default: cal.system_key === 'appointments',
+              // A charging calendar is booked with create_payment_link, not create_appointment.
+              charges: service ? { service_id: service.id, name: service.name, amount: service.amount } : null,
+            };
+          }),
+      };
+    },
+  ],
+  [
+    'cancel_appointment',
+    async (input, ctx) => {
+      const appointmentId = requireUuid(input, 'appointment_id');
+      await assertAppointmentOfContact(ctx, appointmentId, optionalUuid(input, 'contact_id'));
+      const cancelled = await ctx.schedulingService.cancel(ctx.orgId, appointmentId, AI_ACTOR, 'contact');
+      return { id: cancelled.id, status: cancelled.status, note: 'The contact is notified of the cancellation.' };
+    },
+  ],
+  [
+    'reschedule_appointment',
+    async (input, ctx) => {
+      const appointmentId = requireUuid(input, 'appointment_id');
+      await assertAppointmentOfContact(ctx, appointmentId, optionalUuid(input, 'contact_id'));
+      const startsAt = new Date(String(input.starts_at ?? ''));
+      if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('starts_at must be an ISO 8601 datetime');
+      const moved = await ctx.schedulingService.reschedule(
+        ctx.orgId,
+        appointmentId,
+        { starts_at: startsAt.toISOString(), duration_minutes: Number(input.duration_minutes) || undefined },
+        AI_ACTOR,
+      );
+      return {
+        id: moved.id,
+        status: moved.status,
+        starts_at: moved.starts_at,
+        ends_at: moved.ends_at,
+        timezone: moved.timezone,
+        local_start: formatLocal(moved.starts_at, moved.timezone),
+        note: 'The contact receives the new time by email/SMS.',
+      };
+    },
   ],
   [
     'list_payment_services',
@@ -162,9 +264,12 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
       );
       return appointments.map((a) => ({
         id: a.id,
+        calendar_id: a.calendar_id,
         title: a.title,
         starts_at: a.starts_at,
         ends_at: a.ends_at,
+        timezone: a.timezone,
+        local_start: formatLocal(a.starts_at, a.timezone),
         status: a.status,
         location: a.location,
         meeting_url: a.meeting_url,
@@ -193,21 +298,14 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
   [
     'complete_follow_up',
     async (input, ctx) => {
-      const appointmentId = input.appointment_id as string;
+      // n8n sends the step id as appointment_id (kept for existing workflows) or action_id.
+      const stepId = requireUuid({ id: input.action_id ?? input.appointment_id }, 'id');
       const channel = input.channel as string | undefined;
-      if (!ctx.automatedAppointmentService) throw new Error('AutomatedAppointmentService not available');
+      if (!ctx.scheduledActionService) throw new Error('ScheduledActionService not available');
 
-      await ctx.automatedAppointmentService.markCompleted(ctx.orgId, appointmentId, channel);
-
-      // If sequence appointment, advance
-      if (ctx.automationSequenceService) {
-        const seq = await ctx.automationSequenceService.findByAppointmentId(ctx.orgId, appointmentId);
-        if (seq && seq.status === 'active') {
-          await ctx.automationSequenceService.advanceOrComplete(ctx.orgId, seq.id);
-        }
-      }
-
-      return { success: true };
+      // Completing twice (n8n retries) does not advance the sequence twice.
+      const step = await ctx.scheduledActionService.complete(ctx.orgId, stepId, { resolvedChannel: channel });
+      return { success: true, status: step.status };
     },
   ],
   [
@@ -321,13 +419,15 @@ export class ToolExecutionService {
     private readonly conversationService: ConversationManagementService,
     private readonly clientService: ClientManagementService,
     private readonly schedulingService: SchedulingService,
+    private readonly availabilityService: AvailabilityService,
+    private readonly calendarService: CalendarService,
     @Inject(RABBITMQ_SERVICE)
     private readonly rmqClient: ClientProxy,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
     private readonly communicationDispatch: CommunicationDispatchService,
     @Optional() private readonly automationSequenceService?: AutomationSequenceService,
-    @Optional() private readonly automatedAppointmentService?: AutomatedAppointmentService,
+    @Optional() private readonly scheduledActionService?: ScheduledActionService,
     @Optional() private readonly paymentsService?: PaymentsService,
     @Optional() private readonly paymentServiceService?: PaymentServiceService,
     @Optional() private readonly paymentSettingsService?: PaymentSettingsService,
@@ -368,8 +468,10 @@ export class ToolExecutionService {
         conversationService: this.conversationService,
         clientService: this.clientService,
         schedulingService: this.schedulingService,
+        availabilityService: this.availabilityService,
+        calendarService: this.calendarService,
         automationSequenceService: this.automationSequenceService,
-        automatedAppointmentService: this.automatedAppointmentService,
+        scheduledActionService: this.scheduledActionService,
         paymentsService: this.paymentsService,
         paymentServiceService: this.paymentServiceService,
         paymentSettingsService: this.paymentSettingsService,
@@ -460,30 +562,71 @@ export class ToolExecutionService {
       },
       {
         name: 'create_appointment',
-        description: 'Books an appointment for a contact. Automatically cancels any active follow-up sequences.',
+        description:
+          'Books an appointment on a free slot (use get_available_slots first). The contact gets a confirmation link by email/SMS. ' +
+          'Calendars that charge a service refuse this tool: use create_payment_link with a booking instead. ' +
+          'Automatically cancels any active follow-up sequence.',
         input_schema: {
           type: 'object',
           properties: {
             contact_id: { type: 'string', description: 'The contact ID' },
             calendar_id: { type: 'string', description: 'The calendar ID to book on' },
-            title: { type: 'string', description: 'Appointment title' },
-            starts_at: { type: 'string', description: 'Start time (ISO 8601)' },
-            duration_minutes: { type: 'number', description: 'Duration in minutes' },
+            starts_at: { type: 'string', description: 'Start instant from get_available_slots (ISO 8601 with offset)' },
+            duration_minutes: { type: 'number', description: 'Duration in minutes (defaults to the calendar slot size)' },
+            title: { type: 'string', description: 'Appointment title (defaults to the calendar name)' },
+            conversation_id: { type: 'string', description: 'The conversation the booking came from' },
           },
           required: ['contact_id', 'calendar_id', 'starts_at'],
         },
       },
       {
         name: 'get_available_slots',
-        description: 'Gets available time slots for booking',
+        description:
+          'Free slots between two dates of the calendar (inclusive). Dates are local to the calendar time zone; ' +
+          'each slot has starts_at (UTC instant to book with) and local_start (calendar wall clock, to tell the contact).',
         input_schema: {
           type: 'object',
           properties: {
             calendar_id: { type: 'string', description: 'The calendar ID' },
-            start_date: { type: 'string', description: 'Start date (ISO 8601)' },
-            end_date: { type: 'string', description: 'End date (ISO 8601)' },
+            from: { type: 'string', description: 'First date, YYYY-MM-DD' },
+            to: { type: 'string', description: 'Last date, YYYY-MM-DD (at most 62 days after from)' },
+            duration_minutes: { type: 'number', description: 'Appointment length (defaults to the calendar slot size)' },
           },
-          required: ['calendar_id', 'start_date', 'end_date'],
+          required: ['calendar_id', 'from', 'to'],
+        },
+      },
+      {
+        name: 'get_calendars',
+        description:
+          'Lists the calendars appointments can be booked on: time zone, slot size, booking window, and whether ' +
+          'booking charges a service (then use create_payment_link instead of create_appointment).',
+        input_schema: { type: 'object', properties: {} },
+      },
+      {
+        name: 'reschedule_appointment',
+        description:
+          'Moves an upcoming appointment of the contact to a free slot (use get_available_slots first). The contact is notified.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            appointment_id: { type: 'string', description: 'The appointment ID (from get_contact_appointments)' },
+            contact_id: { type: 'string', description: 'The contact the appointment belongs to' },
+            starts_at: { type: 'string', description: 'New start instant from get_available_slots (ISO 8601)' },
+            duration_minutes: { type: 'number', description: 'New duration (defaults to the current one)' },
+          },
+          required: ['appointment_id', 'contact_id', 'starts_at'],
+        },
+      },
+      {
+        name: 'cancel_appointment',
+        description: 'Cancels an upcoming appointment at the contact\'s request. The contact is notified.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            appointment_id: { type: 'string', description: 'The appointment ID (from get_contact_appointments)' },
+            contact_id: { type: 'string', description: 'The contact the appointment belongs to' },
+          },
+          required: ['appointment_id', 'contact_id'],
         },
       },
       {
@@ -540,7 +683,7 @@ export class ToolExecutionService {
         input_schema: {
           type: 'object',
           properties: {
-            appointment_id: { type: 'string', description: 'The follow-up appointment ID' },
+            appointment_id: { type: 'string', description: 'The follow-up step ID (appointment_id in the follow_up.due payload)' },
             channel: { type: 'string', description: 'The channel used (whatsapp, sms, etc)' },
           },
           required: ['appointment_id'],

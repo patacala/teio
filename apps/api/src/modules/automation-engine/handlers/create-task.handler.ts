@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { IActionHandler, ActionResult } from './action-handler.interface';
-import { AppointmentEntity } from '../../scheduling/appointment.entity';
+import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
@@ -11,7 +11,7 @@ export class CreateTaskHandler implements IActionHandler {
   private readonly logger = new Logger(CreateTaskHandler.name);
 
   async execute(
-    appointment: AppointmentEntity,
+    appointment: ScheduledActionEntity,
     _contact: ContactEntity,
     _resolved: ResolvedChannel | null,
     _org: OrganizationEntity,

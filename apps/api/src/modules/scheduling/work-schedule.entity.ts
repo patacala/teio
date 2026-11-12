@@ -56,6 +56,34 @@ export class WorkScheduleEntity {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
+  /** 'appointments' / 'follow_up' for the calendars the system creates; unique per organization. */
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  system_key: string | null;
+
+  /** How long a slot stays reserved while the contact pays (30–1440). */
+  @Column({ type: 'int', default: 60 })
+  hold_minutes: number;
+
+  /** Reminders to the contact, in minutes before the start (e.g. 1440 = a day before). */
+  @Column({ type: 'int', array: true, default: () => "'{1440,120}'" })
+  reminder_offsets_minutes: number[];
+
+  /** The staff member this calendar belongs to; their bookings never overlap across calendars. */
+  @Column({ type: 'uuid', nullable: true })
+  owner_user_id: string | null;
+
+  /** How soon a slot can be booked (minutes from now). */
+  @Column({ type: 'int', default: 0 })
+  min_notice_minutes: number;
+
+  /** How far ahead a slot can be booked (days); null = no limit. */
+  @Column({ type: 'int', nullable: true })
+  max_advance_days: number | null;
+
+  /** Days of free times a contact sees when changing a booking from their link. */
+  @Column({ type: 'int', default: 14 })
+  contact_reschedule_days: number;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 

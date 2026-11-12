@@ -1,4 +1,4 @@
-import { AppointmentEntity } from '../../scheduling/appointment.entity';
+import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
@@ -17,7 +17,7 @@ export interface ActionResult {
 export interface IActionHandler {
   readonly actionType: string;
   execute(
-    appointment: AppointmentEntity,
+    appointment: ScheduledActionEntity,
     contact: ContactEntity,
     resolved: ResolvedChannel | null,
     org: OrganizationEntity,

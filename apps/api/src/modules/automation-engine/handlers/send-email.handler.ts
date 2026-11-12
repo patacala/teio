@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CommunicationEventType } from '@crm/shared';
 import type { IActionHandler, ActionResult } from './action-handler.interface';
-import { AppointmentEntity } from '../../scheduling/appointment.entity';
+import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
 import { CommunicationDispatchService } from '../../communications/communication-dispatch.service';
@@ -17,7 +17,7 @@ export class SendEmailHandler implements IActionHandler {
   ) {}
 
   async execute(
-    appointment: AppointmentEntity,
+    appointment: ScheduledActionEntity,
     contact: ContactEntity,
     _resolved: ResolvedChannel | null,
     org: OrganizationEntity,

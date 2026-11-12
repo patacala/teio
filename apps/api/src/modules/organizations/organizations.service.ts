@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, Optional } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrganizationEntity } from './organization.entity';
-import { SchedulingService } from '../scheduling/scheduling.service';
+import { CalendarService } from '../scheduling/calendar.service';
 import { BillingAccessService } from '../billing/billing-access.service';
 import { SubscriptionService } from '../billing/subscription.service';
 import type { CreateOrganizationDto, UpdateOrganizationDto } from './dto/organization.dto';
@@ -12,7 +12,7 @@ export class OrganizationsService {
   constructor(
     @InjectRepository(OrganizationEntity)
     private readonly repo: Repository<OrganizationEntity>,
-    @Optional() private readonly schedulingService?: SchedulingService,
+    @Optional() private readonly calendarService?: CalendarService,
     @Optional() private readonly billingAccess?: BillingAccessService,
     @Optional() private readonly subscriptions?: SubscriptionService,
   ) {}
@@ -46,7 +46,7 @@ export class OrganizationsService {
     const saved = await this.repo.save(org);
 
     // Eager-seed default calendars for the new org
-    await this.schedulingService?.seedDefaultCalendars(saved.id).catch(() => {});
+    await this.calendarService?.seedDefaultCalendars(saved.id).catch(() => {});
     // Start the demo now so its end date is fixed from the day of signup.
     await this.subscriptions?.getOrCreateForOrg(saved.id).catch(() => {});
 

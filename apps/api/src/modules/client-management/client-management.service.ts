@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Optional, Inject } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, Optional, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
@@ -364,8 +364,25 @@ export class ClientManagementService {
     return saved;
   }
 
+  /**
+   * Past appointments are deleted with the contact; upcoming bookings block
+   * the deletion (cancel them first so the contact is told). Payments are kept
+   * with a name/email snapshot.
+   */
   async delete(id: string, organizationId: string): Promise<void> {
     await this.findById(id, organizationId);
+    const upcoming = await this.appointmentRepo
+      .createQueryBuilder('a')
+      .where('a.organization_id = :orgId AND a.contact_id = :id', { orgId: organizationId, id })
+      .andWhere(`a.status IN ('held', 'scheduled', 'confirmed', 'pending')`)
+      .andWhere('a.ends_at > NOW()')
+      .getCount();
+    if (upcoming > 0) {
+      throw new ConflictException({
+        message: `This contact has ${upcoming} upcoming appointment(s); cancel them before deleting the contact`,
+        errors: { code: 'CONTACT_HAS_UPCOMING_APPOINTMENTS', count: upcoming },
+      });
+    }
     await this.contactRepo.delete({ id, organization_id: organizationId });
   }
 
