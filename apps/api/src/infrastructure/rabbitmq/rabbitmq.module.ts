@@ -25,6 +25,8 @@ import { RABBITMQ_SERVICE } from './rabbitmq.constants';
             },
             noAck: true,
             prefetchCount: 10,
+            // Survive a broker restart: events are only removed once consumed.
+            persistent: true,
           },
         }),
       },

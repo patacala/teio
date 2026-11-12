@@ -30,10 +30,17 @@ export const RABBITMQ_QUEUES = {
   // Scheduling events
   APPOINTMENT_CREATED: 'appointment.created',
   APPOINTMENT_CONFIRMED: 'appointment.confirmed',
+  // Notification command: ask the contact to confirm (initial, reminder or after a reschedule).
+  APPOINTMENT_CONFIRMATION_REQUESTED: 'appointment.confirmation.requested',
   APPOINTMENT_RESCHEDULED: 'appointment.rescheduled',
   APPOINTMENT_CANCELLED: 'appointment.cancelled',
   APPOINTMENT_COMPLETED: 'appointment.completed',
   APPOINTMENT_NO_SHOW: 'appointment.no_show',
+  APPOINTMENT_UPDATED: 'appointment.updated',
+  // An unpaid hold expired and its slot was released.
+  APPOINTMENT_HOLD_RELEASED: 'appointment.hold_released',
+  // A reminder of an upcoming booking is due (sent to the contact).
+  APPOINTMENT_REMINDER_DUE: 'appointment.reminder.due',
   // Funnel automation events
   SEQUENCE_EXHAUSTED: 'sequence.exhausted',
   // Conversation lifecycle

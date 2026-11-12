@@ -46,6 +46,10 @@ export default () => ({
     anthropicKey: process.env.ANTHROPIC_API_KEY ?? '',
     googleKey: process.env.GOOGLE_AI_API_KEY ?? '',
   },
+  scheduling: {
+    // Signs the confirmation links sent to contacts. Falls back to JWT_SECRET.
+    linkSecret: process.env.BOOKING_LINK_SECRET || process.env.JWT_SECRET || '',
+  },
   webhooks: {
     secret: process.env.WEBHOOK_SECRET ?? '',
     baseUrl: normalizePublicApiUrl(process.env.BASE_URL ?? 'http://localhost:3001'),

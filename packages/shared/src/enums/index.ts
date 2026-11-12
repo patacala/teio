@@ -64,11 +64,47 @@ export enum AIProvider {
 }
 
 export enum AppointmentStatus {
+  /** Slot reserved while the contact pays; released when the hold expires. */
+  HELD = 'held',
+  /** Booked, waiting for the contact to confirm from the email/SMS link. */
   SCHEDULED = 'scheduled',
   CONFIRMED = 'confirmed',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   NO_SHOW = 'no_show',
+}
+
+export enum AppointmentConfirmedVia {
+  EMAIL_LINK = 'email_link',
+  SMS_LINK = 'sms_link',
+  PAYMENT = 'payment',
+  STAFF = 'staff',
+  /** Booked before confirmation links existed. */
+  LEGACY = 'legacy',
+}
+
+export enum AppointmentCancelReason {
+  CONTACT = 'contact',
+  STAFF = 'staff',
+  AI = 'ai',
+  PAYMENT_NOT_RECEIVED = 'payment_not_received',
+}
+
+export enum CalendarSystemKey {
+  APPOINTMENTS = 'appointments',
+  FOLLOW_UP = 'follow_up',
+}
+
+export enum PaymentAttentionReason {
+  SLOT_UNAVAILABLE = 'slot_unavailable',
+  APPOINTMENT_CANCELLED = 'appointment_cancelled',
+  BOOKING_FAILED = 'booking_failed',
+}
+
+export enum PaymentResolution {
+  REBOOKED = 'rebooked',
+  REFUNDED_MANUALLY = 'refunded_manually',
+  DISMISSED = 'dismissed',
 }
 
 export enum WebhookEventType {
@@ -79,7 +115,14 @@ export enum WebhookEventType {
   CONTACT_CREATED = 'contact.created',
   CONTACT_UPDATED = 'contact.updated',
   APPOINTMENT_CREATED = 'appointment.created',
+  /** Any change; status changes also send their own event below. */
   APPOINTMENT_UPDATED = 'appointment.updated',
+  APPOINTMENT_CONFIRMED = 'appointment.confirmed',
+  APPOINTMENT_RESCHEDULED = 'appointment.rescheduled',
+  APPOINTMENT_CANCELLED = 'appointment.cancelled',
+  APPOINTMENT_COMPLETED = 'appointment.completed',
+  APPOINTMENT_NO_SHOW = 'appointment.no_show',
+  APPOINTMENT_HOLD_RELEASED = 'appointment.hold_released',
   FOLLOW_UP_DUE = 'follow_up.due',
 }
 
@@ -142,6 +185,7 @@ export enum MagicLinkType {
 export enum CommunicationEventType {
   // ── Customer care → CONTACTO (email + sms) ────────────────────────────
   APPOINTMENT_CREATED = 'appointment_created',
+  APPOINTMENT_CONFIRMATION_REQUEST = 'appointment_confirmation_request',
   APPOINTMENT_RESCHEDULED = 'appointment_rescheduled',
   APPOINTMENT_CANCELLED = 'appointment_cancelled',
   APPOINTMENT_REMINDER = 'appointment_reminder',

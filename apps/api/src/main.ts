@@ -1,12 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
-import { Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app.module';
+import { AckingRmqServer, DEAD_LETTER_EXCHANGE, DEAD_LETTER_QUEUE } from './infrastructure/rabbitmq/acking-rmq.server';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -85,21 +85,20 @@ async function bootstrap() {
 
   // Connect RMQ microservice so @EventPattern consumers receive messages
   const rmqUrl = configService.get<string>('rabbitmq.url', 'amqp://guest:guest@localhost:5672');
+  // Messages are acknowledged only after every handler finished; failures go to dlq.main.
   app.connectMicroservice({
-    transport: Transport.RMQ,
-    options: {
+    strategy: new AckingRmqServer({
       urls: [rmqUrl],
       queue: 'crm_main',
       queueOptions: {
         durable: true,
         arguments: {
-          'x-dead-letter-exchange': 'dlx',
-          'x-dead-letter-routing-key': 'dlq.main',
+          'x-dead-letter-exchange': DEAD_LETTER_EXCHANGE,
+          'x-dead-letter-routing-key': DEAD_LETTER_QUEUE,
         },
       },
-      noAck: true,
       prefetchCount: 10,
-    },
+    }),
   });
   await app.startAllMicroservices();
 

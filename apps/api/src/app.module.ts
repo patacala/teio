@@ -8,6 +8,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 import { SupabaseAdminModule } from './infrastructure/supabase/supabase-admin.module';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
+import { OutboxModule } from './infrastructure/outbox/outbox.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { UsersModule } from './modules/users/users.module';
 import { ClientManagementModule } from './modules/client-management/client-management.module';
@@ -55,6 +56,7 @@ import { BillingAccessGuard } from './modules/billing/billing-access.guard';
     RedisModule,
     SupabaseAdminModule,
     RabbitMQModule,
+    OutboxModule,
     MailModule,
     SmsModule,
     WahaModule,
