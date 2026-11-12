@@ -67,11 +67,16 @@ export function waLink(phone?: string): string | null {
 export function relativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `hace ${mins} min`;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `hace ${hrs} h`;
-  return `hace ${Math.floor(hrs / 24)} d`;
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+/** When we last talked to the contact (the API field behind the "Active …" pill). */
+export function lastActivity(contact: Contact): string | undefined {
+  return contact.last_contacted_at;
 }
 
 export function initialsOf(contact: Contact): string {
@@ -95,8 +100,9 @@ export function recommendedAction(contact: Contact): RecommendedAction | null {
   if (!contact.phone && !contact.email) return null;
 
   const hot = isHot(contact);
-  const minsSinceActivity = contact.last_activity
-    ? Math.floor((Date.now() - new Date(contact.last_activity).getTime()) / 60000)
+  const activity = lastActivity(contact);
+  const minsSinceActivity = activity
+    ? Math.floor((Date.now() - new Date(activity).getTime()) / 60000)
     : null;
   const intent = contact.ai_insights?.intent?.toLowerCase() ?? '';
   const buying = /comprar|buying|purchase/.test(intent);
@@ -105,7 +111,7 @@ export function recommendedAction(contact: Contact): RecommendedAction | null {
     return {
       channel: 'call',
       title: 'Call now',
-      description: `Replied ${relativeTime(contact.last_activity!)} and showed strong intent${buying ? ' to buy' : ' to book'}.`,
+      description: `Active ${relativeTime(activity!)} and showed strong intent${buying ? ' to buy' : ' to book'}.`,
     };
   }
   if (contact.email) {

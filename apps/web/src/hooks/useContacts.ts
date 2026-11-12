@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { contactsService, type ContactListParams, type Contact, type CreateContactInput } from '@/services/contacts.service';
 import { funnelsService } from '@/services/funnels.service';
 
@@ -9,6 +9,16 @@ export function useContacts(params?: ContactListParams) {
   return useQuery({
     queryKey: ['contacts', params],
     queryFn: () => contactsService.getContacts(params),
+  });
+}
+
+/** Contacts of one funnel stage (Board column / List section). Keeps rows on screen while a bigger page loads. */
+export function useStageContacts(stageId: string, limit: number) {
+  const params: ContactListParams = { stage_id: stageId, limit };
+  return useQuery({
+    queryKey: ['contacts', params],
+    queryFn: () => contactsService.getContacts(params),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -125,6 +135,7 @@ export function useUpdateContactStage() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['contacts', variables.contactId] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-activity', variables.contactId] });
     },
   });
 }
