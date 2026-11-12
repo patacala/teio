@@ -18,7 +18,7 @@ import {
   useDeleteFunnelStage,
   useReorderFunnelStages,
 } from '@/hooks/useFunnels';
-// import { useStageContacts } from '@/hooks/useContacts'; // TODO: implement this hook
+import { useStageContacts } from '@/hooks/useContacts';
 import { toast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import type { Funnel, FunnelStage, StageType } from '@/services/funnels.service';
@@ -293,9 +293,8 @@ function StageEditor({ funnelId, stage, onDone }: { funnelId: string; stage: Fun
 
 function DeleteStageDialog({ funnelId, stage, onClose }: { funnelId: string; stage: FunnelStage; onClose: () => void }) {
   const deleteStage = useDeleteFunnelStage(funnelId);
-  // TODO: implement useStageContacts hook
-  const { data, isLoading } = { data: { meta: { total: 0 } }, isLoading: false };
-  const count = data.meta.total;
+  const { data, isLoading } = useStageContacts(stage.id, 1);
+  const count = data?.meta.total ?? 0;
 
   const confirm = async () => {
     try {

@@ -85,6 +85,7 @@ export function useUpdateContactStage() {
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['contacts', variables.contactId] });
       qc.invalidateQueries({ queryKey: ['contacts'] });
+      qc.invalidateQueries({ queryKey: ['contact-activity', variables.contactId] });
     },
   });
 }

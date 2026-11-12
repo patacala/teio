@@ -39,7 +39,6 @@ export interface CreateContactDto {
   custom_fields?: Record<string, unknown>;
   channel_ids?: Record<string, string>;
   handled_by?: string;
-  lead_stage?: string;
 }
 
 export interface AiInsights {
@@ -56,7 +55,6 @@ export interface UpdateContactDto {
   status?: string;
   tags?: string[];
   lead_score?: number;
-  lead_stage?: string;
   custom_fields?: Record<string, unknown>;
   assigned_to?: string;
   handled_by?: string;
@@ -259,7 +257,7 @@ export class ClientManagementService {
   }
 
   async create(organizationId: string, dto: CreateContactDto, actorUserId?: string): Promise<ContactEntity> {
-    const defaultStage = dto.lead_stage ?? (await this.resolveDefaultStage(organizationId));
+    const defaultStage = await this.resolveDefaultStage(organizationId);
 
     let companyId = dto.company_id;
     if (dto.company) {
@@ -320,7 +318,10 @@ export class ClientManagementService {
     const prevInsights = (contact.ai_insights as Record<string, unknown>) ?? {};
     const prevCustomFields = (contact.custom_fields as Record<string, unknown>) ?? {};
 
-    Object.assign(contact, dto);
+    // Stage changes only go through updateStage/moveStageIfUnchanged (validated + recorded in
+    // the funnel history). Callers such as AI tools pass raw input that may still carry it.
+    const { lead_stage: _ignoredStage, ...changes } = dto as UpdateContactDto & { lead_stage?: unknown };
+    Object.assign(contact, changes);
     // Shallow-merge, not replace: an update may report only `sentiment` (or a
     // single captured field) and must not wipe a still-valid `intent`/`summary`
     // or other custom fields captured earlier (incl. human-entered ones).
@@ -661,54 +662,92 @@ export class ClientManagementService {
   }
 
   // ── Lead stage ───────────────────────────────────────────────────────
+  /** Manual move by a user (Kanban drag, stage selectors). */
   async updateStage(
     id: string,
     organizationId: string,
     stageId: string,
     changedBy?: string,
-    source: 'manual' | 'automation' = 'manual',
-    reason?: string,
   ): Promise<ContactEntity> {
     const contact = await this.findById(id, organizationId);
-    const oldStageId = contact.lead_stage ?? null;
+    const stage = await this.stageRepo.findOne({
+      where: { id: stageId, organization_id: organizationId },
+      select: ['id'],
+    });
+    if (!stage) throw new NotFoundException(`Stage ${stageId} not found`);
 
-    // No-op save (same stage re-selected/re-dropped) must not count as a real
-    // move: it was still writing a 'manual' history row, which silently armed
-    // the 24h anti-override guard in FunnelRulesService and froze automation
-    // for a contact nobody actually decided to override.
+    const oldStageId = contact.lead_stage ?? null;
+    // Re-selecting the current stage is not a move and must not write history.
     if (oldStageId === stageId) return contact;
 
     contact.lead_stage = stageId;
     await this.contactRepo.save(contact);
+    this.recordStageChange(contact, organizationId, oldStageId, stageId, changedBy ?? null, 'manual', null);
+    return contact;
+  }
 
+  /**
+   * Automated move (funnel rules). Compare-and-set on the stage the rule was
+   * evaluated against: returns false without writing when another event moved
+   * the contact in the meantime, so the caller can re-evaluate on fresh state.
+   */
+  async moveStageIfUnchanged(
+    id: string,
+    organizationId: string,
+    expectedStageId: string,
+    stageId: string,
+    reason: string,
+  ): Promise<boolean> {
+    const result = await this.contactRepo
+      .createQueryBuilder()
+      .update(ContactEntity)
+      .set({ lead_stage: stageId })
+      .where('id = :id', { id })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('lead_stage = :expectedStageId', { expectedStageId })
+      .execute();
+    if (!result.affected) return false;
+
+    const contact = await this.findById(id, organizationId);
+    this.recordStageChange(contact, organizationId, expectedStageId, stageId, null, 'automation', reason);
+    return true;
+  }
+
+  private recordStageChange(
+    contact: ContactEntity,
+    organizationId: string,
+    fromStageId: string | null,
+    toStageId: string,
+    changedBy: string | null,
+    source: 'manual' | 'automation',
+    reason: string | null,
+  ): void {
     // Fire-and-forget history log
     void this.historyRepo.save(
       this.historyRepo.create({
-        contact_id: id,
-        from_stage_id: oldStageId,
-        to_stage_id: stageId,
-        changed_by: changedBy ?? null,
+        contact_id: contact.id,
+        from_stage_id: fromStageId,
+        to_stage_id: toStageId,
+        changed_by: changedBy,
         source,
-        reason: reason ?? null,
+        reason,
       }),
     );
 
     this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_STAGE_CHANGED, {
       organization_id: organizationId,
-      contact_id: id,
+      contact_id: contact.id,
       first_name: contact.first_name,
       last_name: contact.last_name,
-      from_stage_id: oldStageId,
-      to_stage_id: stageId,
+      from_stage_id: fromStageId,
+      to_stage_id: toStageId,
     });
 
     void this.webhookDispatcher?.dispatch('funnel.stage.changed', organizationId, {
-      contact_id: id,
-      from_stage_id: oldStageId,
-      to_stage_id: stageId,
+      contact_id: contact.id,
+      from_stage_id: fromStageId,
+      to_stage_id: toStageId,
     });
-
-    return contact;
   }
 
   // ── Contact sub-resources ─────────────────────────────────────────────

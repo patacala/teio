@@ -1,132 +1,38 @@
 'use client';
 
 import { GitBranch, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useFunnelTemplates, useApplyFunnelTemplate, useCreateFunnel } from '@/hooks/useFunnels';
-import { funnelsService, type FunnelTemplate } from '@/services/funnels.service';
+import type { FunnelTemplate } from '@/services/funnels.service';
 import { toast } from '@/hooks/useToast';
+import { stageColor } from './stageColors';
 
 const CATEGORY_LABELS: Record<string, string> = {
   generic: 'Generic',
+  sales: 'Sales',
   agency: 'Agency',
   real_estate: 'Real Estate',
   local_services: 'Local Services',
   ecommerce: 'Ecommerce',
 };
 
-// Fallback templates shown when DB migration hasn't been run yet
-const FALLBACK_TEMPLATES: FunnelTemplate[] = [
-  {
-    id: '__generic',
-    name: 'Generic Funnel',
-    description: 'Standard sales pipeline for any industry',
-    category: 'generic',
-    stages: [
-      { id: '1', name: 'New', position: 0, color: '#3B82F6' },
-      { id: '2', name: 'Contacted', position: 1, color: '#8B5CF6' },
-      { id: '3', name: 'Qualified', position: 2, color: '#6366F1' },
-      { id: '4', name: 'Interested', position: 3, color: '#F59E0B' },
-      { id: '5', name: 'Proposal Sent', position: 4, color: '#EC4899' },
-      { id: '6', name: 'Negotiation', position: 5, color: '#14B8A6' },
-      { id: '7', name: 'Won', position: 6, color: '#10B981' },
-      { id: '8', name: 'Lost', position: 7, color: '#EF4444' },
-    ],
-  },
-  {
-    id: '__agency',
-    name: 'Agency Funnel',
-    description: 'Optimized for marketing and creative agencies',
-    category: 'agency',
-    stages: [
-      { id: '1', name: 'New Lead', position: 0, color: '#3B82F6' },
-      { id: '2', name: 'Initial Contact', position: 1, color: '#8B5CF6' },
-      { id: '3', name: 'Diagnosis', position: 2, color: '#6366F1' },
-      { id: '4', name: 'Proposal Sent', position: 3, color: '#F59E0B' },
-      { id: '5', name: 'Follow Up', position: 4, color: '#EC4899' },
-      { id: '6', name: 'Negotiation', position: 5, color: '#14B8A6' },
-      { id: '7', name: 'Client Won', position: 6, color: '#10B981' },
-      { id: '8', name: 'Client Lost', position: 7, color: '#EF4444' },
-    ],
-  },
-  {
-    id: '__real_estate',
-    name: 'Real Estate Funnel',
-    description: 'Pipeline for property sales and leasing',
-    category: 'real_estate',
-    stages: [
-      { id: '1', name: 'New Lead', position: 0, color: '#3B82F6' },
-      { id: '2', name: 'Initial Contact', position: 1, color: '#8B5CF6' },
-      { id: '3', name: 'Property Recommended', position: 2, color: '#6366F1' },
-      { id: '4', name: 'Visit Scheduled', position: 3, color: '#F59E0B' },
-      { id: '5', name: 'Offer Sent', position: 4, color: '#EC4899' },
-      { id: '6', name: 'Negotiation', position: 5, color: '#14B8A6' },
-      { id: '7', name: 'Property Sold', position: 6, color: '#10B981' },
-      { id: '8', name: 'Lead Lost', position: 7, color: '#EF4444' },
-    ],
-  },
-  {
-    id: '__local_services',
-    name: 'Local Services Funnel',
-    description: 'For local service businesses',
-    category: 'local_services',
-    stages: [
-      { id: '1', name: 'New Lead', position: 0, color: '#3B82F6' },
-      { id: '2', name: 'Initial Consultation', position: 1, color: '#8B5CF6' },
-      { id: '3', name: 'Quote Sent', position: 2, color: '#6366F1' },
-      { id: '4', name: 'Appointment Scheduled', position: 3, color: '#F59E0B' },
-      { id: '5', name: 'Service Completed', position: 4, color: '#14B8A6' },
-      { id: '6', name: 'Returning Customer', position: 5, color: '#10B981' },
-      { id: '7', name: 'Lead Lost', position: 6, color: '#EF4444' },
-    ],
-  },
-  {
-    id: '__ecommerce',
-    name: 'Ecommerce Funnel',
-    description: 'For online stores and product-based businesses',
-    category: 'ecommerce',
-    stages: [
-      { id: '1', name: 'New Lead', position: 0, color: '#3B82F6' },
-      { id: '2', name: 'Product Interest', position: 1, color: '#8B5CF6' },
-      { id: '3', name: 'Cart Started', position: 2, color: '#6366F1' },
-      { id: '4', name: 'Purchase Completed', position: 3, color: '#10B981' },
-      { id: '5', name: 'Potential Rebuy', position: 4, color: '#F59E0B' },
-      { id: '6', name: 'Customer Lost', position: 5, color: '#EF4444' },
-    ],
-  },
-];
-
 interface Props {
   onCreated: (funnelId: string) => void;
 }
 
 export function FunnelTemplateSelector({ onCreated }: Props) {
-  const { data: apiTemplates, isLoading } = useFunnelTemplates();
+  const { data: templates = [], isLoading } = useFunnelTemplates();
   const applyTemplate = useApplyFunnelTemplate();
   const createFunnel = useCreateFunnel();
-
-  // Use API templates if available and non-empty, otherwise fall back to hardcoded
-  const templates = apiTemplates && apiTemplates.length > 0 ? apiTemplates : FALLBACK_TEMPLATES;
-  const usingFallback = !apiTemplates || apiTemplates.length === 0;
+  const busy = applyTemplate.isPending || createFunnel.isPending;
 
   const handleApply = async (template: FunnelTemplate) => {
     try {
-      if (!usingFallback) {
-        // Use API apply endpoint (migration ran, templates in DB)
-        const result = await applyTemplate.mutateAsync(template.id);
-        onCreated(result.funnel.id);
-      } else {
-        // Fallback: create funnel + stages directly via service
-        const funnel = await createFunnel.mutateAsync({ name: template.name });
-        const sorted = [...template.stages].sort((a, b) => a.position - b.position);
-        for (const s of sorted) {
-          await funnelsService.createFunnelStage(funnel.id, {
-            name: s.name,
-            color: s.color,
-            position: s.position,
-          });
-        }
-        onCreated(funnel.id);
-      }
+      const result = await applyTemplate.mutateAsync(template.id);
+      onCreated(result.funnel.id);
     } catch {
       toast({ title: 'Failed to apply template', variant: 'error' });
     }
@@ -141,90 +47,65 @@ export function FunnelTemplateSelector({ onCreated }: Props) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-6 w-6 animate-spin text-muted" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <div className="w-12 h-12 rounded-xl bg-olive-dark flex items-center justify-center mx-auto mb-3">
-          <GitBranch className="h-6 w-6 text-accent" />
+        <div className="icon-tile w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <GitBranch className="h-5 w-5 text-accent" />
         </div>
         <h2 className="text-lg font-semibold text-primary">Choose a template to get started</h2>
-        <p className="text-sm text-secondary mt-1">
-          Select a predefined template or start with a blank funnel.
-        </p>
+        <p className="text-sm text-secondary mt-1">Select a predefined template or start with a blank funnel.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-        {templates.map((template) => {
-          const isPending =
-            (applyTemplate.isPending && applyTemplate.variables === template.id) ||
-            (createFunnel.isPending);
-          const sortedStages = [...template.stages].sort((a, b) => a.position - b.position);
-          return (
-            <div
-              key={template.id}
-              className="bg-surface border border-subtle rounded-xl p-4 flex flex-col gap-3 relative"
-            >
-              <span className="absolute top-3 right-3 text-[10px] font-medium bg-surface-raised text-secondary px-2 py-0.5 rounded-full">
-                {CATEGORY_LABELS[template.category] ?? template.category}
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-primary pr-16">{template.name}</p>
-                {template.description && (
-                  <p className="text-xs text-secondary mt-0.5">{template.description}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">{sortedStages.length} stages</span>
-                <div className="flex gap-1">
-                  {sortedStages.slice(0, 5).map((s) => (
-                    <div
-                      key={s.id}
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: s.color ?? '#9CA3AF' }}
-                      title={s.name}
-                    />
-                  ))}
-                  {sortedStages.length > 5 && (
-                    <span className="text-[10px] text-muted">+{sortedStages.length - 5}</span>
-                  )}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={applyTemplate.isPending || createFunnel.isPending}
-                onClick={() => handleApply(template)}
-                className="w-full mt-auto"
-              >
-                {isPending ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Applying…</>
-                ) : (
-                  'Use template'
-                )}
-              </Button>
-            </div>
-          );
-        })}
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-card" />)
+          : templates.map((template) => {
+              const applying = applyTemplate.isPending && applyTemplate.variables === template.id;
+              const stages = [...template.stages].sort((a, b) => a.position - b.position);
+              return (
+                <Card key={template.id} className="p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-primary">{template.name}</p>
+                    <Badge variant="neutral" className="shrink-0">
+                      {CATEGORY_LABELS[template.category] ?? template.category}
+                    </Badge>
+                  </div>
+                  {template.description && <p className="text-xs text-secondary -mt-2">{template.description}</p>}
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1" aria-hidden>
+                      {stages.map((s) => (
+                        <span key={s.id} className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stageColor(s.color) }} />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted">{stages.length} stages</span>
+                  </div>
+                  <p className="text-[11px] text-muted leading-relaxed line-clamp-2">
+                    {stages.map((s) => s.name).join(' → ')}
+                  </p>
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => handleApply(template)} className="w-full mt-auto">
+                    {applying ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Applying…
+                      </>
+                    ) : (
+                      'Use template'
+                    )}
+                  </Button>
+                </Card>
+              );
+            })}
       </div>
 
+      {!isLoading && templates.length === 0 && (
+        <p className="text-center text-xs text-muted">No templates available.</p>
+      )}
+
       <div className="text-center">
-        <button
-          onClick={handleEmpty}
-          disabled={createFunnel.isPending || applyTemplate.isPending}
-          className="text-sm text-accent hover:underline disabled:opacity-50"
-        >
+        <Button variant="ghost" size="sm" onClick={handleEmpty} disabled={busy} className="text-accent">
           {createFunnel.isPending ? 'Creating…' : 'Start with a blank funnel'}
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
-

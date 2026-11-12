@@ -19,7 +19,7 @@ export class ContactFunnelHistoryEntity {
   @Column({ type: 'uuid', nullable: true })
   changed_by: string | null;
 
-  /** 'manual' (a user moved it) or 'automation' (a funnel rule). Drives the anti-override guard. */
+  /** 'manual' (a user moved it) or 'automation' (a funnel rule). Audit only. */
   @Column({ length: 20, default: 'manual' })
   source: string;
 

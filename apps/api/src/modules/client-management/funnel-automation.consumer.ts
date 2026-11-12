@@ -37,7 +37,12 @@ export class FunnelAutomationConsumer {
 
   private run(event: string, data: ContactEventPayload): Promise<void> | void {
     if (!data.contact_id) return;
-    return this.rules.evaluate(data.organization_id, data.contact_id, event);
+    return this.rules.evaluate(
+      data.organization_id,
+      data.contact_id,
+      event,
+      data as unknown as Record<string, unknown>,
+    );
   }
 
   @EventPattern(RABBITMQ_QUEUES.MESSAGE_RECEIVED)
