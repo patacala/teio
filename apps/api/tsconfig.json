@@ -2,8 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
+    "moduleResolution": "bundler",
+    "rootDir": "./src",
     "outDir": "./dist",
-    "baseUrl": "./",
     "strictPropertyInitialization": false,
     "noUnusedParameters": false,
     "noUnusedLocals": false,
