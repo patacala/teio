@@ -2,10 +2,10 @@
  * Integration test of the funnel automation FLOW against the live DB.
  *
  * Runs entirely inside a transaction and ROLLS BACK — nothing is persisted.
- * It replays FunnelRulesService.evaluate() (terminal skip, 24h manual
- * anti-override, from_stage_types, BANT conditions, forward_only, resolve
- * to_stage_type in the contact's funnel) against the REAL seeded funnel_rules,
- * validating the rules + stage_types + BANT conditions + schema end-to-end.
+ * It replays FunnelRulesService.evaluate() (terminal skip, from_stage_types,
+ * custom_fields + event conditions, forward_only, resolve to_stage_type in the
+ * contact's funnel) against the REAL seeded funnel_rules, validating the
+ * rules + stage_types + conditions + schema end-to-end.
  *
  * Run:  cd apps/api && node test/funnel-flow.integration.js
  * (needs DATABASE_URL in apps/api/.env; uses the pg dep already in apps/api)
@@ -17,15 +17,13 @@ const { Client } = require('pg');
 const url = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8')
   .match(/^DATABASE_URL=(.*)$/m)[1].trim().replace(/^["']|["']$/g, '');
 
-const MANUAL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const STAGES = [
   ['New Lead', 0, 'new', false],
   ['Contacted', 1, 'contacted', false],
   ['Qualified', 2, 'qualified', false],
   ['Appointment Scheduled', 3, 'appointment_scheduled', false],
   ['Appointment Confirmed', 4, 'appointment_confirmed', false],
-  ['Won', 5, 'won', true],
-  ['Lost', 6, 'lost', true],
+  ['Lost', 5, 'lost', true],
 ];
 
 let pass = 0, fail = 0;
@@ -33,11 +31,15 @@ const assert = (cond, msg) => cond
   ? (pass++, console.log(`  ✅ ${msg}`))
   : (fail++, console.log(`  ❌ ${msg}`));
 
-// Mirror of FunnelRulesService.matchesConditions
-function matchesConditions(conditions, customFields) {
-  const required = (conditions && conditions.custom_fields) || {};
-  const fields = customFields || {};
-  for (const [key, expected] of Object.entries(required)) {
+// Mirror of FunnelRulesService.matchesConditions / matchesFields
+function matchesConditions(conditions, customFields, eventData) {
+  return matchesFields(conditions && conditions.custom_fields, customFields)
+    && matchesFields(conditions && conditions.event, eventData);
+}
+
+function matchesFields(required, values) {
+  const fields = values || {};
+  for (const [key, expected] of Object.entries(required || {})) {
     const actual = fields[key];
     if (expected === '*') {
       if (actual === undefined || actual === null || actual === '') return false;
@@ -75,20 +77,16 @@ function matchesConditions(conditions, customFields) {
       `SELECT s.stage_type FROM clients.contacts ct
        JOIN clients.funnel_stages s ON s.id = ct.lead_stage::uuid WHERE ct.id=$1`, [id])).rows[0]?.stage_type;
 
-    async function evaluate(contactId, triggerEvent) {
+    async function evaluate(contactId, triggerEvent, eventData = {}) {
       const ct = (await c.query(
         `SELECT lead_stage, custom_fields FROM clients.contacts WHERE id=$1 AND organization_id=$2`,
         [contactId, ORG])).rows[0];
       if (!ct?.lead_stage) return;
       const cur = (await c.query(
-        `SELECT id, funnel_id, position, stage_type, is_terminal FROM clients.funnel_stages WHERE id=$1::uuid`,
-        [ct.lead_stage])).rows[0];
-      if (!cur || cur.is_terminal) return;
-
-      const last = (await c.query(
-        `SELECT source, created_at FROM clients.contact_funnel_history WHERE contact_id=$1 ORDER BY created_at DESC LIMIT 1`,
-        [contactId])).rows[0];
-      if (last && last.source === 'manual' && Date.now() - new Date(last.created_at).getTime() < MANUAL_WINDOW_MS) return;
+        `SELECT id, funnel_id, position, stage_type, is_terminal FROM clients.funnel_stages
+         WHERE id=$1::uuid AND organization_id=$2`,
+        [ct.lead_stage, ORG])).rows[0];
+      if (!cur || !cur.funnel_id || cur.is_terminal) return;
 
       const rules = (await c.query(
         `SELECT * FROM clients.funnel_rules WHERE trigger_event=$1 AND is_active=true
@@ -98,10 +96,11 @@ function matchesConditions(conditions, customFields) {
       for (const rule of rules) {
         if (rule.funnel_id && rule.funnel_id !== cur.funnel_id) continue;
         if (rule.from_stage_types.length && !rule.from_stage_types.includes(cur.stage_type)) continue;
-        if (!matchesConditions(rule.conditions, ct.custom_fields)) continue;
+        if (!matchesConditions(rule.conditions, ct.custom_fields, eventData)) continue;
         const target = (await c.query(
-          `SELECT id, position FROM clients.funnel_stages WHERE funnel_id=$1 AND stage_type=$2`,
-          [cur.funnel_id, rule.to_stage_type])).rows[0];
+          `SELECT id, position FROM clients.funnel_stages
+           WHERE organization_id=$1 AND funnel_id=$2 AND stage_type=$3 ORDER BY position ASC LIMIT 1`,
+          [ORG, cur.funnel_id, rule.to_stage_type])).rows[0];
         if (!target || target.id === cur.id) continue;
         if (rule.direction_policy === 'forward_only' && target.position <= cur.position) continue;
         await c.query(`UPDATE clients.contacts SET lead_stage=$1 WHERE id=$2`, [target.id, contactId]);
@@ -130,23 +129,24 @@ function matchesConditions(conditions, customFields) {
     await evaluate(A, 'appointment.confirmed');
     assert(await stageTypeOf(A) === 'appointment_confirmed', 'appointment.confirmed → appointment_confirmed');
     await evaluate(A, 'appointment.completed');
-    assert(await stageTypeOf(A) === 'won', 'appointment.completed → won');
-    await evaluate(A, 'message.received');
-    await evaluate(A, 'appointment.created');
-    assert(await stageTypeOf(A) === 'won', 'terminal won: no event moves it');
+    assert(await stageTypeOf(A) === 'appointment_confirmed', 'appointment.completed: no rule (Deal won retired)');
 
-    console.log('\nTest 2 — manual anti-override guard');
+    console.log('\nTest 2 — a recent manual move does not block automation');
     const B = await newContact('new');
     await c.query(
       `INSERT INTO clients.contact_funnel_history (contact_id, to_stage_id, source) VALUES ($1,$2,'manual')`,
       [B, stageId['new']]);
     await evaluate(B, 'message.received');
-    assert(await stageTypeOf(B) === 'new', 'recent manual move blocks automation');
+    assert(await stageTypeOf(B) === 'contacted', 'recent manual move: new → contacted');
 
-    console.log('\nTest 3 — lost on sequence exhausted');
+    console.log('\nTest 3 — lost only when the no_response sequence is exhausted');
     const C = await newContact('contacted');
-    await evaluate(C, 'sequence.exhausted');
-    assert(await stageTypeOf(C) === 'lost', 'sequence.exhausted: contacted → lost');
+    await evaluate(C, 'sequence.exhausted', { sequence_type: 'appointment_reminder' });
+    assert(await stageTypeOf(C) === 'contacted', 'appointment_reminder exhausted: stays contacted');
+    await evaluate(C, 'sequence.exhausted', { sequence_type: 'no_response' });
+    assert(await stageTypeOf(C) === 'lost', 'no_response exhausted: contacted → lost');
+    await evaluate(C, 'appointment.confirmed');
+    assert(await stageTypeOf(C) === 'lost', 'terminal lost: no event moves it');
 
     console.log(`\n──── RESULT: ${pass} passed, ${fail} failed ────`);
   } finally {

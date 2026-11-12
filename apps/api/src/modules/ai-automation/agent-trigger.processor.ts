@@ -125,7 +125,6 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
                 last_name: contact.last_name,
                 email: contact.email,
                 phone: contact.phone,
-                lead_stage: contact.lead_stage,
                 tags: contact.tags,
               };
             }

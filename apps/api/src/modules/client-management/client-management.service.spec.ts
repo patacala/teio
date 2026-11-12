@@ -546,3 +546,140 @@ describe('ClientManagementService - findOrCreateByChannel', () => {
     });
   });
 });
+
+describe('ClientManagementService - funnel stage changes', () => {
+  const ORG = 'org-1';
+  const CONTACT_ID = 'contact-1';
+
+  function build(options: { stageInOrg?: boolean; affected?: number; leadStage?: string } = {}) {
+    const contact = {
+      id: CONTACT_ID,
+      organization_id: ORG,
+      first_name: 'Ana',
+      last_name: 'Lopez',
+      lead_stage: options.leadStage ?? 'stage-a',
+      custom_fields: {},
+      ai_insights: {},
+    } as unknown as ContactEntity;
+
+    const updateQuery: Record<string, jest.Mock> = {};
+    for (const m of ['update', 'set', 'where', 'andWhere']) updateQuery[m] = jest.fn(() => updateQuery);
+    updateQuery.execute = jest.fn().mockResolvedValue({ affected: options.affected ?? 1 });
+
+    const contactRepo = {
+      findOne: jest.fn().mockResolvedValue(contact),
+      save: jest.fn(async (c: ContactEntity) => c),
+      createQueryBuilder: jest.fn(() => updateQuery),
+    };
+    const historyRepo = {
+      create: jest.fn((row: unknown) => row),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    const stageRepo = {
+      findOne: jest.fn().mockResolvedValue(options.stageInOrg === false ? null : { id: 'stage-b' }),
+    };
+    const rmq = { emit: jest.fn() };
+
+    const service = new ClientManagementService(
+      contactRepo as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+      historyRepo as never, stageRepo as never, {} as never, {} as never, rmq as never,
+    );
+    return { service, contact, contactRepo, historyRepo, stageRepo, rmq, updateQuery };
+  }
+
+  describe('updateStage (manual)', () => {
+    it('rejects a stage that does not belong to the organization', async () => {
+      const h = build({ stageInOrg: false });
+
+      await expect(h.service.updateStage(CONTACT_ID, ORG, 'foreign-stage', 'user-1')).rejects.toThrow(
+        'Stage foreign-stage not found',
+      );
+      expect(h.stageRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'foreign-stage', organization_id: ORG } }),
+      );
+      expect(h.contactRepo.save).not.toHaveBeenCalled();
+      expect(h.historyRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('treats re-selecting the current stage as a no-op', async () => {
+      const h = build({ leadStage: 'stage-b' });
+
+      await h.service.updateStage(CONTACT_ID, ORG, 'stage-b', 'user-1');
+
+      expect(h.contactRepo.save).not.toHaveBeenCalled();
+      expect(h.historyRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('moves the contact and records a manual history row', async () => {
+      const h = build();
+
+      const result = await h.service.updateStage(CONTACT_ID, ORG, 'stage-b', 'user-1');
+
+      expect(result.lead_stage).toBe('stage-b');
+      expect(h.historyRepo.create).toHaveBeenCalledWith({
+        contact_id: CONTACT_ID,
+        from_stage_id: 'stage-a',
+        to_stage_id: 'stage-b',
+        changed_by: 'user-1',
+        source: 'manual',
+        reason: null,
+      });
+      expect(h.rmq.emit).toHaveBeenCalledWith(
+        'contact.stage.changed',
+        expect.objectContaining({ contact_id: CONTACT_ID, from_stage_id: 'stage-a', to_stage_id: 'stage-b' }),
+      );
+    });
+  });
+
+  describe('moveStageIfUnchanged (automation)', () => {
+    it('only writes when the contact is still on the expected stage', async () => {
+      const h = build();
+
+      await h.service.moveStageIfUnchanged(CONTACT_ID, ORG, 'stage-a', 'stage-b', 'Lead contacted');
+
+      expect(h.updateQuery.set).toHaveBeenCalledWith({ lead_stage: 'stage-b' });
+      expect(h.updateQuery.andWhere).toHaveBeenCalledWith('organization_id = :organizationId', {
+        organizationId: ORG,
+      });
+      expect(h.updateQuery.andWhere).toHaveBeenCalledWith('lead_stage = :expectedStageId', {
+        expectedStageId: 'stage-a',
+      });
+    });
+
+    it('returns false and records nothing when another change won the race', async () => {
+      const h = build({ affected: 0 });
+
+      const moved = await h.service.moveStageIfUnchanged(CONTACT_ID, ORG, 'stage-a', 'stage-b', 'Lead contacted');
+
+      expect(moved).toBe(false);
+      expect(h.historyRepo.save).not.toHaveBeenCalled();
+      expect(h.rmq.emit).not.toHaveBeenCalled();
+    });
+
+    it('records an automation history row with the rule name', async () => {
+      const h = build();
+
+      const moved = await h.service.moveStageIfUnchanged(CONTACT_ID, ORG, 'stage-a', 'stage-b', 'Lead contacted');
+
+      expect(moved).toBe(true);
+      expect(h.historyRepo.create).toHaveBeenCalledWith({
+        contact_id: CONTACT_ID,
+        from_stage_id: 'stage-a',
+        to_stage_id: 'stage-b',
+        changed_by: null,
+        source: 'automation',
+        reason: 'Lead contacted',
+      });
+    });
+  });
+
+  it('update() ignores lead_stage so stage changes cannot bypass the funnel history', async () => {
+    const h = build();
+
+    await h.service.update(CONTACT_ID, ORG, { first_name: 'Ana', lead_stage: 'stage-z' } as never);
+
+    const saved = h.contactRepo.save.mock.calls[0][0] as ContactEntity;
+    expect(saved.lead_stage).toBe('stage-a');
+    expect(h.historyRepo.save).not.toHaveBeenCalled();
+  });
+});

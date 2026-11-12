@@ -116,15 +116,6 @@ const GROUPS: EndpointGroup[] = [
         ],
       },
       {
-        method: 'PATCH',
-        path: '/api/v1/contacts/:id/stage',
-        description: 'Move a contact to a specific funnel stage.',
-        bodyParams: [
-          { name: 'stage_id', type: 'uuid', required: true, description: 'Target funnel stage ID.' },
-        ],
-        note: 'Triggers a funnel_change event in the activity timeline.',
-      },
-      {
         method: 'POST',
         path: '/api/v1/contacts/:id/tags',
         description: 'Add a tag to a contact.',
@@ -423,7 +414,7 @@ const GROUPS: EndpointGroup[] = [
   },
   {
     label: 'Funnels & Stages',
-    description: 'Manage sales pipelines and query stage IDs needed for contact moves.',
+    description: 'Read sales pipelines and stage IDs. Contacts move between stages through funnel rules, not through the API.',
     endpoints: [
       {
         method: 'GET',
@@ -433,7 +424,7 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'GET',
         path: '/api/v1/funnels/stages',
-        description: 'Get all stages across all funnels. Use to map stage names → IDs for PATCH /contacts/:id/stage.',
+        description: 'Get all stages across all funnels. Use to map stage IDs → names (e.g. the stage_id filter on GET /contacts).',
       },
       {
         method: 'GET',

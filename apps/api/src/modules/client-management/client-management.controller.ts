@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, HttpCode, HttpStatus,
+  Body, Param, Query, HttpCode, HttpStatus, ParseUUIDPipe,
 } from '@nestjs/common';
 
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -10,6 +10,8 @@ import {
   UpdateContactDto,
 } from './client-management.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '@crm/shared';
 import type { TenantContext, PaginationQuery } from '@crm/shared';
 
 @ApiTags('contacts')
@@ -127,10 +129,12 @@ export class ClientManagementController {
   }
 
   // ── Lead stage ───────────────────────────────────────────────────────
+  // Users only: integrations (API keys, n8n) don't move stages — funnel rules do.
   @Patch(':id/stage')
+  @Roles(...Object.values(UserRole))
   updateStage(
     @Param('id') id: string,
-    @Body('stage_id') stageId: string,
+    @Body('stage_id', ParseUUIDPipe) stageId: string,
     @CurrentTenant() tenant: TenantContext,
   ) {
     return this.service.updateStage(id, tenant.organization_id, stageId, tenant.user_id);
