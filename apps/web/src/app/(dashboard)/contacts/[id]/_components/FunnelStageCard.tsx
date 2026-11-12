@@ -1,14 +1,8 @@
 'use client';
 
 import { GitBranch } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useAllFunnelStages, useUpdateContactStage } from '@/hooks/useContacts';
+import { StageSelect } from '@/components/funnel/stage-select';
+import { useUpdateContactStage } from '@/hooks/useContacts';
 import { toast } from '@/hooks/useToast';
 import type { Contact } from '@/services/contacts.service';
 
@@ -17,7 +11,6 @@ interface Props {
 }
 
 export function FunnelStageCard({ contact }: Props) {
-  const { data: stages = [] } = useAllFunnelStages();
   const updateStage = useUpdateContactStage();
 
   const handleChange = (stageId: string) => {
@@ -35,26 +28,12 @@ export function FunnelStageCard({ contact }: Props) {
         <GitBranch className="h-4 w-4 text-muted" />
         <h3 className="text-sm font-semibold text-primary">Funnel Stage</h3>
       </div>
-      {stages.length === 0 ? (
-        <p className="text-sm text-muted">No stages configured</p>
-      ) : (
-        <Select
-          value={contact.lead_stage ?? ''}
-          onValueChange={handleChange}
-          disabled={updateStage.isPending}
-        >
-          <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Select a stage" />
-          </SelectTrigger>
-          <SelectContent>
-            {stages.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <StageSelect
+        value={contact.lead_stage}
+        onValueChange={handleChange}
+        disabled={updateStage.isPending}
+        className="text-sm"
+      />
     </div>
   );
 }
