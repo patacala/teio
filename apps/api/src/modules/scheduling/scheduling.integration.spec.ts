@@ -40,6 +40,11 @@ const TZ = 'America/Mexico_City';
 jest.setTimeout(60_000);
 
 describeDb('scheduling against PostgreSQL', () => {
+  // Captured once for the whole suite: `at()` and a few assertions below call
+  // this repeatedly within the same test, and deriving each call from a fresh
+  // `new Date()` let local-midnight rollovers between calls shift `daysAhead`
+  // inconsistently mid-test, causing sporadic time-of-day-dependent failures.
+  const NOW = new Date();
   let ds: DataSource;
   let suiteLock: QueryRunner;
   let calendars: CalendarService;
@@ -83,7 +88,7 @@ describeDb('scheduling against PostgreSQL', () => {
   /** A future local wall-clock time on the test calendar. */
   const at = (daysAhead: number, hhmm: string) => {
     const [h, m] = hhmm.split(':').map(Number);
-    const date = addDays(localDate(new Date(), TZ), daysAhead);
+    const date = addDays(localDate(NOW, TZ), daysAhead);
     return zonedTimeToUtc(date, h * 60 + m, TZ) as Date;
   };
   const iso = (d: Date) => d.toISOString();
@@ -266,7 +271,7 @@ describeDb('scheduling against PostgreSQL', () => {
 
   describe('availability', () => {
     it('offers local slots, hides taken ones and never offers the past', async () => {
-      const day = addDays(localDate(new Date(), TZ), 7);
+      const day = addDays(localDate(NOW, TZ), 7);
       const before = await availability.getAvailability(org, { from: day, to: day, calendar_id: calendar });
       expect(before.timezone).toBe(TZ);
       expect(before.slots).toHaveLength(18);
@@ -277,7 +282,7 @@ describeDb('scheduling against PostgreSQL', () => {
       expect(after.slots.map((s) => s.starts_at)).not.toContain(iso(at(7, '09:30')));
       expect(after.slots).toHaveLength(17);
 
-      const yesterday = addDays(localDate(new Date(), TZ), -1);
+      const yesterday = addDays(localDate(NOW, TZ), -1);
       const past = await availability.getAvailability(org, { from: yesterday, to: yesterday, calendar_id: calendar });
       expect(past.slots).toEqual([]);
     });
@@ -560,7 +565,7 @@ describeDb('scheduling against PostgreSQL', () => {
     });
 
     it('skips offsets that are already in the past', async () => {
-      const soon = await book(new Date(Date.now() + 3 * 3_600_000), owner, { override: { reason: 'test' } });
+      const soon = await book(new Date(NOW.getTime() + 3 * 3_600_000), owner, { override: { reason: 'test' } });
       expect((await reminderRows(soon.id)).map((r) => r.offset_minutes)).toEqual([120]);
     });
 
@@ -710,21 +715,21 @@ describeDb('scheduling against PostgreSQL', () => {
         start_time: '00:00',
         end_time: '23:45',
       });
-      await expect(book(new Date(Date.now() + 3_600_000))).rejects.toMatchObject({
+      await expect(book(new Date(NOW.getTime() + 3_600_000))).rejects.toMatchObject({
         response: { errors: { violations: ['too_soon'] } },
       });
       await expect(book(at(7, '10:00'))).rejects.toMatchObject({
         response: { errors: { violations: ['too_far'] } },
       });
       await expect(book(at(3, '10:00'))).resolves.toBeDefined();
-      const day = addDays(localDate(new Date(), TZ), 9);
+      const day = addDays(localDate(NOW, TZ), 9);
       expect((await availability.getAvailability(org, { from: day, to: day, calendar_id: calendar })).slots).toEqual([]);
     });
   });
 
   describe('metrics', () => {
     it('counts "today" on the calendar wall clock and ignores cancellations', async () => {
-      const todayLocal = localDate(new Date(), TZ);
+      const todayLocal = localDate(NOW, TZ);
       const startOfToday = zonedTimeToUtc(todayLocal, 0, TZ) as Date;
       await ds.query(
         `INSERT INTO scheduling.appointments (organization_id, calendar_id, contact_id, title, status, starts_at, ends_at, override_at)
