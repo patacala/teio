@@ -5,7 +5,7 @@ import { CommunicationDispatchService } from './communication-dispatch.service';
 import { COMM_DISPATCH_QUEUE, COMM_DISPATCH_QUEUE_NAME } from './communication-dispatch.constants';
 import type { DispatchRequest } from '@crm/shared';
 
-export interface CommDispatchJobData extends DispatchRequest {}
+export type CommDispatchJobData = DispatchRequest;
 
 @Injectable()
 export class CommunicationDispatchProcessor implements OnModuleInit, OnModuleDestroy {

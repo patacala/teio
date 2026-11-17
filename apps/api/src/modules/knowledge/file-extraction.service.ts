@@ -2,9 +2,9 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 
 // pdf-parse v2 and mammoth ship as CJS with no default-export-friendly types
 // under NodeNext — requiring them keeps the call sites simple.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const mammoth = require('mammoth');
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB — plain text extracted from

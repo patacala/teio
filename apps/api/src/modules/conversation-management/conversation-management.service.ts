@@ -13,7 +13,7 @@ import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq
 import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
 import { OUTBOUND_DISPATCH_QUEUE } from './outbound-dispatch.constants';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
-import type { PaginationQuery, PaginatedResponse, MessageReceivedEvent, SequenceStatus } from '@crm/shared';
+import type { PaginationQuery, PaginatedResponse, MessageReceivedEvent } from '@crm/shared';
 import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
 import type { IngestMessageDto } from './ingest-message.dto';
@@ -58,11 +58,6 @@ export interface SendMessageDto {
 // Channel types that support outbound dispatch via external API
 const OUTBOUND_CHANNEL_TYPES = new Set<string>([
   ChannelType.FACEBOOK, ChannelType.INSTAGRAM, ChannelType.WHATSAPP, ChannelType.SMS,
-]);
-
-// Chat channels that should trigger auto follow-up sequences
-const CHAT_CHANNELS = new Set<string>([
-  ChannelType.WHATSAPP, ChannelType.SMS, ChannelType.WEBCHAT, ChannelType.FACEBOOK, ChannelType.INSTAGRAM,
 ]);
 
 @Injectable()
@@ -208,21 +203,6 @@ export class ConversationManagementService {
     if (!conv) throw new NotFoundException(`Conversation ${id} not found`);
     conv.is_pinned = pinned;
     return this.conversationRepo.save(conv);
-  }
-
-  async create(organizationId: string, dto: CreateConversationDto): Promise<ConversationEntity> {
-    const conv = this.conversationRepo.create({
-      organization_id: organizationId,
-      ...dto,
-    });
-    const saved = await this.conversationRepo.save(conv);
-
-    this.rmqClient.emit(RABBITMQ_QUEUES.CONVERSATION_ASSIGN, {
-      conversation_id: saved.id,
-      organization_id: organizationId,
-    });
-
-    return saved;
   }
 
   async sendMessage(
@@ -552,7 +532,9 @@ export class ConversationManagementService {
     // feeds bots that reply to the customer (n8n workflows, ProSales) — firing
     // it for our own outbound sends would let a bot react to its own message
     // (and, once ProSales' send_message loop is wired in, loop forever).
-    if (direction === 'inbound') {
+    // Also skip while a human has taken this conversation over (bot_active
+    // false) — the toggle must actually silence the bot, not just show it off.
+    if (direction === 'inbound' && conversation.bot_active) {
       void this.agentQueue?.add(
         'trigger',
         {

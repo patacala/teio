@@ -18,7 +18,7 @@ import { ClientManagementService } from '../client-management/client-management.
 import { CompaniesService } from '../client-management/companies.service';
 import { MagicLinkEntity } from './magic-link.entity';
 import { DemoRequestEntity } from './demo-request.entity';
-import { SubmitDemoDto, DemoReadyDto, DemoRequestListParams, SendDemoEmailDto } from './demo.dto';
+import { SubmitDemoDto, DemoReadyDto, DemoRequestListParams } from './demo.dto';
 
 function buildPaginationMeta(total: number, page: number, limit: number) {
   return { total, page, limit, total_pages: Math.ceil(total / limit) };

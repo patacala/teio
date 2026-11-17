@@ -6,7 +6,7 @@
     "build": "pnpm --filter @crm/shared build && nest build",
     "dev": "pnpm --filter @crm/shared build && nest start --watch",
     "start": "node dist/main.js",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "clean": "rm -rf dist *.tsbuildinfo",
@@ -49,6 +49,7 @@
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.15",
@@ -65,9 +66,12 @@
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdf-parse": "^1.1.5",
+    "eslint": "^9.17.0",
+    "globals": "^17.14.0",
     "jest": "^30.0.0",
     "ts-jest": "^29.4.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0"
   },
   "jest": {
     "moduleFileExtensions": [

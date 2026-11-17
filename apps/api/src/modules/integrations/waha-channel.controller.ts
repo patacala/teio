@@ -9,6 +9,7 @@ import {
 } from './waha-channel.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 /**
  * WhatsApp linking via WAHA.
@@ -23,6 +24,7 @@ export class WahaChannelController {
   constructor(private readonly wahaChannels: WahaChannelService) {}
 
   @Post('sessions')
+  @AdminOnly()
   @ApiOperation({ summary: 'Create a WhatsApp channel and start a WAHA session' })
   @ApiResponse({ status: 201, description: 'Session created, awaiting QR scan' })
   @ApiResponse({ status: 400, description: 'WAHA unreachable or rejected the session' })
@@ -45,6 +47,7 @@ export class WahaChannelController {
   }
 
   @Get(':id/qr')
+  @AdminOnly()
   @ApiOperation({ summary: 'Get the pairing QR code as a PNG data URI' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
   @ApiResponse({ status: 200, description: 'Session state plus `qr` when scannable' })
@@ -56,6 +59,7 @@ export class WahaChannelController {
   }
 
   @Post(':id/pairing-code')
+  @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request a pairing code as an alternative to the QR' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
@@ -69,6 +73,7 @@ export class WahaChannelController {
   }
 
   @Post(':id/relink')
+  @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Restart a stopped session to link a new number' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
@@ -81,6 +86,7 @@ export class WahaChannelController {
   }
 
   @Post(':id/unlink')
+  @AdminOnly()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Log out the linked number, keeping the channel' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })

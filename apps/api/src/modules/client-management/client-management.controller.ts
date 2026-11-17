@@ -66,6 +66,11 @@ export class ClientManagementController {
     return this.service.delete(id, tenant.organization_id);
   }
 
+  @Post(':id/opt-out')
+  optOut(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
+    return this.service.optOut(id, tenant.organization_id);
+  }
+
   // ── Activity timeline ────────────────────────────────────────────────
   @Get(':id/activity')
   getActivity(

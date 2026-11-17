@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { IntegrationsService, CreateWebhookDto, UpdateWebhookDto } from './integrations.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 @ApiTags('integrations')
 @ApiBearerAuth()
@@ -27,12 +28,14 @@ export class IntegrationsController {
   }
 
   @Post()
+  @AdminOnly()
   create(@Body() dto: CreateWebhookDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.create(tenant.organization_id, dto);
   }
 
   // Static sub-routes BEFORE :id param routes
   @Post(':id/test')
+  @AdminOnly()
   testWebhook(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentTenant() tenant: TenantContext,
@@ -50,6 +53,7 @@ export class IntegrationsController {
   }
 
   @Patch(':id')
+  @AdminOnly()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateWebhookDto,
@@ -59,6 +63,7 @@ export class IntegrationsController {
   }
 
   @Delete(':id')
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   delete(
     @Param('id', ParseUUIDPipe) id: string,

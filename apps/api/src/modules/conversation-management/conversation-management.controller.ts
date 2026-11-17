@@ -37,8 +37,18 @@ export class ConversationManagementController {
 
   @Post()
   @CheckPlanLimit('conversations')
-  create(@Body() dto: CreateConversationDto, @CurrentTenant() tenant: TenantContext) {
-    return this.service.create(tenant.organization_id, dto);
+  async create(@Body() dto: CreateConversationDto, @CurrentTenant() tenant: TenantContext) {
+    // Reuses the contact's open conversation on this channel instead of
+    // blindly inserting — an agent starting a conversation that's already
+    // open (e.g. a second click, or a message arrived in between) must land
+    // on that one conversation, not fork a duplicate thread.
+    const { conversation } = await this.service.findOrCreateActiveConversation(
+      tenant.organization_id,
+      dto.contact_id,
+      '',
+      dto.channel,
+    );
+    return conversation;
   }
 
   @Post(':id/messages')

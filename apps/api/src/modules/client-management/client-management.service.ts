@@ -16,6 +16,7 @@ import { ContactFunnelHistoryEntity } from '../funnels/contact-funnel-history.en
 import { FunnelStageEntity } from '../funnels/funnel-stage.entity';
 import { FunnelEntity } from '../funnels/funnel.entity';
 import { UserEntity } from '../users/user.entity';
+import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
 import type { PaginationQuery } from '@crm/shared';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
 
@@ -151,6 +152,7 @@ export class ClientManagementService {
     @Optional() @Inject(RABBITMQ_SERVICE) private readonly rmqClient?: ClientProxy,
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
     @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
+    @Optional() private readonly automationSequenceService?: AutomationSequenceService,
   ) {}
 
   async findAll(
@@ -293,11 +295,32 @@ export class ClientManagementService {
     void this.realtimeBroadcast?.notifyOrg(organizationId, {
       type: 'lead',
       title: `Nuevo contacto: ${name}`,
-      href: `/contacts/${saved.id}`,
+      href: `/inbox?lead=${saved.id}`,
       contactId: saved.id,
       actorUserId,
     });
     return saved;
+  }
+
+  /**
+   * The human-triggered equivalent of the AI's `opt_out_contact` tool — same
+   * tag, same sequence cancellation, so a contact who opts out stops getting
+   * automated follow-ups regardless of who flips the switch.
+   */
+  async optOut(id: string, organizationId: string): Promise<{ contact: ContactEntity; sequences_cancelled: number }> {
+    const contact = await this.findById(id, organizationId);
+    const tags: string[] = contact.tags ?? [];
+
+    const sequencesCancelled = this.automationSequenceService
+      ? await this.automationSequenceService.cancelAllForContact(organizationId, id, 'opt_out')
+      : 0;
+
+    if (!tags.includes('opt-out')) {
+      contact.tags = [...tags, 'opt-out'];
+      await this.contactRepo.save(contact);
+    }
+
+    return { contact, sequences_cancelled: sequencesCancelled };
   }
 
   async update(id: string, organizationId: string, dto: UpdateContactDto): Promise<ContactEntity> {

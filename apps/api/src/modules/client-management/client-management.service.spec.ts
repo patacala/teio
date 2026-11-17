@@ -281,7 +281,7 @@ describe('ClientManagementService - findOrCreateByChannel', () => {
         },
       ]);
 
-      const contact1 = await service.findOrCreateByChannel(
+      await service.findOrCreateByChannel(
         mockOrgId,
         ChannelType.VOICE,
         '+16452205559',
@@ -449,7 +449,7 @@ describe('ClientManagementService - findOrCreateByChannel', () => {
         },
       ]);
 
-      const result = await service.findOrCreateByChannel(
+      await service.findOrCreateByChannel(
         mockOrgId,
         ChannelType.VOICE,
         phoneNumber,

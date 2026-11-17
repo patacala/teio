@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@ne
 import { ChannelsService, CreateChannelDto, UpdateChannelDto } from './channels.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 @ApiTags('channels')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class ChannelsController {
   }
 
   @Post()
+  @AdminOnly()
   @ApiOperation({ summary: 'Create a new channel integration' })
   @ApiResponse({ status: 201, description: 'Channel created' })
   @ApiResponse({ status: 400, description: 'Invalid payload' })
@@ -43,6 +45,7 @@ export class ChannelsController {
   }
 
   @Post(':id/test')
+  @AdminOnly()
   @ApiOperation({ summary: 'Test the connection for a channel' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
   @ApiResponse({ status: 201, description: 'Connection test result' })
@@ -55,6 +58,7 @@ export class ChannelsController {
   }
 
   @Patch(':id')
+  @AdminOnly()
   @ApiOperation({ summary: 'Update channel configuration' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
   @ApiResponse({ status: 200, description: 'Updated channel (config masked)' })
@@ -68,6 +72,7 @@ export class ChannelsController {
   }
 
   @Patch(':id/deactivate')
+  @AdminOnly()
   @ApiOperation({ summary: 'Deactivate a channel' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })
   @ApiResponse({ status: 200, description: 'Channel deactivated' })
@@ -79,6 +84,7 @@ export class ChannelsController {
   }
 
   @Delete(':id')
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a channel' })
   @ApiParam({ name: 'id', description: 'Channel UUID' })

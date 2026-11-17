@@ -539,7 +539,7 @@ export class PaymentsService {
         type: 'system',
         title: 'Pago por revisar',
         description: `${who}: ${reason}`,
-        href: '/config/payments',
+        href: '/payments?tab=attention',
         contactId: payment.contact_id ?? undefined,
       });
       if (!this.mailService) return;

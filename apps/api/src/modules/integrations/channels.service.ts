@@ -8,9 +8,9 @@ import { ChannelEntity } from './channel.entity';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { WahaService } from '../../infrastructure/waha/waha.service';
 import { StrictBoolean } from '../../common/decorators/strict-boolean.decorator';
+import { maskChannelConfig } from './channel-config-mask';
 
 const CHANNEL_CACHE_TTL = 300; // seconds
-const SENSITIVE_KEYS = ['api_key', 'password', 'access_token', 'api_secret', 'auth_token', 'hmac_secret'];
 
 export class CreateChannelDto {
   @IsString() @IsNotEmpty()
@@ -55,13 +55,7 @@ export class ChannelsService {
   ) {}
 
   private maskConfig(config: Record<string, unknown>): Record<string, unknown> {
-    const masked = { ...config };
-    for (const key of SENSITIVE_KEYS) {
-      if (typeof masked[key] === 'string' && (masked[key] as string).length > 0) {
-        masked[key] = '***';
-      }
-    }
-    return masked;
+    return maskChannelConfig(config);
   }
 
   async findAll(organizationId: string): Promise<ChannelEntity[]> {
@@ -83,7 +77,9 @@ export class ChannelsService {
       external_identifier: dto.external_identifier,
       config: dto.config ?? {},
     });
-    return this.channelRepo.save(channel);
+    const saved = await this.channelRepo.save(channel);
+    // The response goes to the browser — never echo the credentials back.
+    return { ...saved, config: this.maskConfig(saved.config) } as ChannelEntity;
   }
 
   async findById(channelId: string): Promise<ChannelEntity | null> {

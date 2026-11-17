@@ -155,7 +155,7 @@ export class AppointmentEventsPublisher {
         type: 'system',
         title: 'Pago por revisar',
         description: `${appt.title}: ${reason.replace(/_/g, ' ')}`,
-        href: '/config/payments',
+        href: '/payments?tab=attention',
         appointmentId: appt.id,
         contactId: appt.contact_id ?? undefined,
       })

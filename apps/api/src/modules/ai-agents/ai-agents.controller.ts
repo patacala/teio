@@ -11,6 +11,7 @@ import { CurrentTenant } from '../../common/decorators/current-tenant.decorator'
 import { PlanFeature } from '@crm/shared';
 import type { TenantContext } from '@crm/shared';
 import { RequiresPlanFeature } from '../billing/billing-access.decorators';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 @ApiTags('ai-agents')
 @ApiBearerAuth()
@@ -23,6 +24,7 @@ export class AIAgentsController {
   // otherwise Express/Nest would match "config" as an :id. ---
 
   @Post('config/provision')
+  @AdminOnly()
   @RequiresPlanFeature(PlanFeature.AI_RESPONSES)
   provisionAgent(
     @CurrentTenant() tenant: TenantContext,
@@ -40,31 +42,37 @@ export class AIAgentsController {
   // extractor). Returns the generated config for a read-only summary; the
   // config/* PUT routes above still allow fine edits afterwards.
   @Post('config/from-brief')
+  @AdminOnly()
   configureFromBrief(@CurrentTenant() tenant: TenantContext, @Body() body: { brief: string }) {
     return this.service.configureFromBrief(tenant.organization_id, body.brief);
   }
 
   @Put('config/identity')
+  @AdminOnly()
   updateIdentity(@CurrentTenant() tenant: TenantContext, @Body() body: unknown) {
     return this.service.updateIdentity(tenant.organization_id, body);
   }
 
   @Put('config/personality')
+  @AdminOnly()
   updatePersonality(@CurrentTenant() tenant: TenantContext, @Body() body: unknown) {
     return this.service.updatePersonality(tenant.organization_id, body);
   }
 
   @Put('config/rules')
+  @AdminOnly()
   updateRules(@CurrentTenant() tenant: TenantContext, @Body() body: unknown) {
     return this.service.updateRules(tenant.organization_id, body);
   }
 
   @Put('config/strategies')
+  @AdminOnly()
   updateStrategies(@CurrentTenant() tenant: TenantContext, @Body() body: unknown) {
     return this.service.updateStrategies(tenant.organization_id, body);
   }
 
   @Put('config/qualification')
+  @AdminOnly()
   updateQualification(@CurrentTenant() tenant: TenantContext, @Body() body: unknown) {
     return this.service.updateQualification(tenant.organization_id, body);
   }
@@ -90,11 +98,13 @@ export class AIAgentsController {
   }
 
   @Post()
+  @AdminOnly()
   create(@Body() dto: CreateAIAgentDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.create(tenant.organization_id, tenant.user_id, dto);
   }
 
   @Patch(':id')
+  @AdminOnly()
   update(
     @Param('id') id: string,
     @Body() dto: UpdateAIAgentDto,
@@ -104,11 +114,13 @@ export class AIAgentsController {
   }
 
   @Patch(':id/activate')
+  @AdminOnly()
   activate(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
     return this.service.activate(id, tenant.organization_id);
   }
 
   @Patch(':id/deactivate')
+  @AdminOnly()
   deactivate(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
     return this.service.deactivate(id, tenant.organization_id);
   }
@@ -119,6 +131,7 @@ export class AIAgentsController {
   }
 
   @Post(':id/capture-fields/reorder')
+  @AdminOnly()
   reorderCaptureFields(
     @Param('id') id: string,
     @Body() body: { orderedIds: string[] },
@@ -128,6 +141,7 @@ export class AIAgentsController {
   }
 
   @Post(':id/capture-fields')
+  @AdminOnly()
   createCaptureField(
     @Param('id') id: string,
     @Body() dto: CreateCaptureFieldDto,
@@ -137,6 +151,7 @@ export class AIAgentsController {
   }
 
   @Patch(':id/capture-fields/:fieldId')
+  @AdminOnly()
   updateCaptureField(
     @Param('fieldId') fieldId: string,
     @Body() dto: UpdateCaptureFieldDto,
@@ -146,6 +161,7 @@ export class AIAgentsController {
   }
 
   @Delete(':id/capture-fields/:fieldId')
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteCaptureField(
     @Param('fieldId') fieldId: string,

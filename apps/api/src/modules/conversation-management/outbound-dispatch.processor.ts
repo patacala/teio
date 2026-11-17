@@ -98,11 +98,9 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
       // from "gave up after 3 attempts".
       const messageId = job?.data?.messageId;
       if (messageId) {
-        this.messageRepo
-          .update({ id: messageId }, { status: 'failed' })
-          .catch((updateErr) =>
-            this.logger.error(`Failed to mark message ${messageId} as failed: ${updateErr.message}`),
-          );
+        this.markFailed(messageId, err.message.slice(0, 300)).catch((updateErr: Error) =>
+          this.logger.error(`Failed to mark message ${messageId} as failed: ${updateErr.message}`),
+        );
       }
     });
 
@@ -121,6 +119,22 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
     await this.worker?.close();
   }
 
+  /**
+   * Records why a message never went out. These are skip paths, not thrown
+   * errors, so the worker's own 'failed' handler never sees them — without
+   * this the message is left at 'pending' forever with no visible reason.
+   */
+  private async markFailed(messageId: string, reason: string): Promise<void> {
+    this.logger.warn(`Dispatch failed for msg ${messageId}: ${reason}`);
+    await this.messageRepo
+      .createQueryBuilder()
+      .update(MessageEntity)
+      .set({ status: 'failed', metadata: () => `metadata || :patch` })
+      .setParameter('patch', JSON.stringify({ failure_reason: reason }))
+      .where('id = :id', { id: messageId })
+      .execute();
+  }
+
   private async process(job: Job<OutboundDispatchJobData>): Promise<void> {
     const { channel, organizationId, messageId, content, contactId } = job.data;
 
@@ -129,20 +143,26 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
       this.clientService.findById(contactId, organizationId),
     ]);
 
-    if (!contact) return;
+    if (!contact) {
+      await this.markFailed(messageId, 'Contact no longer exists');
+      return;
+    }
 
     if (channel === 'sms') {
       await this.dispatchSms(channelEntity, contact, messageId, content);
       return;
     }
 
-    if (!channelEntity) return;
+    if (!channelEntity) {
+      await this.markFailed(messageId, `No active ${channel} channel`);
+      return;
+    }
 
     const rawToken = channelEntity.config?.page_access_token as string | undefined;
     const accessToken = rawToken?.trim();
 
     if (!accessToken && channel !== 'whatsapp') {
-      this.logger.warn(`${channel} dispatch skipped — missing page_access_token for msg ${messageId}`);
+      await this.markFailed(messageId, `Missing page access token for ${channel}`);
       return;
     }
 
@@ -163,7 +183,7 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
   ): Promise<void> {
     const phone = contact.phone;
     if (!phone) {
-      this.logger.warn(`SMS dispatch skipped — no phone on contact ${contact.id}`);
+      await this.markFailed(messageId, 'Contact has no phone number');
       return;
     }
 
@@ -185,7 +205,7 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
   ): Promise<void> {
     const igsid = (contact.channel_ids as Record<string, string>)?.['instagram'];
     if (!igsid) {
-      this.logger.warn(`Instagram dispatch skipped — no IGSID for contact ${contact.id}`);
+      await this.markFailed(messageId, 'Contact has no Instagram identifier');
       return;
     }
 
@@ -224,7 +244,7 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
   ): Promise<void> {
     const waId = (contact.channel_ids as Record<string, string>)?.['whatsapp'];
     if (!waId) {
-      this.logger.warn(`WhatsApp dispatch skipped — no wa_id for contact ${contact.id}`);
+      await this.markFailed(messageId, 'Contact has no WhatsApp identifier');
       return;
     }
 
@@ -232,7 +252,7 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
     // because the number is unknown until the QR is scanned.
     const session = channelEntity.external_identifier as string | undefined;
     if (!session) {
-      this.logger.warn(`WhatsApp dispatch skipped — no WAHA session for msg ${messageId}`);
+      await this.markFailed(messageId, 'WhatsApp channel has no linked session');
       return;
     }
 
@@ -255,7 +275,7 @@ export class OutboundDispatchProcessor implements OnModuleInit, OnModuleDestroy 
   ): Promise<void> {
     const psid = (contact.channel_ids as Record<string, string>)?.['facebook'];
     if (!psid) {
-      this.logger.warn(`Facebook dispatch skipped — no PSID for contact ${contact.id}`);
+      await this.markFailed(messageId, 'Contact has no Facebook identifier');
       return;
     }
 

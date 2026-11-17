@@ -21,7 +21,7 @@ export interface CreateCompanyDto {
   metadata?: Record<string, unknown>;
 }
 
-export interface UpdateCompanyDto extends Partial<CreateCompanyDto> {}
+export type UpdateCompanyDto = Partial<CreateCompanyDto>;
 
 export interface CompanyListParams {
   search?: string;

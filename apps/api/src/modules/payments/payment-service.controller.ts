@@ -7,6 +7,7 @@ import { PaymentServiceService } from './payment-service.service';
 import { CreatePaymentServiceDto, UpdatePaymentServiceDto } from './dto/payment-service.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
 
 @ApiTags('payments')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class PaymentServiceController {
   }
 
   @Post()
+  @AdminOnly()
   @ApiOperation({ summary: 'Create a payment service' })
   @ApiResponse({ status: 201, description: 'Service created' })
   create(@CurrentTenant() tenant: TenantContext, @Body() dto: CreatePaymentServiceDto) {
@@ -34,6 +36,7 @@ export class PaymentServiceController {
   }
 
   @Patch(':id')
+  @AdminOnly()
   @ApiParam({ name: 'id', description: 'Payment service UUID' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,6 +47,7 @@ export class PaymentServiceController {
   }
 
   @Delete(':id')
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiParam({ name: 'id', description: 'Payment service UUID' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentTenant() tenant: TenantContext) {

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AgentTriggerService } from './agent-trigger.service';
+import { ToolExecutionService } from './tool-execution.service';
 import {
   CreateAutomationAgentDto,
   UpdateAutomationAgentDto,
@@ -18,6 +19,8 @@ import {
 } from './dto/create-automation-agent.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import type { TenantContext } from '@crm/shared';
+import { AdminOnly } from '../../common/decorators/admin-only.decorator';
+import { toPublicAutomationAgent } from './automation-agent.presenter';
 
 @ApiTags('ai-automation')
 @ApiBearerAuth()
@@ -26,25 +29,29 @@ export class AutomationAgentsController {
   constructor(private readonly agentTriggerService: AgentTriggerService) {}
 
   @Get()
-  findAll(@CurrentTenant() tenant: TenantContext) {
-    return this.agentTriggerService.findAll(tenant.organization_id);
+  async findAll(@CurrentTenant() tenant: TenantContext) {
+    const agents = await this.agentTriggerService.findAll(tenant.organization_id);
+    return agents.map(toPublicAutomationAgent);
   }
 
   @Post()
-  create(@Body() dto: CreateAutomationAgentDto, @CurrentTenant() tenant: TenantContext) {
-    return this.agentTriggerService.create(tenant.organization_id, dto);
+  @AdminOnly()
+  async create(@Body() dto: CreateAutomationAgentDto, @CurrentTenant() tenant: TenantContext) {
+    return toPublicAutomationAgent(await this.agentTriggerService.create(tenant.organization_id, dto));
   }
 
   @Patch(':id')
-  update(
+  @AdminOnly()
+  async update(
     @Param('id') id: string,
     @Body() dto: UpdateAutomationAgentDto,
     @CurrentTenant() tenant: TenantContext,
   ) {
-    return this.agentTriggerService.update(id, tenant.organization_id, dto);
+    return toPublicAutomationAgent(await this.agentTriggerService.update(id, tenant.organization_id, dto));
   }
 
   @Delete(':id')
+  @AdminOnly()
   @HttpCode(HttpStatus.NO_CONTENT)
   deactivate(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
     return this.agentTriggerService.deactivate(id, tenant.organization_id);
@@ -64,12 +71,11 @@ export class AutomationToolsController {
 
   @Get('built-in')
   getBuiltInTools() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { ToolExecutionService } = require('./tool-execution.service');
     return ToolExecutionService.getAvailableTools();
   }
 
   @Post()
+  @AdminOnly()
   create(@Body() dto: CreateAgentToolDto, @CurrentTenant() tenant: TenantContext) {
     return this.agentTriggerService.createTool(tenant.organization_id, dto);
   }

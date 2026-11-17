@@ -662,14 +662,14 @@ export class SchedulingService {
     );
   }
 
-  async complete(organizationId: string, id: string, actor: SchedulingActor): Promise<AppointmentEntity> {
+  async complete(organizationId: string, id: string, _actor: SchedulingActor): Promise<AppointmentEntity> {
     return this.transition(organizationId, id, AppointmentStatus.COMPLETED, (appt) => {
       this.assertStarted(appt, 'completed');
       appt.completed_at = new Date();
     }, (tx, saved) => this.events.completed(tx, saved));
   }
 
-  async markNoShow(organizationId: string, id: string, actor: SchedulingActor): Promise<AppointmentEntity> {
+  async markNoShow(organizationId: string, id: string, _actor: SchedulingActor): Promise<AppointmentEntity> {
     return this.transition(organizationId, id, AppointmentStatus.NO_SHOW, (appt) => {
       this.assertStarted(appt, 'marked as no-show');
     }, (tx, saved) => this.events.noShow(tx, saved));

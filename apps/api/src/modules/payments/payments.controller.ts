@@ -56,7 +56,8 @@ export class PaymentsController {
 
   @Get('attention')
   @ApiBearerAuth()
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  // Agents run the day-to-day too, so they can see and resolve these.
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.AGENT)
   @ApiOperation({ summary: 'Paid payments whose booking could not be confirmed (manual follow-up, no auto refunds)' })
   findNeedingAttention(@CurrentTenant() tenant: TenantContext) {
     return this.paymentsService.findNeedingAttention(tenant.organization_id);
@@ -64,7 +65,7 @@ export class PaymentsController {
 
   @Post(':id/resolve')
   @ApiBearerAuth()
-  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.AGENT)
   @ApiOperation({ summary: 'Close a payment that needed attention: rebooked, refunded manually or dismissed' })
   resolve(
     @Param('id', new ParseUUIDPipe()) id: string,
