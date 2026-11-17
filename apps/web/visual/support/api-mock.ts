@@ -6,6 +6,10 @@ import type {
   BillingPlan,
   DemoLimitDefaults,
   DemoOrganization,
+  PlatformAttention,
+  PlatformLead,
+  PlatformOrganizationsPage,
+  PlatformOverview,
 } from '@crm/shared';
 import { ORG_COMMUNICATION_EVENTS, PLATFORM_COMMUNICATION_EVENTS } from '@crm/shared';
 import { billingAccess } from '@/test/fixtures/billing';
@@ -32,6 +36,10 @@ export interface Scenario {
   demoDefaults?: Mocked<DemoLimitDefaults>;
   demoOrganizations?: Mocked<DemoOrganization[]>;
   funnel?: FunnelScenario;
+  platformOverview?: Mocked<PlatformOverview>;
+  platformAttention?: Mocked<PlatformAttention>;
+  platformLeads?: Mocked<PlatformLead[]>;
+  platformOrganizations?: Mocked<PlatformOrganizationsPage>;
 }
 
 export const ORG_ID = '22222222-bbbb-4bbb-8bbb-222222222222';
@@ -131,6 +139,14 @@ export async function mockApi(page: Page, scenario: Scenario): Promise<{ unexpec
         return respond(route, scenario.demoDefaults);
       case '/platform/billing/demo/organizations':
         return respond(route, mockList(scenario.demoOrganizations));
+      case '/platform/analytics/overview':
+        return respond(route, scenario.platformOverview);
+      case '/platform/analytics/attention':
+        return respond(route, scenario.platformAttention);
+      case '/platform/analytics/leads':
+        return respond(route, mockList(scenario.platformLeads));
+      case '/platform/analytics/organizations':
+        return respond(route, scenario.platformOrganizations);
       case '/communications/templates/system':
         return respond(route, SYSTEM_TEMPLATES);
       case '/communications/templates/events':

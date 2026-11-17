@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils';
 import { ChannelBadge } from './channel-badge';
@@ -8,6 +9,7 @@ import { VoiceCallCard } from './voice-call-card';
 import { AIResponseBubble } from './ai-response-bubble';
 import { AIResponseIndicator } from './ai-response-indicator';
 import { SystemEvent } from './system-event';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Message } from '@/services/conversations.service';
 
 interface MessageBubbleProps {
@@ -231,6 +233,21 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             {formatRelativeTime(message.created_at)}
           </span>
           <ChannelBadge channel={message.channel} />
+          {isOutbound && message.status === 'failed' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-danger cursor-default">
+                    <AlertCircle className="h-3 w-3" />
+                    Not delivered
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {(message.metadata?.failure_reason as string | undefined) ?? 'Delivery failed'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
     </motion.div>

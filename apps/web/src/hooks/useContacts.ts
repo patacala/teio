@@ -12,7 +12,7 @@ export function useContacts(params?: ContactListParams) {
   });
 }
 
-/** Contacts of one funnel stage (Board column / List section). Keeps rows on screen while a bigger page loads. */
+/** Contacts of one funnel stage (Board column / Table column). Keeps rows on screen while a bigger page loads. */
 export function useStageContacts(stageId: string, limit: number) {
   const params: ContactListParams = { stage_id: stageId, limit };
   return useQuery({
@@ -136,6 +136,17 @@ export function useUpdateContactStage() {
       queryClient.invalidateQueries({ queryKey: ['contacts', variables.contactId] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact-activity', variables.contactId] });
+    },
+  });
+}
+
+/** Opts a lead out of automated follow-ups — same effect as the AI's own opt-out tool. */
+export function useOptOut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (contactId: string) => contactsService.optOut(contactId),
+    onSuccess: (_data, contactId) => {
+      queryClient.invalidateQueries({ queryKey: ['contacts', contactId] });
     },
   });
 }

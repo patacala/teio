@@ -11,7 +11,8 @@ export interface AutomationAgent {
   description?: string | null;
   trigger_event: string;
   workflow_endpoint: string;
-  auth_header_value?: string | null;
+  /** Whether an X-API-Key is configured (the key itself is never sent to the browser). */
+  has_auth_header?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;

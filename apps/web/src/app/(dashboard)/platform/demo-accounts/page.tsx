@@ -1,7 +1,16 @@
 'use client';
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { DemoDefaultsCard } from './_components/DemoDefaultsCard';
 import { DemoOrganizationsCard } from './_components/DemoOrganizationsCard';
+
+/** The organizations card, searched from `?search=` when linked from elsewhere. */
+function SearchableDemoOrganizations() {
+  // null outside the App Router (e.g. rendered on its own in tests)
+  const search = useSearchParams()?.get('search') ?? '';
+  return <DemoOrganizationsCard key={search} initialSearch={search} />;
+}
 
 export default function DemoAccountsPage() {
   return (
@@ -13,7 +22,9 @@ export default function DemoAccountsPage() {
         </p>
       </div>
       <DemoDefaultsCard />
-      <DemoOrganizationsCard />
+      <Suspense fallback={<DemoOrganizationsCard />}>
+        <SearchableDemoOrganizations />
+      </Suspense>
     </div>
   );
 }

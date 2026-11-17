@@ -17,39 +17,30 @@ import { useShell } from './shell-context';
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/inbox': 'Inbox',
-  '/voice': 'Voice',
   '/schedule': 'Schedule',
-  '/templates': 'Templates',
-  '/contacts': 'Contacts',
-  '/integrations': 'Integrations',
-  // Config
+  '/payments': 'Payments',
+  // Settings
+  '/templates': 'Quick replies',
   '/config/agents': 'AI Agent',
-  '/config/funnel': 'Funnel',
-  '/config/sequences': 'Follow-up Sequences',
+  '/config/sequences': 'Follow-up sequences',
   '/config/webhooks': 'Webhooks',
   '/config/channels': 'Channels',
-  '/config/communications': 'Communications',
-  '/config/payments': 'Payments',
+  '/config/communications': 'Notifications',
+  '/config/payments': 'Payments setup',
   // Admin
   '/admin': 'Admin Panel',
   '/admin/team': 'Team',
   '/admin/billing': 'Billing',
-  '/admin/api-keys': 'API Keys',
+  '/admin/api-keys': 'API keys',
   '/admin/demo': 'Demo Requests',
   // Platform
+  '/platform': 'Platform overview',
   '/platform/demo-accounts': 'Demo Accounts',
 };
-
-const DETAIL_TITLES: Array<[RegExp, string]> = [
-  [/^\/contacts\/[^/]+$/, 'Contact details'],
-  [/^\/voice\/[^/]+$/, 'Call details'],
-];
 
 function getPageTitle(pathname: string): string {
   const exact = PAGE_TITLES[pathname];
   if (exact) return exact;
-  const detail = DETAIL_TITLES.find(([pattern]) => pattern.test(pathname));
-  if (detail) return detail[1];
   const parent = Object.keys(PAGE_TITLES)
     .filter((route) => route !== '/' && pathname.startsWith(route + '/'))
     .sort((a, b) => b.length - a.length)[0];

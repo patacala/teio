@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,46 +54,38 @@ function renderList(stages = [stage('s-won', 'Booked', 1), stage('s-new', 'New L
   return { onConfigure, user: userEvent.setup() };
 }
 
-const section = (name: string) => screen.getByRole('button', { name: new RegExp(name) }).closest('.panel-card') as HTMLElement;
-
 describe('FunnelListView', () => {
-  it('lists contacts grouped by stage, in stage order, with real totals', async () => {
+  it('puts each stage in a column, in stage order, with the contacts in that stage', async () => {
     renderList();
 
-    expect(await screen.findByText('12 contacts')).toBeInTheDocument();
-    const headers = screen.getAllByRole('button', { name: /contacts?$/ }).map((b) => b.textContent);
-    expect(headers).toEqual(['New Lead12 contacts', 'Booked0 contacts']);
-    expect(within(section('New Lead')).getAllByRole('row')).toHaveLength(11); // header + first page
-    expect(within(section('New Lead')).getByText('Showing 10 of 12')).toBeInTheDocument();
-    expect(within(section('Booked')).getByText('No contacts in this stage')).toBeInTheDocument();
+    expect(await screen.findByText('Showing 10 of 12')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /New Lead/ })).toHaveTextContent('12');
+    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
+    expect(headers[0]).toMatch(/New Lead/);
+    expect(headers[1]).toMatch(/Booked/);
+    expect(screen.getAllByRole('button', { name: /Open Lead/ })).toHaveLength(10);
+    expect(screen.getByText('Showing 10 of 12')).toBeInTheDocument();
+    expect(screen.getByText('No contacts')).toBeInTheDocument();
   });
 
-  it('loads the next page of a stage', async () => {
+  it('loads the next page of a stage column', async () => {
     const { user } = renderList();
     await screen.findByText('Showing 10 of 12');
 
     await user.click(screen.getByRole('button', { name: 'Load more' }));
 
     expect(await screen.findByText('Showing 12 of 12')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Open Lead/ })).toHaveLength(12);
     expect(requests.filter((p) => p.get('stage_id') === 's-new').map((p) => p.get('limit'))).toEqual(['10', '20']);
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
   });
 
-  it('opens the contact when a row is clicked', async () => {
+  it('opens the contact when its cell is clicked', async () => {
     const { user } = renderList();
 
-    await user.click(await screen.findByRole('row', { name: /Open Lead 03/ }));
+    await user.click(await screen.findByRole('button', { name: 'Open Lead 03' }));
 
     expect(nav.push).toHaveBeenCalledWith('/contacts/c-3');
-  });
-
-  it('collapses a stage section', async () => {
-    const { user } = renderList();
-    await screen.findByText('Showing 10 of 12');
-
-    await user.click(screen.getByRole('button', { name: /New Lead/ }));
-
-    expect(screen.queryByText('Showing 10 of 12')).not.toBeInTheDocument();
   });
 
   it('points to stage configuration when the funnel has no stages', async () => {

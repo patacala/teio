@@ -26,6 +26,10 @@ export class OrganizationEntity {
   @Column({ default: true })
   is_active: boolean;
 
+  /** Our own organization (demo org, super admins' orgs, tests): left out of platform metrics. */
+  @Column({ type: 'boolean', default: false })
+  is_internal: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 

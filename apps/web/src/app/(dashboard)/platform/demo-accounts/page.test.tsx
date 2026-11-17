@@ -10,6 +10,9 @@ import DemoAccountsPage from './page';
 const toasts = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock('@/hooks/useToast', () => toasts);
 
+const url = vi.hoisted(() => ({ search: '' }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(url.search) }));
+
 const ACME_ID = '0e6f2f3c-1c58-4c4f-9b2a-3d7c2b8f9a10';
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -55,7 +58,10 @@ async function chooseMode(
   await user.click(await screen.findByRole('option', { name: option }));
 }
 
-beforeEach(() => toasts.toast.mockClear());
+beforeEach(() => {
+  toasts.toast.mockClear();
+  url.search = '';
+});
 
 describe('Demo accounts page', () => {
   describe('default demo limits', () => {
@@ -177,6 +183,14 @@ describe('Demo accounts page', () => {
       expect(await screen.findByText('No demo organizations match “zeta”')).toBeInTheDocument();
       expect(filtered.at(-1)!.url.searchParams.get('search')).toBe('zeta');
       expect(list.length + filtered.length).toBeLessThanOrEqual(3);
+    });
+
+    it('starts searched when linked with ?search= (e.g. from the platform overview)', async () => {
+      url.search = 'search=acme-dental';
+      const { list } = renderPage();
+      expect(await screen.findByText('Acme Dental')).toBeInTheDocument();
+      expect(screen.getByLabelText('Search organizations')).toHaveValue('acme-dental');
+      expect(list.every((call) => call.url.searchParams.get('search') === 'acme-dental')).toBe(true);
     });
 
     it('sets custom limits for one organization', async () => {

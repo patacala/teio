@@ -20,15 +20,22 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { DialogTitle } from '@/components/ui/dialog';
 import { SidebarItem } from './sidebar-item';
 import { useShell } from './shell-context';
-import type { SidebarNavItem } from './sidebar-section';
-import { ADMIN_ITEMS, CONFIG_ITEMS, isConfigurationPath } from './sidebar-nav';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
-  LayoutDashboard,
+  ADMIN_ITEMS,
+  MAIN_ITEMS,
+  PLATFORM_ITEMS,
+  SETTINGS_GROUPS,
+  isAdminPath,
+  isConfigurationPath,
+  navItemMatchesPath,
+  visibleGroups,
+  visibleItems,
+  type NavGroup,
+  type NavItem,
+} from './sidebar-nav';
+import {
   MessageSquare,
-  Calendar,
-  Users,
-  Phone,
-  MonitorPlay,
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
@@ -36,35 +43,10 @@ import {
   Settings,
   X,
   Shield,
-  Mail,
-  Filter,
   ArrowLeft,
-  Gauge,
 } from 'lucide-react';
 
-const MAIN_ITEMS: SidebarNavItem[] = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard, exact: true },
-  { label: 'Inbox', href: '/inbox', icon: MessageSquare },
-  { label: 'Contacts', href: '/contacts', icon: Users },
-  { label: 'Funnel', href: '/config/funnel', icon: Filter },
-  { label: 'Voice', href: '/voice', icon: Phone },
-  { label: 'Schedule', href: '/schedule', icon: Calendar },
-];
-
-const PLATFORM_SIDEBAR_ITEMS: SidebarNavItem[] = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard, exact: true },
-  { label: 'Communications', href: '/config/communications', icon: Mail },
-  { label: 'Demos', href: '/admin/demo', icon: MonitorPlay },
-  { label: 'Demo accounts', href: '/platform/demo-accounts', icon: Gauge },
-];
-
 type OverlayView = null | 'settings' | 'admin';
-
-function isItemActive(pathname: string, item: SidebarNavItem) {
-  return item.exact
-    ? pathname === item.href
-    : pathname === item.href || pathname.startsWith(item.href + '/');
-}
 
 function Logo() {
   return (
@@ -86,6 +68,7 @@ export function Sidebar() {
   const { user, signOut } = useAuth();
   const { data: currentUser } = useCurrentUser();
   const isPlatformAdmin = currentUser?.is_platform_admin === true;
+  const permissions = usePermissions();
   const { isImpersonating, organizationName, startImpersonating, stopImpersonating } = useImpersonation();
   const { data: organizations } = useOrganizations(isPlatformAdmin);
   const router = useRouter();
@@ -135,9 +118,33 @@ export function Sidebar() {
 
   const showPlatformOnly = isPlatformAdmin && !isImpersonating;
   const showOrgSections = !isPlatformAdmin || isImpersonating;
-  const primaryItems = showPlatformOnly ? PLATFORM_SIDEBAR_ITEMS : showOrgSections ? MAIN_ITEMS : [];
-  const overlayItems = overlayView === 'settings' ? CONFIG_ITEMS : overlayView === 'admin' ? ADMIN_ITEMS : null;
+  const primaryItems = showPlatformOnly
+    ? PLATFORM_ITEMS
+    : showOrgSections
+      ? visibleItems(MAIN_ITEMS, permissions)
+      : [];
+  const settingsGroups = visibleGroups(SETTINGS_GROUPS, permissions);
+  const adminItems = visibleItems(ADMIN_ITEMS, permissions);
+  const overlayGroups: NavGroup[] | null =
+    overlayView === 'settings'
+      ? settingsGroups
+      : overlayView === 'admin'
+        ? [{ label: '', items: adminItems }]
+        : null;
   const overlayTitle = overlayView === 'settings' ? 'Settings' : 'Admin';
+
+  const renderItems = (items: NavItem[], isCollapsed: boolean) =>
+    items.map((item) => (
+      <SidebarItem
+        key={item.href}
+        label={item.label}
+        href={item.href}
+        icon={item.icon}
+        active={navItemMatchesPath(pathname, item)}
+        collapsed={isCollapsed}
+        exact={item.exact}
+      />
+    ));
 
   const orgSelector = isImpersonating ? (
     <div className="flex h-9 items-center gap-2 rounded-control border border-accent/15 bg-olive-dark px-2.5">
@@ -229,7 +236,7 @@ export function Sidebar() {
         )}
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {overlayItems ? (
+          {overlayGroups ? (
             <>
               <SidebarItem
                 label="Back"
@@ -239,49 +246,39 @@ export function Sidebar() {
                 onClick={() => setOverlayView(null)}
               />
               <div className="mx-1 my-3 border-t border-subtle" />
-              {overlayItems.map((item) => (
-                <SidebarItem
-                  key={item.href}
-                  label={item.label}
-                  href={item.href}
-                  icon={item.icon}
-                  active={isItemActive(pathname, item)}
-                  collapsed={collapsed}
-                  exact={item.exact}
-                />
+              {overlayGroups.map((group) => (
+                <div key={group.label || 'items'} className="space-y-1">
+                  {group.label && !collapsed && <NavSectionLabel>{group.label}</NavSectionLabel>}
+                  {group.label && collapsed && <div className="mx-2 my-2 border-t border-subtle" />}
+                  {renderItems(group.items, collapsed)}
+                </div>
               ))}
             </>
           ) : (
             <>
-              {primaryItems.map((item) => (
-                <SidebarItem
-                  key={item.href}
-                  label={item.label}
-                  href={item.href}
-                  icon={item.icon}
-                  active={isItemActive(pathname, item)}
-                  collapsed={collapsed}
-                  exact={item.exact}
-                />
-              ))}
+              {renderItems(primaryItems, collapsed)}
 
               {showOrgSections && (
                 <>
                   <div className="mx-1 my-3 border-t border-subtle" />
-                  <SidebarItem
-                    label="Settings"
-                    icon={Settings}
-                    active={isConfigurationPath(pathname)}
-                    collapsed={collapsed}
-                    onClick={() => setOverlayView('settings')}
-                  />
-                  <SidebarItem
-                    label="Admin"
-                    icon={Shield}
-                    active={pathname.startsWith('/admin')}
-                    collapsed={collapsed}
-                    onClick={() => setOverlayView('admin')}
-                  />
+                  {settingsGroups.length > 0 && (
+                    <SidebarItem
+                      label="Settings"
+                      icon={Settings}
+                      active={isConfigurationPath(pathname)}
+                      collapsed={collapsed}
+                      onClick={() => setOverlayView('settings')}
+                    />
+                  )}
+                  {adminItems.length > 0 && (
+                    <SidebarItem
+                      label="Admin"
+                      icon={Shield}
+                      active={isAdminPath(pathname)}
+                      collapsed={collapsed}
+                      onClick={() => setOverlayView('admin')}
+                    />
+                  )}
                 </>
               )}
             </>
@@ -331,40 +328,21 @@ export function Sidebar() {
           </div>
           {isPlatformAdmin && <div className="shrink-0 border-b border-subtle p-3">{orgSelector}</div>}
           <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-            {primaryItems.map((item) => (
-              <SidebarItem
-                key={item.href}
-                label={item.label}
-                href={item.href}
-                icon={item.icon}
-                active={isItemActive(pathname, item)}
-                collapsed={false}
-              />
-            ))}
+            {renderItems(primaryItems, false)}
             {showOrgSections && (
               <>
-                <NavSectionLabel>Settings</NavSectionLabel>
-                {CONFIG_ITEMS.map((item) => (
-                  <SidebarItem
-                    key={item.href}
-                    label={item.label}
-                    href={item.href}
-                    icon={item.icon}
-                    active={isItemActive(pathname, item)}
-                    collapsed={false}
-                  />
+                {settingsGroups.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <NavSectionLabel>{group.label}</NavSectionLabel>
+                    {renderItems(group.items, false)}
+                  </div>
                 ))}
-                <NavSectionLabel>Admin</NavSectionLabel>
-                {ADMIN_ITEMS.map((item) => (
-                  <SidebarItem
-                    key={item.href}
-                    label={item.label}
-                    href={item.href}
-                    icon={item.icon}
-                    active={isItemActive(pathname, item)}
-                    collapsed={false}
-                  />
-                ))}
+                {adminItems.length > 0 && (
+                  <>
+                    <NavSectionLabel>Admin</NavSectionLabel>
+                    {renderItems(adminItems, false)}
+                  </>
+                )}
               </>
             )}
           </nav>

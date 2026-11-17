@@ -193,7 +193,7 @@ const GROUPS: EndpointGroup[] = [
   },
   {
     label: 'Calendars',
-    description: 'Calendars and their booking rules: work days and hours in the calendar time zone, slot size, buffer, blocked dates, minimum notice, booking horizon, reminders, staff member and the service charged at booking. Changes need an owner or admin key/user.',
+    description: 'Calendars and their booking rules: work days and hours in the calendar time zone, slot size, buffer, blocked dates, minimum notice, booking horizon, reminders, staff member and the service charged at booking. Reading is open to API keys; creating, changing or deleting calendars needs an owner or admin user in the dashboard (API keys get 403).',
     endpoints: [
       {
         method: 'GET',
@@ -204,7 +204,7 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'POST',
         path: '/api/v1/calendars',
-        description: 'Create a calendar (it inherits the organization time zone).',
+        description: 'Create a calendar (it inherits the organization time zone). Owner/admin users only — API keys get 403.',
         bodyParams: [
           { name: 'name', type: 'string', required: true, description: 'Calendar display name.' },
           { name: 'color', type: 'hex color', description: 'Example: "#2563EB".' },
@@ -219,7 +219,7 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'PUT',
         path: '/api/v1/calendars/:calendarId/config',
-        description: 'Update any settings of a calendar in one call (all fields optional; nothing is saved if one is invalid).',
+        description: 'Update any settings of a calendar in one call (all fields optional; nothing is saved if one is invalid). Owner/admin users only — API keys get 403.',
         bodyParams: [
           { name: 'name / color / is_active', type: 'string / hex / boolean', description: 'Identity and active state.' },
           { name: 'timezone', type: 'IANA zone', description: 'Example: "America/Mexico_City". Work hours and dates are read in this zone.' },
@@ -240,7 +240,7 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'DELETE',
         path: '/api/v1/calendars/:calendarId',
-        description: 'Delete a calendar. 409 CALENDAR_HAS_UPCOMING_BOOKINGS while it has upcoming bookings; 409 CALENDAR_MOVE_TARGET_REQUIRED if past appointments must be moved (pass ?move_to=<calendarId>). The follow-up calendar cannot be deleted.',
+        description: 'Owner/admin users only (API keys get 403). Delete a calendar. 409 CALENDAR_HAS_UPCOMING_BOOKINGS while it has upcoming bookings; 409 CALENDAR_MOVE_TARGET_REQUIRED if past appointments must be moved (pass ?move_to=<calendarId>). The follow-up calendar cannot be deleted.',
         queryParams: [{ name: 'move_to', type: 'uuid', description: 'Calendar that receives the past appointments.' }],
       },
     ],
@@ -292,7 +292,7 @@ const GROUPS: EndpointGroup[] = [
           { name: 'description / location / meeting_url', type: 'string', description: 'Details shown to the contact.' },
           { name: 'conversation_id', type: 'uuid', description: 'Conversation the booking came from.' },
           { name: 'timezone', type: 'IANA zone', description: 'Zone for messages to the contact (defaults to the calendar zone).' },
-          { name: 'override', type: '{ reason }', description: 'Owners/admins only: book outside the rules; the reason is kept.' },
+          { name: 'override', type: '{ reason }', description: 'Owner/admin users only (not API keys): book outside the rules; the reason is kept.' },
           { name: 'waive_payment', type: 'boolean', description: 'Staff only: book a charging calendar without payment (recorded).' },
         ],
         note: 'origin is set by the API from who calls (API key = "webhook"); a value sent in the body is ignored.',
@@ -305,7 +305,7 @@ const GROUPS: EndpointGroup[] = [
         bodyParams: [
           { name: 'starts_at', type: 'ISO datetime', required: true, description: 'New start ("new_start_time" still accepted).' },
           { name: 'duration_minutes', type: 'number', description: 'New length (defaults to the current one).' },
-          { name: 'override', type: '{ reason }', description: 'Owners/admins only.' },
+          { name: 'override', type: '{ reason }', description: 'Owner/admin users only (not API keys).' },
         ],
       },
       { method: 'POST', path: '/api/v1/appointments/:id/confirm', description: 'Confirm on behalf of the contact (recorded as staff confirmation).' },
@@ -318,7 +318,7 @@ const GROUPS: EndpointGroup[] = [
       },
       { method: 'POST', path: '/api/v1/appointments/:id/complete', description: 'Record that it happened (only once it has started).' },
       { method: 'POST', path: '/api/v1/appointments/:id/no-show', description: 'Record that the contact did not come (only once it has started).' },
-      { method: 'DELETE', path: '/api/v1/appointments/:id', description: 'Owners/admins: delete a past or cancelled, unpaid booking. Upcoming bookings must be cancelled first.' },
+      { method: 'DELETE', path: '/api/v1/appointments/:id', description: 'Owner/admin users only (not API keys): delete a past or cancelled, unpaid booking. Upcoming bookings must be cancelled first.' },
     ],
   },
   {

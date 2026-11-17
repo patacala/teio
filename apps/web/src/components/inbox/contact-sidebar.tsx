@@ -1,19 +1,38 @@
 'use client';
 
-import { useContact } from '@/hooks/useContacts';
-import { useConversation } from '@/hooks/useConversations';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useContact, useOptOut } from '@/hooks/useContacts';
+import { useConversation, useCreateConversation } from '@/hooks/useConversations';
+import { usePayments } from '@/hooks/usePayments';
+import { toast } from '@/hooks/useToast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChannelBadge } from './channel-badge';
 import { LeadStageSelector } from './lead-stage-selector';
 import { LeadScoreIndicator } from './lead-score-indicator';
 import { AgentStatusToggle } from './agent-status-toggle';
 import { ContactTags } from './contact-tags';
 import { CapturedFieldsList } from './captured-fields-list';
-import { getInitials, formatRelativeTime } from '@/lib/utils';
+import { reachableChannels } from '@/components/lead/reachable-channels';
+import { getInitials, formatRelativeTime, formatMoney } from '@/lib/utils';
+import type { Payment } from '@/services/payments.service';
 import {
   Mail, Phone, Bot, Clock, Tag, TrendingUp,
-  MessageSquare, Sparkles, Layers,
+  MessageSquare, Sparkles, Layers, Wallet, BellOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const PAYMENT_STATUS_VARIANT: Record<Payment['status'], 'success' | 'warn' | 'default' | 'destructive'> = {
+  paid: 'success',
+  pending: 'warn',
+  expired: 'default',
+  canceled: 'default',
+  failed: 'destructive',
+  refunded: 'default',
+};
 
 interface ContactSidebarProps {
   contactId: string | null;
@@ -39,8 +58,33 @@ function Section({ title, icon, children }: {
 }
 
 export function ContactSidebar({ contactId, conversationId }: ContactSidebarProps) {
+  const router = useRouter();
   const { data: contact, isLoading } = useContact(contactId);
   const { data: conversation } = useConversation(conversationId);
+  const { data: payments, isLoading: paymentsLoading } = usePayments(contactId ?? undefined, { enabled: !!contactId });
+  const createConversation = useCreateConversation();
+  const optOut = useOptOut();
+  const [startChannel, setStartChannel] = useState<string | undefined>(undefined);
+
+  const handleStartConversation = async () => {
+    if (!contactId || !startChannel) return;
+    const conv = await createConversation.mutateAsync({ contact_id: contactId, channel: startChannel });
+    router.replace(`/inbox?conversationId=${conv.id}`, { scroll: false });
+  };
+
+  const handleOptOut = async () => {
+    if (!contactId) return;
+    try {
+      const { sequences_cancelled } = await optOut.mutateAsync(contactId);
+      toast({
+        title: sequences_cancelled > 0
+          ? `Opted out. ${sequences_cancelled} follow-up sequence(s) cancelled.`
+          : 'Opted out of automated follow-ups.',
+      });
+    } catch (err) {
+      toast({ title: (err as Error)?.message || 'Failed to opt out', variant: 'error' });
+    }
+  };
 
   if (!contactId) {
     return (
@@ -118,6 +162,19 @@ export function ContactSidebar({ contactId, conversationId }: ContactSidebarProp
         </Section>
       )}
 
+      {/* Channel opt-out */}
+      {!isLoading && contact && (
+        <Section title="Communications" icon={<BellOff className="h-3.5 w-3.5" />}>
+          {contact.tags?.includes('opt-out') ? (
+            <Badge variant="warn">Opted out of automated follow-ups</Badge>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleOptOut} disabled={optOut.isPending}>
+              {optOut.isPending ? 'Opting out…' : 'Opt out of follow-ups'}
+            </Button>
+          )}
+        </Section>
+      )}
+
       {/* Bot / Human toggle */}
       {conversationId && (
         <Section title="Assigned To" icon={<Bot className="h-3.5 w-3.5" />}>
@@ -125,6 +182,62 @@ export function ContactSidebar({ contactId, conversationId }: ContactSidebarProp
             conversationId={conversationId}
             botActive={conversation?.bot_active ?? true}
           />
+        </Section>
+      )}
+
+      {/* Start a conversation — only once we know the lead's reachable channels */}
+      {!conversationId && !isLoading && contact && (
+        <Section title="Start Conversation" icon={<MessageSquare className="h-3.5 w-3.5" />}>
+          {(() => {
+            const channels = reachableChannels(contact);
+            if (channels.length === 0) {
+              return <p className="text-[11px] text-muted">No reachable channel on file for this lead.</p>;
+            }
+            return (
+              <div className="flex items-center gap-2">
+                <Select value={startChannel} onValueChange={setStartChannel}>
+                  <SelectTrigger className="h-8 flex-1 text-xs">
+                    <SelectValue placeholder="Choose a channel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {channels.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        <ChannelBadge channel={c} showLabel />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  disabled={!startChannel || createConversation.isPending}
+                  onClick={handleStartConversation}
+                >
+                  {createConversation.isPending ? 'Starting…' : 'Start'}
+                </Button>
+              </div>
+            );
+          })()}
+        </Section>
+      )}
+
+      {/* Payments */}
+      {(paymentsLoading || (payments && payments.length > 0)) && (
+        <Section title="Payments" icon={<Wallet className="h-3.5 w-3.5" />}>
+          {paymentsLoading ? (
+            <Skeleton className="h-10 w-full rounded-lg" />
+          ) : (
+            <div className="space-y-1.5">
+              {payments!.slice(0, 3).map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="truncate text-secondary">{p.service?.name ?? 'Payment'}</span>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className="font-medium text-primary">{formatMoney(p.amount, p.currency)}</span>
+                    <Badge variant={PAYMENT_STATUS_VARIANT[p.status]}>{p.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
       )}
 

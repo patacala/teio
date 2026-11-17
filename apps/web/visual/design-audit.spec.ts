@@ -17,6 +17,7 @@ test('the design audit reports every kind of violation', async ({ page }) => {
          <select><option>Native select</option></select>
          <span title="Tooltip via title">Hover me</span>
          <svg width="10" height="10"><circle r="4" cx="5" cy="5" /></svg>
+         <div data-chart><svg width="10" height="10"><circle r="4" cx="5" cy="5" /></svg></div>
          <button style="width:20px;height:20px"></button>
          <p style="font-family:Georgia, serif">Serif text</p>
          <p>Guardar cambios</p>
@@ -31,7 +32,7 @@ test('the design audit reports every kind of violation', async ({ page }) => {
   expect(audit.offPaletteColors.join('\n')).toContain('rgb(255, 255, 255)');
   expect(audit.nativeControls).toEqual([expect.stringContaining('<select')]);
   expect(audit.titleAttributes).toEqual([expect.stringContaining('Hover me')]);
-  expect(audit.nonLucideIcons.length).toBeGreaterThan(0);
+  expect(audit.nonLucideIcons.length).toBe(1); // the bare <svg>; the one inside [data-chart] is a chart, not an icon
   expect(audit.unlabeledControls.join('\n')).toContain('<button');
   expect(audit.foreignFonts.join('\n')).toContain('Georgia');
   expect(audit.spanishText).toContain('Guardar cambios');

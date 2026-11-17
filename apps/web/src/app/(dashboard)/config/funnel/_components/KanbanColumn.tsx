@@ -69,7 +69,7 @@ export function KanbanColumn({ stage, onDragStart, onDrop }: Props) {
         )}
         {hidden > 0 && (
           <p className="text-[11px] text-muted text-center py-1.5">
-            {hidden} more in this stage — see the List view
+            {hidden} more in this stage — see the Table
           </p>
         )}
       </div>

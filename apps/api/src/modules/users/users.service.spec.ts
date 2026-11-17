@@ -36,7 +36,7 @@ describe('UsersService', () => {
     findOne: jest.Mock;
   };
   let qb: { where: jest.Mock; getMany: jest.Mock };
-  let redis: { del: jest.Mock };
+  let redis: { del: jest.Mock; set: jest.Mock };
   let admin: { createUser: jest.Mock; inviteUserByEmail: jest.Mock; deleteUser: jest.Mock };
   let configValues: Record<string, string | undefined>;
 
@@ -63,7 +63,7 @@ describe('UsersService', () => {
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       findOne: jest.fn(),
     };
-    redis = { del: jest.fn().mockResolvedValue(1) };
+    redis = { del: jest.fn().mockResolvedValue(1), set: jest.fn().mockResolvedValue('OK') };
     admin = {
       createUser: jest.fn().mockResolvedValue({ data: { user: { id: AUTH_ID } }, error: null }),
       inviteUserByEmail: jest.fn().mockResolvedValue({ data: { user: { id: AUTH_ID } }, error: null }),
@@ -239,6 +239,20 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(member());
       await service.update('u1', ORG_A, { full_name: 'New name', role: UserRole.AGENT });
       expect(redis.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('touchLastSeen', () => {
+    it('writes last_seen_at once per throttle window, claimed in Redis', async () => {
+      await service.touchLastSeen('user-1');
+      expect(redis.set).toHaveBeenCalledWith('user:last-seen:user-1', '1', 'EX', 300, 'NX');
+      expect(repo.update).toHaveBeenCalledWith('user-1', { last_seen_at: expect.any(Date) });
+    });
+
+    it('skips the write while the window is still claimed (e.g. by another instance)', async () => {
+      redis.set.mockResolvedValueOnce(null);
+      await service.touchLastSeen('user-1');
+      expect(repo.update).not.toHaveBeenCalled();
     });
   });
 });

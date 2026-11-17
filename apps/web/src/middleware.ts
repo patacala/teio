@@ -2,7 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
-const OPEN_PATHS = ['/accept-invite'];
+// Email-driven flows: must stay reachable regardless of auth state, since the
+// link's token (not the session cookie) is what grants access.
+const OPEN_PATHS = ['/accept-invite', '/forgot-password', '/reset-password'];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

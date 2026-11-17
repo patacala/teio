@@ -29,7 +29,12 @@ export function useRealtimeMessages(conversationId: string | null) {
           return next;
         });
       },
-    ).subscribe();
+    );
+
+    // Another hook sharing this conversation channel (presence, typing) may
+    // have already subscribed it — subscribing twice throws.
+    const alreadySubscribed = ch.state === 'joined' || ch.state === 'joining' || ch.state === 'leaving';
+    if (!alreadySubscribed) ch.subscribe();
 
     return () => {
       client.unsubscribe(channelName);

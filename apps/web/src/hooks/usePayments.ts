@@ -63,11 +63,12 @@ export function useDeletePaymentService() {
 
 // ── Payments ──────────────────────────────────────────────────────────────────
 
-export function usePayments(contactId?: string) {
+export function usePayments(contactId?: string, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['payments', contactId],
     queryFn: () => paymentsService.getPayments(contactId),
     staleTime: 15_000,
+    enabled: opts.enabled ?? true,
   });
 }
 

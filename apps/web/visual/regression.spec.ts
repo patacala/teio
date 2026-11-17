@@ -57,6 +57,9 @@ test.describe('unchanged screens match the original design', () => {
     const view = await open(page, '/config/communications', { user: { role: 'admin', is_platform_admin: true, full_name: 'Pat Platform' } });
     await expect(page.getByText('Appointment Created').first()).toBeVisible();
     // Intended change: the platform sidebar gained "Demo accounts"; compare the page itself.
+    // Intended change: the "Appointment confirmation request" event was added to the
+    // appointments group (baseline re-captured with it; the rest of the page is unchanged).
+    await expect(page.getByText('Appointment confirmation request')).toBeVisible();
     await expect(page.locator('main')).toHaveScreenshot('communication-templates.png', PIXEL_EXACT);
     expect(view.errors).toEqual([]);
   });

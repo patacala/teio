@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { BillingAccessLevel, BillingRestrictionReason } from '@crm/shared';
 import { billingOverview, blockedAccess, paidAccess } from '@/test/fixtures/billing';
+import { LEADS, platformAttention, platformOrganizations, platformOverview } from '@/test/fixtures/platform';
 import type { Scenario } from './support/api-mock';
 import {
   BLOCKED, CANCELED, DEMO_5_DAYS_LEFT, DEMO_DEFAULTS, DEMO_ENDED, DEMO_ENDING_SOON, DEMO_ORGS, INVOICES, PAID, PAST_DUE,
@@ -251,5 +252,96 @@ test.describe('Platform: demo accounts', () => {
     const view = await openView(page, '/platform/demo-accounts', platform());
     await settle(page);
     await expectView(page, view, 'platform-mobile.png');
+  });
+});
+
+test.describe('Platform: overview (super admin dashboard)', () => {
+  const overview = (extra: Partial<Scenario> = {}): Scenario => ({
+    user: PLATFORM,
+    platformOverview: platformOverview(),
+    platformAttention: platformAttention(),
+    platformLeads: LEADS,
+    platformOrganizations: platformOrganizations(),
+    ...extra,
+  });
+
+  test('money, leads and organizations', async ({ page }) => {
+    const view = await openView(page, '/platform', overview());
+    await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'MRR' })).toContainText('$18,983');
+    await expect(page.getByRole('group', { name: 'MRR' })).toContainText('27% vs last month');
+    await expect(page.getByRole('group', { name: 'Revenue at risk' })).toContainText('$4,083/mo');
+    await expect(page.getByRole('button', { name: 'Open billing for Cedar Clinic' })).toBeVisible();
+    await expect(page.getByText('45% of previous step')).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: 'Lina Park' })).toContainText('Opened 2×');
+    await expect(page.getByRole('row').filter({ hasText: 'Echo Studio' }).last()).toContainText('2 days left');
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+    await expectView(page, view, 'platform-overview.png');
+  });
+
+  test('loading', async ({ page }) => {
+    const pending = overview({
+      platformOverview: 'pending', platformAttention: 'pending', platformLeads: 'pending', platformOrganizations: 'pending',
+    });
+    const view = await openView(page, '/platform', pending, { settle: false });
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(3);
+    await expectView(page, view, 'platform-overview-loading.png', { fit: false });
+  });
+
+  test('a new platform with nothing to show yet', async ({ page }) => {
+    const quiet = platformOverview();
+    quiet.money = { ...quiet.money, mrr: 0, mrr_last_month: null, arr: 0, paying_organizations: 0, average_revenue_per_organization: 0,
+      cash_collected: 0, cash_collected_previous: 0, outstanding: 0, outstanding_invoices: 0, new_paying: 0, churned: 0,
+      at_risk: { amount: 0, organizations: 0, past_due: 0, cancel_scheduled: 0, payment_method_issue: 0, payment_failed: 0 } };
+    quiet.growth = { leads: { total: 0, previous: 0, demo_requests: 0, signups: 0 }, demos: { active: 0, ending_7d: 0, no_end_date: 0 },
+      conversion: { rate: null, converted: 0, expired_unpaid: 0 } };
+    quiet.lead_funnel = quiet.lead_funnel.map((step) => ({ ...step, count: 0 }));
+    quiet.signups = { signups: 0, activated: 0, paid: 0 };
+    quiet.revenue_by_month = quiet.revenue_by_month.map((month) => ({ ...month, collected: 0, mrr: null }));
+    const view = await openView(page, '/platform', overview({
+      platformOverview: quiet, platformAttention: platformAttention([]), platformLeads: [],
+      platformOrganizations: platformOrganizations([], {
+        all: 0, paying: 0, payment_failed: 0, churned: 0, demo: 0, demo_expired: 0, suspended: 0, ending_soon: 0, internal: 0,
+      }),
+    }));
+    await expect(page.getByText('Nothing needs attention right now')).toBeVisible();
+    await expect(page.getByText('No demo requests in this period')).toBeVisible();
+    await expect(page.getByText('No revenue yet')).toBeVisible();
+    await expect(page.getByText('No leads yet')).toBeVisible();
+    await expectView(page, view, 'platform-overview-empty.png');
+  });
+
+  test('errors with retry', async ({ page }) => {
+    const view = await openView(page, '/platform', overview({
+      platformOverview: 'error', platformAttention: 'error', platformLeads: 'error', platformOrganizations: 'error',
+    }));
+    await expect(page.getByRole('alert').filter({ hasText: 'Could not load the platform figures.' })).toBeVisible();
+    await expect(page.getByText('Could not load what needs attention.')).toBeVisible();
+    await expect(page.getByText('Could not load leads.')).toBeVisible();
+    await expect(page.getByText('Could not load organizations.')).toBeVisible();
+    await expect(page.getByText('Revenue is unavailable right now')).toBeVisible();
+    await expectView(page, view, 'platform-overview-error.png');
+  });
+
+  test('organization actions', async ({ page }) => {
+    const view = await openView(page, '/platform', overview());
+    await page.getByRole('button', { name: 'More actions for Echo Studio' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Manage demo' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Mark as internal' })).toBeVisible();
+    await expectView(page, view, 'platform-overview-org-menu.png', { fit: false });
+  });
+
+  test('phone layout', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const view = await openView(page, '/platform', overview());
+    await settle(page);
+    await expectView(page, view, 'platform-overview-mobile.png');
+  });
+
+  test('a platform admin landing on / is taken to the overview', async ({ page }) => {
+    const view = await openView(page, '/', overview());
+    await expect(page).toHaveURL(/\/platform$/);
+    await expect(page.getByRole('heading', { name: 'Platform overview' })).toBeVisible();
+    expect(view.unexpectedRequests.filter((r) => r.includes('/analytics/dashboard'))).toEqual([]);
   });
 });

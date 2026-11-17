@@ -46,9 +46,10 @@ function UsageCell({ label, used, limit }: { label: string; used: number; limit:
   );
 }
 
-export function DemoOrganizationsCard() {
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+/** `initialSearch` comes from the URL (`?search=`), e.g. a link from the platform overview. */
+export function DemoOrganizationsCard({ initialSearch = '' }: { initialSearch?: string }) {
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<DemoOrganization | null>(null);
   const defaults = useDemoDefaults();

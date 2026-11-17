@@ -3,13 +3,6 @@
 import { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { ChannelBadge } from './channel-badge';
 import { TemplateSelector } from './template-selector';
 import { Send, Paperclip } from 'lucide-react';
@@ -33,7 +26,6 @@ export function MessageComposer({
   className,
 }: MessageComposerProps) {
   const [draft, setDraft] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState(channel);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = async () => {
@@ -55,22 +47,10 @@ export function MessageComposer({
 
   return (
     <div className={cn('px-4 py-3 border-t border-subtle shrink-0', className)}>
-      {/* Reply via row */}
+      {/* Reply via row — this conversation is scoped to one channel, so it's informational, not a choice */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs text-secondary">Reply via:</span>
-        <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-          <SelectTrigger className="h-6 w-auto text-xs px-2 py-0 border-subtle bg-transparent">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="whatsapp">WhatsApp</SelectItem>
-            <SelectItem value="sms">SMS</SelectItem>
-            <SelectItem value="voice">Voice</SelectItem>
-            <SelectItem value="webchat">Web Chat</SelectItem>
-            <SelectItem value="facebook">Facebook</SelectItem>
-            <SelectItem value="instagram">Instagram</SelectItem>
-          </SelectContent>
-        </Select>
+        <ChannelBadge channel={channel} showLabel />
       </div>
 
       {/* Composer row */}
@@ -95,8 +75,7 @@ export function MessageComposer({
             className="w-full bg-transparent text-sm text-primary placeholder:text-muted resize-none outline-hidden max-h-32"
             style={{ height: 'auto', minHeight: '24px' }}
           />
-          <div className="flex items-center justify-between mt-1">
-            <ChannelBadge channel={selectedChannel} />
+          <div className="flex items-center justify-end mt-1">
             <span className="text-[10px] text-muted hidden sm:block">
               Enter to send · Shift+Enter for new line
             </span>
@@ -109,7 +88,7 @@ export function MessageComposer({
             <Paperclip className="h-4 w-4" />
           </Button>
           <TemplateSelector
-            channel={selectedChannel}
+            channel={channel}
             onSelect={(content) => setDraft(content)}
           />
           <Button

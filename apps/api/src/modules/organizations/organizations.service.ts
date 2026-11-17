@@ -59,6 +59,7 @@ export class OrganizationsService {
     if (dto.settings !== undefined) org.settings = dto.settings;
     const activeChanged = dto.is_active !== undefined && dto.is_active !== org.is_active;
     if (dto.is_active !== undefined) org.is_active = dto.is_active;
+    if (dto.is_internal !== undefined) org.is_internal = dto.is_internal;
     const saved = await this.repo.save(org);
     if (activeChanged) await this.billingAccess?.invalidate(id);
     return saved;

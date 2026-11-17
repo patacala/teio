@@ -1,40 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { useBillingViewer } from '@/components/billing/use-billing-viewer';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, type DateRange } from '@/components/ui/calendar';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import {
   Users,
   Phone,
   Bot,
   TrendingUp,
-  TrendingDown,
   ArrowRight,
   Clock,
   DollarSign,
   CalendarClock,
   Flame,
   CheckCircle2,
-  CalendarRange,
   AlertTriangle,
   CalendarCheck,
   MessageCircle,
   MessageSquare,
   Radio,
-  X,
 } from 'lucide-react';
-import Link from 'next/link';
 import {
   AreaChart, Area, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import type { DashboardRange, CustomDateRange, FunnelStageCount } from '@/services/analytics.service';
+import { AttentionRow } from '@/components/dashboard/attention-row';
+import { formatDateShort, fromISODate } from '@/components/dashboard/dates';
+import { formatMoney } from '@/components/dashboard/format';
+import { FunnelPipeline } from '@/components/dashboard/funnel-pipeline';
+import { CustomRangePicker, RangeSelector } from '@/components/dashboard/range-picker';
+import { EmptyChart, HeaderLink, SectionHeader } from '@/components/dashboard/section-header';
+import { StatCard } from '@/components/dashboard/stat-card';
 import {
   CHART_COLORS,
   CHART_MUTED,
@@ -67,97 +69,8 @@ const MESSAGING_SERIES = [
   { key: 'calls', name: 'Calls', color: CHART_COLORS.cyan },
 ] as const;
 
-// ── Section header ───────────────────────────────────────────────────────────
-function SectionHeader({
-  icon, title, subtitle, badge, action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle?: string;
-  badge?: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="icon-tile">{icon}</span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="truncate text-[15px] font-semibold leading-6 text-primary">{title}</h2>
-            {badge}
-          </div>
-          {subtitle && <p className="truncate text-[11px] text-muted">{subtitle}</p>}
-        </div>
-      </div>
-      {action}
-    </div>
-  );
-}
 
-function HeaderLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-accent"
-    >
-      {children}
-    </Link>
-  );
-}
-
-function EmptyChart({ height, children }: { height: number; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-center" style={{ height }}>
-      <p className="text-sm text-muted">{children}</p>
-    </div>
-  );
-}
-
-// ── Stat card ────────────────────────────────────────────────────────────────
-interface StatCardProps {
-  label: string;
-  value: string | number | undefined;
-  icon: React.ReactNode;
-  variant?: 'metric' | 'panel';
-  trend?: number;
-  suffix?: string;
-  loading?: boolean;
-  footer?: React.ReactNode;
-}
-
-function StatCard({ label, value, icon, variant = 'panel', trend, suffix, loading, footer }: StatCardProps) {
-  return (
-    <Card variant={variant} className="flex h-full flex-col p-5">
-      <span className="icon-tile">{icon}</span>
-      <p className="mt-4 text-xs font-medium text-secondary">{label}</p>
-      {loading ? (
-        <Skeleton className="mt-2 h-8 w-28" />
-      ) : (
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-          <p className="text-[26px] font-semibold leading-8 tracking-tight text-primary">
-            {value ?? '—'}
-            {suffix && <span className="ml-1.5 text-base font-medium text-muted">{suffix}</span>}
-          </p>
-          {trend !== undefined && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 text-xs font-medium',
-                trend > 0 ? 'text-success' : trend < 0 ? 'text-danger' : 'text-muted',
-              )}
-            >
-              {trend > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : trend < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : null}
-              {trend === 0 ? 'No change' : `${Math.abs(trend)}% vs prev period`}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="mt-auto pt-4">
-        <div className="border-t border-subtle pt-3 text-xs text-muted">{!loading && footer}</div>
-      </div>
-    </Card>
-  );
-}
-
+// ── Funnel: open stages vs closed outcomes ───────────────────────────────────
 function outcomeKind(stage: FunnelStageCount): 'won' | 'lost' | null {
   const type = stage.stage_type?.toLowerCase();
   if (type === 'won' || type === 'lost') return type;
@@ -166,103 +79,17 @@ function outcomeKind(stage: FunnelStageCount): 'won' | 'lost' | null {
   return null;
 }
 
-function FunnelPipeline({ stages }: { stages: FunnelStageCount[] }) {
-  const pipeline = stages.filter((stage) => outcomeKind(stage) === null);
-  const wonCount = stages.filter((stage) => outcomeKind(stage) === 'won').reduce((sum, stage) => sum + stage.count, 0);
-  const lostCount = stages.filter((stage) => outcomeKind(stage) === 'lost').reduce((sum, stage) => sum + stage.count, 0);
-  const max = Math.max(...pipeline.map((stage) => stage.count), 1);
-  
-  if (pipeline.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted">No funnel data yet</p>;
-  }
 
-  const stageHeight = 56;
-  const stageGap = 4;
-  const totalHeight = pipeline.length * stageHeight + (pipeline.length - 1) * stageGap;
-
-  return (
-    <div className="relative">
-      <div className="flex items-center gap-6">
-        <svg
-          viewBox={`0 0 100 ${totalHeight}`}
-          preserveAspectRatio="none"
-          className="h-auto w-full max-w-md"
-          style={{ height: totalHeight }}
-        >
-          <defs>
-            <linearGradient id="funnelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{ stopColor: CHART_COLORS.lime, stopOpacity: 0.7 }} />
-              <stop offset="100%" style={{ stopColor: 'var(--color-olive)', stopOpacity: 0.4 }} />
-            </linearGradient>
-          </defs>
-          {pipeline.map((stage, index) => {
-            const y = index * (stageHeight + stageGap);
-            const widthTop = Math.max((stage.count / max) * 100, 8);
-            const nextStage = pipeline[index + 1];
-            const widthBottom = nextStage ? Math.max((nextStage.count / max) * 100, 8) : widthTop;
-            const leftTop = (100 - widthTop) / 2;
-            const leftBottom = (100 - widthBottom) / 2;
-
-            return (
-              <path
-                key={stage.stage}
-                d={`M ${leftTop} ${y} 
-                    L ${leftTop + widthTop} ${y} 
-                    L ${leftBottom + widthBottom} ${y + stageHeight} 
-                    L ${leftBottom} ${y + stageHeight} 
-                    Z`}
-                fill="url(#funnelGradient)"
-                stroke={CHART_SEGMENT_STROKE}
-                strokeWidth="0.5"
-                className="transition-all duration-300"
-              />
-            );
-          })}
-        </svg>
-
-        <div className="flex-1 space-y-1">
-          {pipeline.map((stage, index) => {
-            const previous = index > 0 ? pipeline[index - 1].count : null;
-            const conversion = previous && previous > 0 ? Math.round((stage.count / previous) * 100) : null;
-            
-            return (
-              <div
-                key={stage.stage}
-                className="flex h-14 items-center justify-between rounded-row border border-white/6 bg-surface-raised px-4"
-              >
-                <div>
-                  <p className="text-sm font-medium text-primary">{stage.stage}</p>
-                  <p className="text-xs text-muted">
-                    {stage.count} leads
-                    {conversion != null && (
-                      <span className="ml-2 font-medium text-accent">{conversion}% conversion</span>
-                    )}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[22px] font-semibold text-primary">{stage.count}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {(wonCount > 0 || lostCount > 0) && (
-        <div className="mt-4 flex items-center justify-center gap-8 rounded-row border border-white/6 bg-surface-raised py-4">
-          <div className="text-center">
-            <p className="text-xs font-medium uppercase tracking-wider text-success">Won</p>
-            <p className="mt-1 text-[22px] font-semibold text-primary">{wonCount}</p>
-          </div>
-          <div className="h-8 w-px bg-divider" />
-          <div className="text-center">
-            <p className="text-xs font-medium uppercase tracking-wider text-danger">Lost</p>
-            <p className="mt-1 text-[22px] font-semibold text-primary">{lostCount}</p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function toFunnel(stages: FunnelStageCount[]) {
+  return {
+    steps: stages
+      .filter((stage) => outcomeKind(stage) === null)
+      .map((stage) => ({ key: stage.stage, label: stage.stage, count: stage.count })),
+    outcomes: {
+      won: stages.filter((stage) => outcomeKind(stage) === 'won').reduce((sum, stage) => sum + stage.count, 0),
+      lost: stages.filter((stage) => outcomeKind(stage) === 'lost').reduce((sum, stage) => sum + stage.count, 0),
+    },
+  };
 }
 
 // ── Format seconds to human readable ─────────────────────────────────────────
@@ -282,144 +109,26 @@ function formatResponseTimeMinutes(seconds: number): string {
   return `${(seconds / 60).toFixed(1)}m`;
 }
 
-// ── Format cents to currency ─────────────────────────────────────────────────
-function formatMoney(cents: number | undefined, currency: string = 'usd'): string {
-  if (cents === undefined) return '—';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
-// ── Needs Attention urgency → icon/color ─────────────────────────────────────
-const ATTENTION_STYLE: Record<'critical' | 'warning', { icon: React.ReactNode; ring: string; bg: string }> = {
-  critical: { icon: <Flame className="h-4 w-4" />, ring: 'text-danger', bg: 'bg-danger/12' },
-  warning: { icon: <CalendarClock className="h-4 w-4" />, ring: 'text-warning', bg: 'bg-warning/12' },
-};
-
-// ── Range selector ───────────────────────────────────────────────────────────
-const RANGES: DashboardRange[] = ['7d', '30d', '90d'];
-
-function RangeSelector({
-  value, onChange, isCustom,
-}: { value: DashboardRange; onChange: (r: DashboardRange) => void; isCustom: boolean }) {
-  return (
-    <div className="flex h-9 items-center gap-0.5 rounded-control border border-subtle bg-surface p-1">
-      {RANGES.map((r) => (
-        <button
-          key={r}
-          onClick={() => onChange(r)}
-          aria-pressed={!isCustom && value === r}
-          className={cn(
-            'h-full rounded-lg border px-3 text-xs font-medium transition-colors',
-            !isCustom && value === r
-              ? 'border-accent/12 bg-olive-dark text-primary'
-              : 'border-transparent text-secondary hover:text-primary',
-          )}
-        >
-          {r}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ── Custom date range picker ─────────────────────────────────────────────────
-function formatDateShort(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function fromISODate(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function CustomRangePicker({
-  active, onApply, onClear,
-}: { active: CustomDateRange | null; onApply: (r: CustomDateRange) => void; onClear: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRange>({
-    from: active ? fromISODate(active.from) : undefined,
-    to: active ? fromISODate(active.to) : undefined,
-  });
-
-  // Keep the draft in sync whenever the applied range changes (incl. being cleared elsewhere)
-  useEffect(() => {
-    setDraft({
-      from: active ? fromISODate(active.from) : undefined,
-      to: active ? fromISODate(active.to) : undefined,
-    });
-  }, [active]);
-
-  const canApply = !!draft.from && !!draft.to;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      {active ? (
-        <div className="flex h-9 items-center gap-0.5 rounded-control border border-accent/15 bg-olive-dark p-1">
-          <PopoverTrigger asChild>
-            <button className="flex h-full items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-accent transition-colors hover:bg-white/5">
-              <CalendarRange className="h-3.5 w-3.5" />
-              {formatDateShort(active.from)} → {formatDateShort(active.to)}
-            </button>
-          </PopoverTrigger>
-          <button
-            onClick={() => { onClear(); setOpen(false); }}
-            className="rounded-lg p-1 text-accent transition-colors hover:bg-white/5"
-            aria-label="Clear custom range"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ) : (
-        <PopoverTrigger asChild>
-          <button className="flex h-9 items-center gap-1.5 rounded-control border border-subtle bg-surface px-3 text-xs font-medium text-secondary transition-colors hover:bg-surface-hover hover:text-primary">
-            <CalendarRange className="h-3.5 w-3.5" />
-            Custom
-          </button>
-        </PopoverTrigger>
-      )}
-
-      <PopoverContent align="end" className="w-[280px] p-3">
-        <Calendar selected={draft} onSelect={setDraft} maxDate={new Date()} />
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-subtle">
-          <span className="text-xs text-muted">
-            {draft.from ? formatDateShort(toISODate(draft.from)) : 'From'}
-            {' → '}
-            {draft.to ? formatDateShort(toISODate(draft.to)) : 'To'}
-          </span>
-          <Button
-            size="sm"
-            onClick={() => {
-              if (draft.from && draft.to) {
-                onApply({ from: toISODate(draft.from), to: toISODate(draft.to) });
-                setOpen(false);
-              }
-            }}
-            disabled={!canApply}
-          >
-            Apply
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>('30d');
   const [customRange, setCustomRange] = useState<CustomDateRange | null>(null);
-  const { data: stats, isLoading: statsLoading } = useDashboardStats(range, customRange ?? undefined);
+  // A platform admin who is not inside an organization has the platform overview
+  // as home. Nothing is loaded until we know who is looking (the current user
+  // arrives a moment after the first render).
+  const { platformMode, currentUser } = useBillingViewer();
+  const router = useRouter();
+  const { data: stats, isPending: statsLoading } = useDashboardStats(
+    range,
+    customRange ?? undefined,
+    !!currentUser && !platformMode,
+  );
+
+  useEffect(() => {
+    if (platformMode) router.replace('/platform');
+  }, [platformMode, router]);
+
+  if (platformMode) return null;
 
   const trends = stats?.trends;
 
@@ -579,47 +288,17 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {stats?.needs_attention.map((item) => {
-                  const style = item.urgency === 'critical' ? ATTENTION_STYLE.critical : ATTENTION_STYLE.warning;
-                  const subtitle = Array.from(new Set(item.reasons.map((r) => r.subtitle))).join(' · ');
-                  return (
-                    <Link
-                      key={item.contact_id}
-                      href={`/contacts/${item.contact_id}`}
-                      className="flex items-center gap-3 rounded-row border border-white/6 bg-surface-raised p-2.5 transition-colors hover:border-strong hover:bg-surface-hover"
-                    >
-                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', style.bg, style.ring)}>
-                        {style.icon}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-medium text-primary truncate">{item.contact_name}</p>
-                          {item.interested_service && (
-                            <span className="shrink-0 rounded-full border border-subtle bg-white/5 px-2 py-0.5 text-[11px] font-medium leading-4 text-secondary">
-                              {item.interested_service}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted truncate">{subtitle}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {item.reasons.map((r, i) => (
-                          <span
-                            key={i}
-                            className={cn(
-                              'rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4',
-                              item.urgency === 'critical'
-                                ? 'border-danger/20 bg-danger/10 text-danger'
-                                : 'border-warning/20 bg-warning/10 text-warning',
-                            )}
-                          >
-                            {r.badge}
-                          </span>
-                        ))}
-                      </div>
-                    </Link>
-                  );
-                })}
+                {stats?.needs_attention.map((item) => (
+                  <AttentionRow
+                    key={item.contact_id}
+                    href={`/inbox?lead=${item.contact_id}`}
+                    urgency={item.urgency}
+                    title={item.contact_name}
+                    chip={item.interested_service}
+                    subtitle={Array.from(new Set(item.reasons.map((r) => r.subtitle))).join(' · ')}
+                    badges={item.reasons.map((r) => r.badge)}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
@@ -695,7 +374,7 @@ export default function DashboardPage() {
           {statsLoading ? (
             <Skeleton className="h-[180px] w-full rounded-row" />
           ) : stats?.funnel_conversion?.length ? (
-            <FunnelPipeline stages={stats.funnel_conversion} />
+            <FunnelPipeline {...toFunnel(stats.funnel_conversion)} />
           ) : (
             <EmptyChart height={180}>No funnel data yet</EmptyChart>
           )}

@@ -178,7 +178,9 @@ export async function auditDesign(page: Page, options: AuditOptions): Promise<Au
         result.nativeControls.push(describe(el));
       }
       if (el.hasAttribute('title') && !(el instanceof SVGElement)) result.titleAttributes.push(describe(el));
-      if (tag === 'svg' && !el.classList.contains('lucide') && !el.parentElement?.closest('svg')) {
+      // Icons must be Lucide. Charts are data graphics, not icons: an <svg> inside an
+      // explicit [data-chart] container is exempt (its colors are still audited above).
+      if (tag === 'svg' && !el.classList.contains('lucide') && !el.parentElement?.closest('svg') && !el.closest('[data-chart]')) {
         result.nonLucideIcons.push(describe(el.parentElement ?? el));
       }
 

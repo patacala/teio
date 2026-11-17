@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useAppointments';
 import { useCreateFollowUp, useCreateSequence, useUpdateFollowUp } from '@/hooks/useAutomation';
 import { useCreatePayment } from '@/hooks/usePayments';
-import { useCurrentUser } from '@/hooks/useTeam';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useSequenceTemplates } from '@/hooks/useSequenceTemplates';
 import { SequenceTimelinePreview } from '@/components/sequences/SequenceTimelinePreview';
 import { SEQUENCE_TYPE_LABELS } from '@/components/sequences/sequence-constants';
@@ -111,8 +111,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
   const updateStepMutation = useUpdateFollowUp();
   const { data: calendars } = useCalendars();
   const { data: templates } = useSequenceTemplates();
-  const { data: currentUser } = useCurrentUser();
-  const isAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  const { canOverrideCalendarRules: isAdmin } = usePermissions();
 
   const isLoading = [
     createMutation, updateMutation, rescheduleMutation, paymentMutation,

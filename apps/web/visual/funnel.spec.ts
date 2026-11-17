@@ -4,7 +4,7 @@ import { NO_FUNNELS, SALES_FUNNEL } from './support/funnel';
 import { fitViewportToContent, openView, VIEW_SCOPE, type OpenedView } from './support/view';
 
 /**
- * Funnel page (Board / List / Configure). Every state must follow the design
+ * Funnel page (Board / Table / Configure). Every state must follow the design
  * system (palette, components, icons, fonts, language, accessible names, no
  * overflow) and match its screenshot. Stage colors in the fixture are the
  * legacy hex values real funnels still store, so this also covers their
@@ -42,12 +42,12 @@ test.describe('Funnel page', () => {
     await expectView(page, view, 'funnel-board.png');
   });
 
-  test('list: contacts grouped by stage', async ({ page }) => {
+  test('table: contacts under stage columns', async ({ page }) => {
     const view = await openView(page, '/config/funnel', { user: OWNER, funnel: SALES_FUNNEL });
-    await page.getByRole('tab', { name: 'List' }).click();
-    await expect(page.getByRole('button', { name: /New Lead.*2 contacts/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Appointment Confirmed.*0 contacts/ })).toBeVisible();
-    await expect(page.getByRole('row', { name: /Open Daniel Smith/ })).toBeVisible();
+    await page.getByRole('tab', { name: 'Table' }).click();
+    await expect(page.getByRole('columnheader', { name: /New Lead/ })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Appointment Confirmed/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Daniel Smith' })).toBeVisible();
     await expectView(page, view, 'funnel-list.png');
   });
 

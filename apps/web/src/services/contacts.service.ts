@@ -146,4 +146,7 @@ export const contactsService = {
 
   updateStage: (id: string, stageId: string) =>
     authClient.patch<Contact>(`/contacts/${id}/stage`, { stage_id: stageId }),
+
+  optOut: (id: string) =>
+    authClient.post<{ contact: Contact; sequences_cancelled: number }>(`/contacts/${id}/opt-out`, {}),
 };

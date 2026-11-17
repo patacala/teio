@@ -43,6 +43,16 @@ export function useHandoff() {
   });
 }
 
+export function useCreateConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { contact_id: string; channel: string }) => conversationsService.createConversation(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
 export function useSetPinned() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -28,5 +28,12 @@ describe('organizationsService', () => {
       path: '/organizations/me/sequences',
       body: { enabled: false },
     },
+    {
+      name: 'setInternal',
+      call: () => organizationsService.setInternal('0e6f2f3c-1c58-4c4f-9b2a-3d7c2b8f9a10', true),
+      method: 'patch',
+      path: '/organizations/0e6f2f3c-1c58-4c4f-9b2a-3d7c2b8f9a10',
+      body: { is_internal: true },
+    },
   ]);
 });

@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { UserEntity } from './user.entity';
 import { SUPABASE_ADMIN_CLIENT } from '../../infrastructure/supabase/supabase-admin.constants';
-import { userAuthCacheKey } from './users.constants';
+import { LAST_SEEN_THROTTLE_SECONDS, lastSeenThrottleKey, userAuthCacheKey } from './users.constants';
 import type { InviteUserDto } from './dto/invite-user.dto';
 import type { AcceptInviteDto } from './dto/accept-invite.dto';
 import type { CreateUserDto } from './dto/create-user.dto';
@@ -235,6 +235,16 @@ export class UsersService {
 
   async updateLastSeen(id: string): Promise<void> {
     await this.repo.update(id, { last_seen_at: new Date() });
+  }
+
+  /**
+   * Records that the user is active, at most once per LAST_SEEN_THROTTLE_SECONDS
+   * (claimed in Redis, so several API instances still write once).
+   */
+  async touchLastSeen(id: string): Promise<void> {
+    const claimed = await this.redis.set(lastSeenThrottleKey(id), '1', 'EX', LAST_SEEN_THROTTLE_SECONDS, 'NX');
+    if (claimed !== 'OK') return;
+    await this.updateLastSeen(id);
   }
 
   private toInviteError(error: AuthProviderError | null, action: string): HttpException {

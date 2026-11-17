@@ -105,6 +105,9 @@ export class TenantContextMiddleware implements NestMiddleware {
 
     if (!user) return;
 
+    // Feeds "last activity" on the platform dashboard; never blocks the request.
+    void this.usersService.touchLastSeen(user.id).catch(() => undefined);
+
     req.user = {
       id: user.id,
       auth_user_id: sub,

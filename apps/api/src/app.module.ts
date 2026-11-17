@@ -27,6 +27,7 @@ import { TemplatesModule } from './modules/templates/templates.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ChannelWebhookModule } from './modules/channel-webhooks/channel-webhook.module';
 import { DemoModule } from './modules/demo/demo.module';
+import { PlatformAnalyticsModule } from './modules/platform-analytics/platform-analytics.module';
 import { CommunicationsModule } from './modules/communications/communications.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -79,6 +80,7 @@ import { BillingAccessGuard } from './modules/billing/billing-access.guard';
     KnowledgeModule,
     ChannelWebhookModule,
     DemoModule,
+    PlatformAnalyticsModule,
     CommunicationsModule,
     AuthModule,
     NotificationsModule,

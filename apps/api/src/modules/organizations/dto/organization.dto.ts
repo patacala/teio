@@ -36,4 +36,9 @@ export class UpdateOrganizationDto {
   @IsOptional()
   @StrictBoolean()
   is_active?: boolean;
+
+  /** Our own organization: left out of the platform dashboard metrics. */
+  @IsOptional()
+  @StrictBoolean()
+  is_internal?: boolean;
 }

@@ -2,6 +2,7 @@ export * from './types/index';
 export * from './types/billing.types';
 export * from './types/scheduling.types';
 export * from './types/communications.types';
+export * from './types/platform-analytics.types';
 export {
   AgentStatus,
   AIAgentStatus,

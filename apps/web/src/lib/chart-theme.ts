@@ -53,3 +53,13 @@ export const chartGridProps = {
   strokeDasharray: '0',
   vertical: false,
 } as const;
+
+/**
+ * Wrapper for a chart. Marks it as a chart (data graphics are not icons, see
+ * the design audit) and gives its <svg>/<g> groups a palette fill instead of
+ * SVG's default black; shapes keep their own explicit fills.
+ */
+export const chartFrameProps = {
+  'data-chart': true,
+  className: '[&_svg]:fill-(--text-color-muted) [&_g]:fill-(--text-color-muted)',
+} as const;

@@ -32,6 +32,7 @@ export interface Message {
   sender_type: 'customer' | 'agent' | 'ai' | 'system';
   type: 'text' | 'voice' | 'system' | 'image' | 'file';
   channel: string;
+  status?: 'pending' | 'sent' | 'failed';
   metadata?: Record<string, unknown>;
   created_at: string;
 }
@@ -88,4 +89,7 @@ export const conversationsService = {
 
   setPinned: (id: string, pinned: boolean) =>
     authClient.patch<Conversation>(`/conversations/${id}/pin`, { pinned }),
+
+  createConversation: (body: { contact_id: string; channel: string }) =>
+    authClient.post<Conversation>('/conversations', body),
 };

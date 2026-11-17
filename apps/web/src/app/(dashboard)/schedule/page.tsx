@@ -22,7 +22,7 @@ import {
 } from '@/hooks/useAppointments';
 import { useCancelFollowUp, useCompleteFollowUp, useDeleteFollowUp } from '@/hooks/useAutomation';
 import { useAgenda } from '@/hooks/useAgenda';
-import { useCurrentUser } from '@/hooks/useTeam';
+import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import { addDays, localDate, weekdayOf, zonedTimeToUtc } from '@/lib/timezone';
@@ -106,8 +106,7 @@ export default function SchedulePage() {
   const completeStep = useCompleteFollowUp();
   const skipStep = useCancelFollowUp();
   const deleteStep = useDeleteFollowUp();
-  const { data: currentUser } = useCurrentUser();
-  const isAdmin = currentUser?.role === 'owner' || currentUser?.role === 'admin';
+  const { canOverrideCalendarRules: isAdmin } = usePermissions();
 
   const runAction = async (action: () => Promise<unknown>, success: string) => {
     try {
