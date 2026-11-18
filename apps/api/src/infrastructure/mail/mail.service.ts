@@ -38,7 +38,8 @@ export class MailService {
 
   async send(opts: SendMailOptions): Promise<void> {
     const provider = this.config.get<string>('mail.provider', 'ses');
-    const from = opts.from ?? this.config.get<string>('mail.from', 'noreply@example.com');
+    // MAIL_FROM is loaded as '' when unset, so an empty value must fall through too.
+    const from = opts.from || this.config.get<string>('mail.from') || 'noreply@example.com';
 
     try {
       if (provider === 'ses') return await this.sendViaSes({ ...opts, from });

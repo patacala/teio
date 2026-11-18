@@ -1,7 +1,6 @@
 export * from './types/index';
 export * from './types/billing.types';
 export * from './types/scheduling.types';
-export * from './types/communications.types';
 export * from './types/platform-analytics.types';
 export {
   AgentStatus,
@@ -20,9 +19,6 @@ export {
   DemoType,
   DemoRequestStatus,
   MagicLinkType,
-  CommunicationEventType,
-  ORG_COMMUNICATION_EVENTS,
-  PLATFORM_COMMUNICATION_EVENTS,
   UserRole,
   ASSIGNABLE_USER_ROLES,
   ChannelType,

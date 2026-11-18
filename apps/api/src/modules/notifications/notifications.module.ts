@@ -5,7 +5,6 @@ import { OrganizationEntity } from '../organizations/organization.entity';
 import { UserEntity } from '../users/user.entity';
 import { AppointmentEntity } from '../scheduling/appointment.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
-import { CommunicationsModule } from '../communications/communications.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AIAgentsModule } from '../ai-agents/ai-agents.module';
 import { AppointmentEmailConsumer } from './appointment-email.consumer';
@@ -20,7 +19,6 @@ import { OutcomeFeedbackConsumer } from './outcome-feedback.consumer';
 @Module({
   imports: [
     TypeOrmModule.forFeature([ContactEntity, OrganizationEntity, UserEntity, AppointmentEntity, WorkScheduleEntity]),
-    CommunicationsModule,
     AnalyticsModule,
     AIAgentsModule,
   ],

@@ -3,6 +3,8 @@
  * (no VTIMEZONE needed, correct in every client); the same UID with a higher
  * SEQUENCE updates or cancels the event already in the contact's calendar.
  */
+import { ICS_ALARM_TEMPLATE, renderTemplate } from '../../infrastructure/messaging';
+
 export interface IcsEvent {
   method: 'REQUEST' | 'CANCEL';
   uid: string;
@@ -72,7 +74,7 @@ export function buildIcs(event: IcsEvent): string {
     `STATUS:${cancelled ? 'CANCELLED' : 'CONFIRMED'}`,
     ...(cancelled
       ? []
-      : ['BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', `DESCRIPTION:${text(`Recordatorio: ${event.title}`)}`, 'END:VALARM']),
+      : ['BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', `DESCRIPTION:${text(renderTemplate(ICS_ALARM_TEMPLATE, { appointment_title: event.title }))}`, 'END:VALARM']),
     'END:VEVENT',
     'END:VCALENDAR',
   ];

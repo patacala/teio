@@ -4,6 +4,7 @@ import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constant
 import { OutboxService } from '../../infrastructure/outbox/outbox.service';
 import { AppointmentEntity } from './appointment.entity';
 import type { BookingTx } from './scheduling.types';
+import { NOTIFICATION_TEMPLATES, renderTemplate } from '../../infrastructure/messaging';
 
 export interface ConfirmationRequest {
   confirmUrlEmail: string;
@@ -74,7 +75,7 @@ export class AppointmentEventsPublisher {
       void this.realtimeBroadcast
         ?.notifyOrg(appt.organization_id, {
           type: 'appointment',
-          title: `Nueva cita: ${appt.title}`,
+          title: renderTemplate(NOTIFICATION_TEMPLATES.new_appointment, { appointment_title: appt.title }),
           href: '/schedule',
           appointmentId: appt.id,
           contactId: appt.contact_id,
@@ -153,7 +154,7 @@ export class AppointmentEventsPublisher {
     void this.realtimeBroadcast
       ?.notifyOrg(appt.organization_id, {
         type: 'system',
-        title: 'Pago por revisar',
+        title: NOTIFICATION_TEMPLATES.payment_needs_review,
         description: `${appt.title}: ${reason.replace(/_/g, ' ')}`,
         href: '/payments?tab=attention',
         appointmentId: appt.id,

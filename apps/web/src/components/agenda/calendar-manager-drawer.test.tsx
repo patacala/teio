@@ -38,7 +38,7 @@ describe('CalendarManagerDrawer deletion', () => {
     mockApi('get', '/calendars', { data: [cal('cal-1', 'Room 1'), cal('cal-2', 'Room 2')] });
     const first = mockApi('delete', '/calendars/cal-2', {
       status: 409,
-      message: 'Elige a qué calendario mover las 3 cita(s) anteriores',
+      message: 'Choose which calendar to move the 3 past appointment(s) to',
       errors: { code: 'CALENDAR_MOVE_TARGET_REQUIRED', count: 3 },
     });
     const { wrapper } = createQueryWrapper();
@@ -62,7 +62,7 @@ describe('CalendarManagerDrawer deletion', () => {
     mockApi('get', '/calendars', { data: [cal('cal-1', 'Room 1'), cal('cal-2', 'Room 2')] });
     mockApi('delete', '/calendars/cal-2', {
       status: 409,
-      message: 'Este calendario tiene 2 cita(s) próximas; cancélalas o muévelas antes de eliminarlo',
+      message: 'This calendar has 2 upcoming appointment(s); cancel or move them before deleting it',
       errors: { code: 'CALENDAR_HAS_UPCOMING_BOOKINGS', count: 2 },
     });
     const { wrapper } = createQueryWrapper();
@@ -71,7 +71,7 @@ describe('CalendarManagerDrawer deletion', () => {
     await userEvent.setup().click((await screen.findAllByTitle('Delete calendar'))[1]);
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith({
-        title: 'Este calendario tiene 2 cita(s) próximas; cancélalas o muévelas antes de eliminarlo',
+        title: 'This calendar has 2 upcoming appointment(s); cancel or move them before deleting it',
         variant: 'error',
       }),
     );

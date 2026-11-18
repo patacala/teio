@@ -182,55 +182,6 @@ export enum MagicLinkType {
   DEMO_EXPERIENCE = 'demo_experience',
 }
 
-export enum CommunicationEventType {
-  // ── Customer care → CONTACTO (email + sms) ────────────────────────────
-  APPOINTMENT_CREATED = 'appointment_created',
-  APPOINTMENT_CONFIRMATION_REQUEST = 'appointment_confirmation_request',
-  APPOINTMENT_RESCHEDULED = 'appointment_rescheduled',
-  APPOINTMENT_CANCELLED = 'appointment_cancelled',
-  APPOINTMENT_REMINDER = 'appointment_reminder',
-
-  // ── Billing → ADMIN (email only) ──────────────────────────────────────
-  SUBSCRIPTION_UPDATED = 'subscription_updated',
-  INVOICE_PAID = 'invoice_paid',
-  INVOICE_PAYMENT_FAILED = 'invoice_payment_failed',
-
-  // ── Custom (org-level) ────────────────────────────────────────────────
-  CUSTOM = 'custom',
-
-  // ── Platform events (is_system = true, only platform admin) ───────────
-  WELCOME = 'welcome',
-  PASSWORD_RESET = 'password_reset',
-  TEAM_MEMBER_INVITED = 'team_member_invited',
-  PAYMENT_SUCCEEDED = 'payment_succeeded',
-  PAYMENT_FAILED = 'payment_failed',
-  SUBSCRIPTION_CREATED = 'subscription_created',
-  SUBSCRIPTION_CANCELLED = 'subscription_cancelled',
-  DEMO_READY = 'demo_ready',
-}
-
-/** Platform-only event types — add new platform events here only */
-const PLATFORM_EVENT_SET = new Set<CommunicationEventType>([
-  CommunicationEventType.WELCOME,
-  CommunicationEventType.PASSWORD_RESET,
-  CommunicationEventType.TEAM_MEMBER_INVITED,
-  CommunicationEventType.PAYMENT_SUCCEEDED,
-  CommunicationEventType.PAYMENT_FAILED,
-  CommunicationEventType.SUBSCRIPTION_CREATED,
-  CommunicationEventType.SUBSCRIPTION_CANCELLED,
-  CommunicationEventType.DEMO_READY,
-]);
-
-const ALL_EVENTS = Object.values(CommunicationEventType);
-
-/** Events available to org admins — auto-derived: everything NOT in PLATFORM_EVENT_SET */
-export const ORG_COMMUNICATION_EVENTS: CommunicationEventType[] =
-  ALL_EVENTS.filter((e) => !PLATFORM_EVENT_SET.has(e));
-
-/** Events managed exclusively by platform admins — auto-derived from PLATFORM_EVENT_SET */
-export const PLATFORM_COMMUNICATION_EVENTS: CommunicationEventType[] =
-  ALL_EVENTS.filter((e) => PLATFORM_EVENT_SET.has(e));
-
 /**
  * How much of the product an organization can use, derived from its billing state.
  * Demo (free-plan) organizations get FULL access and are flagged with `is_demo`.

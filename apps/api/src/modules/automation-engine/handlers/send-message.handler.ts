@@ -7,6 +7,7 @@ import { ConversationManagementService } from '../../conversation-management/con
 import { WebhookDispatcherService } from '../../integrations/webhook-dispatcher.service';
 import { FollowUpContextBuilder } from './context-builder.service';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
+import { followUpText } from './follow-up-text';
 
 @Injectable()
 export class SendMessageHandler implements IActionHandler {
@@ -87,8 +88,7 @@ export class SendMessageHandler implements IActionHandler {
     resolved: ResolvedChannel,
     org: OrganizationEntity,
   ): Promise<void> {
-    const content = appointment.message_content
-      ?? `Hola ${contact.first_name}, te contactamos para dar seguimiento. ¿Hay algo en lo que podamos ayudarte? - ${org.name}`;
+    const content = followUpText(appointment, contact, org);
 
     const { conversation } = await this.conversationService.findOrCreateActiveConversation(
       appointment.organization_id,

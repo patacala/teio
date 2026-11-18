@@ -19,8 +19,26 @@ import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime
 import { UsageTrackingService } from '../billing/usage-tracking.service';
 import type { RetellWebhookDto } from './retell-webhook.dto';
 import type { CallCompletedEvent } from '@crm/shared';
+import { NOTIFICATION_TEMPLATES, renderTemplate } from '../../infrastructure/messaging';
 
 const CALL_EXT_CACHE_TTL = 3600; // 1 hour dedup window
+
+/** In-app notification text when a call starts: who is calling, or who we are calling. */
+export function callStartedNotification(
+  direction: string | undefined,
+  phoneFrom: string,
+  phoneTo: string,
+): { title: string; description: string } {
+  return direction === 'outbound'
+    ? {
+        title: NOTIFICATION_TEMPLATES.outgoing_call,
+        description: renderTemplate(NOTIFICATION_TEMPLATES.outgoing_call_detail, { phone: phoneTo }),
+      }
+    : {
+        title: NOTIFICATION_TEMPLATES.incoming_call,
+        description: renderTemplate(NOTIFICATION_TEMPLATES.incoming_call_detail, { phone: phoneFrom }),
+      };
+}
 
 @Injectable()
 export class CallsService {
@@ -141,8 +159,7 @@ export class CallsService {
       void this.realtimeBroadcast?.notifyOrg(orgId, {
         id: call.id,
         type: 'voice',
-        title: dto.direction === 'outbound' ? 'Llamada saliente' : 'Llamada entrante',
-        description: dto.direction === 'outbound' ? `A ${phoneTo}` : `De ${phoneFrom}`,
+        ...callStartedNotification(dto.direction, phoneFrom, phoneTo),
         href: `/inbox?conversationId=${conversation.id}`,
         conversationId: conversation.id,
         contactId: contact.id,

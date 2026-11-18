@@ -1,12 +1,7 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { AnalyticsService } from '../analytics/analytics.service';
-import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
-import { UserEntity } from '../users/user.entity';
-import { CommunicationEventType } from '@crm/shared';
 
 interface SubscriptionPayload {
   organization_id: string;
@@ -28,12 +23,7 @@ interface InvoicePayload {
 export class BillingEventConsumer {
   private readonly logger = new Logger(BillingEventConsumer.name);
 
-  constructor(
-    private readonly analyticsService: AnalyticsService,
-    private readonly dispatchService: CommunicationDispatchService,
-    @InjectRepository(UserEntity)
-    private readonly userRepo: Repository<UserEntity>,
-  ) {}
+  constructor(private readonly analyticsService: AnalyticsService) {}
 
   @EventPattern(RABBITMQ_QUEUES.SUBSCRIPTION_UPDATED)
   async handleSubscriptionUpdated(@Payload() data: SubscriptionPayload): Promise<void> {
@@ -43,10 +33,6 @@ export class BillingEventConsumer {
         resource_id: data.subscription_id,
         resource_type: 'subscription',
         properties: { plan_id: data.plan_id, plan_name: data.plan_name, status: data.status },
-      });
-      await this.dispatchToAdmins(data.organization_id, CommunicationEventType.SUBSCRIPTION_UPDATED, {
-        plan_name: data.plan_name ?? '',
-        status: data.status ?? '',
       });
     } catch (err) {
       this.logger.warn(`Failed to handle subscription.updated: ${(err as Error).message}`);
@@ -62,9 +48,6 @@ export class BillingEventConsumer {
         resource_type: 'subscription',
         properties: { plan_id: data.plan_id, plan_name: data.plan_name },
       });
-      await this.dispatchToAdmins(data.organization_id, CommunicationEventType.SUBSCRIPTION_CANCELLED, {
-        plan_name: data.plan_name ?? '',
-      });
     } catch (err) {
       this.logger.warn(`Failed to handle subscription.canceled: ${(err as Error).message}`);
     }
@@ -78,10 +61,6 @@ export class BillingEventConsumer {
         resource_id: data.invoice_id,
         resource_type: 'invoice',
         properties: { amount: data.amount, currency: data.currency },
-      });
-      await this.dispatchToAdmins(data.organization_id, CommunicationEventType.INVOICE_PAID, {
-        amount: String(data.amount ?? 0),
-        currency: data.currency ?? 'USD',
       });
     } catch (err) {
       this.logger.warn(`Failed to handle invoice.paid: ${(err as Error).message}`);
@@ -97,36 +76,8 @@ export class BillingEventConsumer {
         resource_type: 'invoice',
         properties: { amount: data.amount, currency: data.currency, status: data.status },
       });
-      await this.dispatchToAdmins(data.organization_id, CommunicationEventType.INVOICE_PAYMENT_FAILED, {
-        amount: String(data.amount ?? 0),
-        currency: data.currency ?? 'USD',
-      });
     } catch (err) {
       this.logger.warn(`Failed to handle invoice.payment.failed: ${(err as Error).message}`);
-    }
-  }
-
-  private async dispatchToAdmins(
-    organizationId: string,
-    eventType: string,
-    variables: Record<string, string>,
-  ): Promise<void> {
-    const admins = await this.userRepo.find({
-      where: { organization_id: organizationId, role: 'admin' },
-      select: ['id', 'email', 'full_name'],
-    });
-
-    for (const admin of admins) {
-      if (!admin.email) continue;
-      const vars = { admin_name: admin.full_name ?? '', ...variables };
-
-      await this.dispatchService.dispatch({
-        organizationId,
-        eventType,
-        channelType: 'email',
-        recipient: admin.email,
-        variables: vars,
-      });
     }
   }
 }

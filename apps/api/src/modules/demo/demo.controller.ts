@@ -57,9 +57,8 @@ export class DemoController {
   @Post('init')
   @Throttle({ default: { limit: 3, ttl: 3600_000 } })
   initDemo(@Req() req: Request) {
-    const ip =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? '';
-    return this.demoService.initDemo(ip);
+    // Proxy-aware (main.ts "trust proxy"); the first X-Forwarded-For entry is client-controlled.
+    return this.demoService.initDemo(req.ip ?? '');
   }
 
   @Public()
@@ -71,12 +70,15 @@ export class DemoController {
 
   @Public()
   @Get('status/:requestId')
+  // Polled by the landing page while the demo is being built.
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   getDemoStatus(@Param('requestId') requestId: string) {
     return this.demoService.getDemoStatus(requestId);
   }
 
   @Public()
   @Get('experience/:token')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   validateDemoExperience(@Param('token') token: string) {
     return this.demoService.validateDemoExperience(token);
   }

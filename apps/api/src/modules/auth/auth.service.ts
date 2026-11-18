@@ -1,17 +1,19 @@
-import { Injectable, Logger, BadRequestException, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Raw, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { SUPABASE_ADMIN_CLIENT } from '../../infrastructure/supabase/supabase-admin.constants';
+import { MailService } from '../../infrastructure/mail/mail.service';
+import { emailFromTemplate, webAppUrl } from '../../infrastructure/messaging';
 import { UserEntity } from '../users/user.entity';
-import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
-import { CommunicationEventType, ChannelType } from '@crm/shared';
 
 const RESET_TTL = 3600; // 1 hour
+/** One reset email per account per minute (the endpoint is public and there is no global rate limit). */
+const RESET_COOLDOWN_SECONDS = 60;
 
 @Injectable()
 export class AuthService {
@@ -26,18 +28,27 @@ export class AuthService {
     private readonly config: ConfigService,
     @Inject(SUPABASE_ADMIN_CLIENT)
     private readonly supabaseAdmin: SupabaseClient | null,
-    @Optional()
-    private readonly dispatchService: CommunicationDispatchService,
+    private readonly mailService: MailService,
   ) {
-    this.frontendUrl = this.config.get<string>('FRONTEND_URL') ?? process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    this.frontendUrl = webAppUrl(this.config);
   }
 
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (!user || !user.auth_user_id) {
-      // Don't reveal whether the email exists
-      return;
-    }
+    // Emails are stored lowercase by the invite flow, but users type them however they like.
+    const normalized = email.trim().toLowerCase();
+    const user = await this.userRepo.findOne({
+      where: {
+        email: Raw((column) => `LOWER(${column}) = :email`, { email: normalized }),
+        auth_user_id: Not(IsNull()),
+        is_active: true,
+      },
+      order: { created_at: 'ASC' },
+    });
+    // Unknown, unlinked or deactivated: do nothing, and don't reveal which.
+    if (!user) return;
+
+    const claimed = await this.redis.set(`pwd-reset:cooldown:${user.id}`, '1', 'EX', RESET_COOLDOWN_SECONDS, 'NX');
+    if (!claimed) return;
 
     const token = randomUUID();
     const payload = JSON.stringify({
@@ -50,20 +61,12 @@ export class AuthService {
 
     const resetLink = `${this.frontendUrl}/reset-password?token=${token}`;
 
-    if (this.dispatchService) {
-      void this.dispatchService.dispatch({
-        organizationId: user.organization_id,
-        eventType: CommunicationEventType.PASSWORD_RESET,
-        channelType: ChannelType.EMAIL,
-        recipient: user.email,
-        variables: {
-          user_name: user.full_name,
-          reset_link: resetLink,
-        },
-      }).catch((err) => {
-        this.logger.warn(`Failed to dispatch password reset email: ${err.message}`);
+    // Fire-and-forget: the response must not depend on (or reveal) delivery.
+    void this.mailService
+      .send({ to: user.email, ...emailFromTemplate('password_reset', { user_name: user.full_name, reset_url: resetLink }) })
+      .catch((err: Error) => {
+        this.logger.warn(`Failed to send password reset email: ${err.message}`);
       });
-    }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

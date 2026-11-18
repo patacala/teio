@@ -104,7 +104,7 @@ function setup(initial: SubscriptionEntity = baseSub()) {
     delete: jest.fn(async ({ stripe_event_id }) => claimed.delete(stripe_event_id)),
   };
   const orgRepo = { update: jest.fn(), findOne: jest.fn(async () => ({ id: ORG })), findOneOrFail: jest.fn() };
-  const userRepo = { findOne: jest.fn(async () => ({ email: 'owner@acme.test' })) };
+  const userRepo = { findOne: jest.fn(async () => ({ email: 'owner@acme.test', full_name: 'Olga Owner' })) };
 
   const stripe = {
     retrieveSubscription: jest.fn(async (id: string) => stripeSub({ id })),
@@ -125,16 +125,16 @@ function setup(initial: SubscriptionEntity = baseSub()) {
   };
   const config = { get: jest.fn((_k: string, d: unknown) => (_k === 'billing.webUrl' ? 'https://app.test' : d)) };
   const rabbit = { emit: jest.fn() };
-  const dispatch = { dispatch: jest.fn(async (_arg: { eventType: string }) => undefined) };
+  const mail = { send: jest.fn(async (_arg: { to: string; subject: string; html: string }) => undefined) };
 
   const service = new SubscriptionService(
     planRepo as never, subRepo as never, invoiceRepo as never, stripeEventRepo as never,
     orgRepo as never, userRepo as never, stripe as unknown as StripeService,
     billingAccess as unknown as BillingAccessService,
-    config as unknown as ConfigService, rabbit as never, dispatch as never,
+    config as unknown as ConfigService, rabbit as never, mail as never,
   );
 
-  return { service, stripe, billingAccess, orgRepo, rabbit, dispatch, invoiceRepo, stripeEventRepo,
+  return { service, stripe, billingAccess, orgRepo, rabbit, mail, userRepo, invoiceRepo, stripeEventRepo,
     get row() { return row; } };
 }
 
@@ -178,14 +178,11 @@ describe('SubscriptionService — Stripe webhooks', () => {
     );
   });
 
-  it('sends the "subscription created" email only when a new subscription starts', async () => {
+  it('sends no email for subscription lifecycle changes (only failed payments are emailed)', async () => {
     const t = setup();
     await t.service.handleStripeEvent(event('customer.subscription.created', stripeSub(), 'evt_1'));
     await t.service.handleStripeEvent(event('customer.subscription.updated', stripeSub(), 'evt_2'));
-    const created = t.dispatch.dispatch.mock.calls.filter(
-      ([arg]) => arg.eventType === 'subscription_created',
-    );
-    expect(created).toHaveLength(1);
+    expect(t.mail.send).not.toHaveBeenCalled();
   });
 
   it('stores unknown Stripe statuses safely instead of violating the DB constraint', async () => {
@@ -281,6 +278,41 @@ describe('SubscriptionService — Stripe webhooks', () => {
       expect.objectContaining({ organization_id: ORG, stripe_invoice_id: 'in_2', status: 'open' }),
       ['stripe_invoice_id'],
     );
+  });
+
+  it('emails the billing contact once when a payment fails', async () => {
+    const t = setup(baseSub({ stripe_subscription_id: 'sub_A', plan: PRO, plan_id: PRO.id }));
+    t.stripe.retrieveSubscription.mockResolvedValueOnce(stripeSub({ status: 'past_due' }));
+    await t.service.handleStripeEvent(event('invoice.payment_failed', {
+      id: 'in_2', customer: 'cus_1', amount_due: 14900, amount_paid: 0, currency: 'usd',
+    }));
+    await new Promise((r) => setImmediate(r));
+    expect(t.mail.send).toHaveBeenCalledTimes(1);
+    const sent = t.mail.send.mock.calls[0][0];
+    expect(sent.to).toBe('owner@acme.test');
+    expect(sent.subject).toBe("We couldn't process your payment");
+    expect(sent.html).toContain('149.00 USD');
+    expect(sent.html).toContain('href="https://app.test/admin/billing"');
+    expect(sent.html).toContain('Hi Olga Owner,');
+  });
+
+  it('does not email when a payment succeeds', async () => {
+    const t = setup(baseSub({ stripe_subscription_id: 'sub_A', plan: PRO, plan_id: PRO.id, status: 'past_due', past_due_since: new Date() }));
+    await t.service.handleStripeEvent(event('invoice.paid', {
+      id: 'in_9', customer: 'cus_1', amount_due: 14900, amount_paid: 14900, currency: 'usd', status_transitions: {},
+    }));
+    await new Promise((r) => setImmediate(r));
+    expect(t.mail.send).not.toHaveBeenCalled();
+  });
+
+  it('keeps processing the webhook when the payment-failed email cannot be sent', async () => {
+    const t = setup(baseSub({ stripe_subscription_id: 'sub_A', plan: PRO, plan_id: PRO.id }));
+    t.stripe.retrieveSubscription.mockResolvedValueOnce(stripeSub({ status: 'past_due' }));
+    t.mail.send.mockRejectedValueOnce(new Error('provider down'));
+    await expect(t.service.handleStripeEvent(event('invoice.payment_failed', {
+      id: 'in_3', customer: 'cus_1', amount_due: 14900, amount_paid: 0, currency: 'usd',
+    }))).resolves.not.toThrow();
+    expect(t.row.status).toBe('past_due');
   });
 
   it('connects the payment method from a completed setup checkout', async () => {

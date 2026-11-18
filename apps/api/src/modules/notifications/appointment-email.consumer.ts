@@ -6,13 +6,21 @@ import { MailService } from '../../infrastructure/mail/mail.service';
 import type { MailAttachment } from '../../infrastructure/mail/mail.service';
 import { SmsService } from '../../infrastructure/sms/sms.service';
 import { ProcessedEventsService } from '../../infrastructure/outbox/processed-events.service';
-import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
 import { ContactEntity } from '../client-management/contact.entity';
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { UserEntity } from '../users/user.entity';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
-import { CommunicationEventType } from '@crm/shared';
 import { buildIcs } from './ics';
+import {
+  emailFromTemplate,
+  smsFromTemplate,
+  type EmailTemplateKey,
+  type SmsTemplateKey,
+  type TemplateVars,
+} from '../../infrastructure/messaging';
+
+/** Used only if the organization row is missing. */
+const DEFAULT_ORGANIZATION_NAME = 'Our team';
 
 interface AppointmentPayload {
   event_id?: string;
@@ -70,7 +78,6 @@ export class AppointmentEmailConsumer {
 
   constructor(
     private readonly mailService: MailService,
-    private readonly dispatchService: CommunicationDispatchService,
     @InjectRepository(ContactEntity)
     private readonly contactRepo: Repository<ContactEntity>,
     @InjectRepository(OrganizationEntity)
@@ -106,29 +113,13 @@ export class AppointmentEmailConsumer {
     await this.safely(`confirmation for ${data.appointment_id}`, async () => {
       const ctx = await this.context(data);
       if (!ctx) return;
-      const { contact, orgName, variables } = ctx;
+      const { contact, vars } = ctx;
 
       if (contact.email) {
         const ics = await this.invite(data, ctx, 'REQUEST');
-        const result = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CREATED, 'email', contact.email, variables, [ics]);
-        if (!result) {
-          await this.mailService.send({
-            to: contact.email,
-            subject: `Confirmación de cita: ${data.title}`,
-            html: this.layout(orgName, ctx.contactName, 'Tu cita ha sido confirmada. Aquí tienes los detalles:', data, variables, {
-              button: data.meeting_url ? { label: 'Unirse a la reunión', url: data.meeting_url } : undefined,
-              manageUrl: data.manage_url ?? undefined,
-            }),
-            attachments: [ics],
-          });
-        }
+        await this.email(contact.email, 'appointment_confirmed', vars, [ics]);
       }
-      if (contact.phone) {
-        await this.dispatch(data, CommunicationEventType.APPOINTMENT_CREATED, 'sms', contact.phone, {
-          ...variables,
-          manage_url: data.manage_url_sms ?? '',
-        });
-      }
+      if (contact.phone) await this.sms(contact.phone, 'appointment_confirmed', data, vars);
       this.logger.log(`Appointment confirmation sent for appointment ${data.appointment_id}`);
     });
   }
@@ -139,29 +130,16 @@ export class AppointmentEmailConsumer {
     await this.safely(`reschedule notice for ${data.appointment_id}`, async () => {
       const ctx = await this.context(data);
       if (!ctx) return;
-      const { contact, orgName, variables } = ctx;
+      const { contact, vars } = ctx;
 
+      // A booking awaiting confirmation also gets the confirmation request (with the
+      // new time and the button/link), so no second message here.
+      if (data.status === 'scheduled') return;
       if (contact.email) {
         const ics = await this.invite(data, ctx, 'REQUEST');
-        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_RESCHEDULED, 'email', contact.email, variables, [ics]);
-        // A booking awaiting confirmation also gets the request with the button; no second email here.
-        if (!sent && data.status !== 'scheduled') {
-          await this.mailService.send({
-            to: contact.email,
-            subject: `Tu cita cambió de horario: ${data.title}`,
-            html: this.layout(orgName, ctx.contactName, 'Tu cita cambió de horario. Estos son los nuevos detalles:', data, variables, {
-              manageUrl: data.manage_url ?? undefined,
-            }),
-            attachments: [ics],
-          });
-        }
+        await this.email(contact.email, 'appointment_rescheduled', vars, [ics]);
       }
-      if (contact.phone) {
-        await this.dispatch(data, CommunicationEventType.APPOINTMENT_RESCHEDULED, 'sms', contact.phone, {
-          ...variables,
-          manage_url: data.manage_url_sms ?? '',
-        });
-      }
+      if (contact.phone) await this.sms(contact.phone, 'appointment_rescheduled', data, vars);
       this.logger.log(`Appointment rescheduled notification sent for appointment ${data.appointment_id}`);
     });
   }
@@ -172,23 +150,13 @@ export class AppointmentEmailConsumer {
     await this.safely(`cancellation notice for ${data.appointment_id}`, async () => {
       const ctx = await this.context(data);
       if (!ctx) return;
-      const { contact, orgName, variables } = ctx;
+      const { contact, vars } = ctx;
 
       if (contact.email) {
         const ics = await this.invite(data, ctx, 'CANCEL');
-        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CANCELLED, 'email', contact.email, variables, [ics]);
-        if (!sent) {
-          await this.mailService.send({
-            to: contact.email,
-            subject: `Cita cancelada: ${data.title}`,
-            html: this.layout(orgName, ctx.contactName, 'Tu cita fue cancelada:', data, variables, {}),
-            attachments: [ics],
-          });
-        }
+        await this.email(contact.email, 'appointment_cancelled', vars, [ics]);
       }
-      if (contact.phone) {
-        await this.dispatch(data, CommunicationEventType.APPOINTMENT_CANCELLED, 'sms', contact.phone, variables);
-      }
+      if (contact.phone) await this.sms(contact.phone, 'appointment_cancelled', data, vars, { manageLink: false });
       this.logger.log(`Appointment cancelled notification sent for appointment ${data.appointment_id}`);
     });
   }
@@ -209,31 +177,11 @@ export class AppointmentEmailConsumer {
       }
       const ctx = await this.context(data);
       if (!ctx) return;
-      const { contact, orgName, variables } = ctx;
-      if (contact.email) {
-        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_REMINDER, 'email', contact.email, variables);
-        if (!sent) {
-          await this.mailService.send({
-            to: contact.email,
-            subject: `Recordatorio: ${data.title}`,
-            html: this.layout(orgName, ctx.contactName, 'Te recordamos tu cita:', data, variables, {
-              button: data.meeting_url ? { label: 'Unirse a la reunión', url: data.meeting_url } : undefined,
-              manageUrl: data.manage_url ?? undefined,
-            }),
-          });
-        }
-      }
-      if (contact.phone) {
-        const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_REMINDER, 'sms', contact.phone, {
-          ...variables,
-          manage_url: data.manage_url_sms ?? '',
-        });
-        if (!sent && !contact.email) {
-          await this.smsService.send({
-            to: contact.phone,
-            text: `${orgName}: recordatorio de tu cita "${data.title}" el ${variables.date} a las ${variables.time}.`,
-          });
-        }
+      const { contact, vars } = ctx;
+      if (contact.email) await this.email(contact.email, 'appointment_reminder', vars);
+      // Reminders go by SMS only to contacts without an email.
+      if (contact.phone && !contact.email) {
+        await this.sms(contact.phone, 'appointment_reminder', data, vars, { manageLink: false });
       }
     });
   }
@@ -246,52 +194,29 @@ export class AppointmentEmailConsumer {
   ): Promise<void> {
     const ctx = await this.context(data);
     if (!ctx) return;
-    const { contact, orgName, variables } = ctx;
-    const vars = {
-      ...variables,
-      confirm_url: opts.confirmUrl,
-      reminder: opts.reminder ? 'true' : '',
-      rescheduled: opts.rescheduled ? 'true' : '',
-    };
+    const { contact, vars } = ctx;
 
     if (contact.email) {
-      const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CONFIRMATION_REQUEST, 'email', contact.email, vars);
-      if (!sent) {
-        const intro = opts.rescheduled
-          ? 'Tu cita cambió de horario. Por favor confirma el nuevo horario:'
-          : opts.reminder
-            ? 'Tu cita es pronto y aún no la confirmas. Por favor confírmala:'
-            : 'Tienes una cita agendada. Por favor confírmala:';
-        await this.mailService.send({
-          to: contact.email,
-          subject: opts.rescheduled
-            ? `Confirma el nuevo horario: ${data.title}`
-            : opts.reminder
-              ? `Recordatorio: confirma tu cita ${data.title}`
-              : `Confirma tu cita: ${data.title}`,
-          html: this.layout(orgName, ctx.contactName, intro, data, variables, {
-            button: { label: 'Confirmar cita', url: opts.confirmUrl },
-            footer: 'Desde el mismo enlace puedes cambiar el horario o cancelar.',
-          }),
-        });
-      }
+      const key = opts.rescheduled
+        ? 'appointment_confirmation_rescheduled'
+        : opts.reminder
+          ? 'appointment_confirmation_reminder'
+          : 'appointment_confirmation_request';
+      await this.email(contact.email, key, { ...vars, confirm_url: opts.confirmUrl });
     }
 
-    if (contact.phone) {
-      const sent = await this.dispatch(data, CommunicationEventType.APPOINTMENT_CONFIRMATION_REQUEST, 'sms', contact.phone, {
-        ...vars,
-        confirm_url: opts.confirmUrlSms,
+    // Without an email the link by SMS is the only way to confirm.
+    if (contact.phone && !contact.email) {
+      await this.sms(contact.phone, 'appointment_confirmation_request', data, { ...vars, confirm_url: opts.confirmUrlSms }, {
+        manageLink: false,
       });
-      // Without an email the link by SMS is the only way to confirm.
-      if (!sent && !contact.email) {
-        await this.smsService.send({
-          to: contact.phone,
-          text: `${orgName}: confirma tu cita "${data.title}" el ${variables.date} a las ${variables.time}: ${opts.confirmUrlSms}`,
-        });
-      }
     }
   }
 
+  /**
+   * Everything the templates can say about this booking ({{user_name}} is the
+   * contact). Null when the contact cannot be reached.
+   */
   private async context(data: AppointmentPayload) {
     const contact = await this.contactRepo.findOne({
       where: { id: data.contact_id, organization_id: data.organization_id },
@@ -301,26 +226,45 @@ export class AppointmentEmailConsumer {
       return null;
     }
     const org = await this.orgRepo.findOne({ where: { id: data.organization_id } });
-    const orgName = org?.name ?? 'Nuestra empresa';
-    const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || 'Cliente';
-    const date = this.formatDate(data.starts_at, data.timezone);
-    const time = this.formatTime(data.starts_at, data.timezone);
-    const variables: Record<string, string> = {
-      contact_name: contactName,
-      client_name: contactName,
-      title: data.title,
-      date,
-      time,
-      end_time: this.formatTime(data.ends_at, data.timezone),
-      booking_date: date,
-      booking_time: time,
+    const orgName = org?.name || DEFAULT_ORGANIZATION_NAME;
+    const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ');
+    const vars: TemplateVars = {
+      user_name: contactName,
+      organization_name: orgName,
+      appointment_title: data.title,
+      appointment_date: this.formatDate(data.starts_at, data.timezone),
+      appointment_time: this.formatTime(data.starts_at, data.timezone),
+      appointment_end_time: this.formatTime(data.ends_at, data.timezone),
       timezone: data.timezone,
       location: data.location ?? '',
       meeting_url: data.meeting_url ?? '',
-      organization_name: orgName,
       manage_url: data.manage_url ?? '',
     };
-    return { contact: contact as Contact, orgName, contactName, variables };
+    return { contact: contact as Contact, orgName, contactName, vars };
+  }
+
+  private async email(
+    to: string,
+    key: EmailTemplateKey,
+    vars: TemplateVars,
+    attachments?: MailAttachment[],
+  ): Promise<void> {
+    await this.mailService.send({ to, ...emailFromTemplate(key, vars), ...(attachments ? { attachments } : {}) });
+  }
+
+  /** SMS from the catalog; adds the short manage link (" Reschedule or cancel: …") when the booking has one. */
+  private async sms(
+    to: string,
+    key: SmsTemplateKey,
+    data: AppointmentPayload,
+    vars: TemplateVars,
+    opts: { manageLink?: boolean } = {},
+  ): Promise<void> {
+    let text = smsFromTemplate(key, vars);
+    if (opts.manageLink !== false && data.manage_url_sms) {
+      text += smsFromTemplate('manage_suffix', { manage_url: data.manage_url_sms });
+    }
+    await this.smsService.send({ to, text });
   }
 
   /** True the first time this consumer sees the event (dedupes redeliveries). */
@@ -335,26 +279,6 @@ export class AppointmentEmailConsumer {
     } catch (err) {
       this.logger.warn(`Failed to send ${what}: ${(err as Error).message}`);
     }
-  }
-
-  /** The org's template for this event/channel; false when none is configured. */
-  private async dispatch(
-    data: AppointmentPayload,
-    eventType: CommunicationEventType,
-    channelType: 'email' | 'sms',
-    recipient: string,
-    variables: Record<string, string>,
-    attachments?: MailAttachment[],
-  ): Promise<boolean> {
-    const result = await this.dispatchService.dispatch({
-      organizationId: data.organization_id,
-      eventType,
-      channelType,
-      recipient,
-      variables,
-      ...(attachments ? { attachments } : {}),
-    });
-    return !!result?.dispatched;
   }
 
   private async invite(
@@ -380,7 +304,7 @@ export class AppointmentEmailConsumer {
       location: data.location,
       url: data.meeting_url,
       organizer,
-      attendee: { name: ctx.contactName, email: ctx.contact.email as string },
+      attendee: { name: ctx.contactName || (ctx.contact.email as string), email: ctx.contact.email as string },
       productName: ctx.orgName,
     });
     return {
@@ -393,73 +317,18 @@ export class AppointmentEmailConsumer {
   private formatDate(iso: string, timezone: string): string {
     const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     try {
-      return new Date(iso).toLocaleDateString('es-ES', { ...options, timeZone: timezone });
+      return new Date(iso).toLocaleDateString('en-US', { ...options, timeZone: timezone });
     } catch {
-      return new Date(iso).toLocaleDateString('es-ES', { ...options, timeZone: 'UTC' });
+      return new Date(iso).toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
     }
   }
 
   private formatTime(iso: string, timezone: string): string {
     const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
     try {
-      return new Date(iso).toLocaleTimeString('es-ES', { ...options, timeZone: timezone });
+      return new Date(iso).toLocaleTimeString('en-US', { ...options, timeZone: timezone });
     } catch {
-      return new Date(iso).toLocaleTimeString('es-ES', { ...options, timeZone: 'UTC' });
+      return new Date(iso).toLocaleTimeString('en-US', { ...options, timeZone: 'UTC' });
     }
-  }
-
-  private layout(
-    orgName: string,
-    contactName: string,
-    intro: string,
-    data: AppointmentPayload,
-    variables: Record<string, string>,
-    extras: { button?: { label: string; url: string }; manageUrl?: string; footer?: string },
-  ): string {
-    const row = (label: string, value: string) =>
-      `<tr><td style="padding:8px 0;color:#6B7280;width:120px">${label}</td><td style="padding:8px 0;color:#111827">${value}</td></tr>`;
-    const button = extras.button
-      ? `<div style="text-align:center;margin:24px 0"><a href="${this.escapeHtml(extras.button.url)}" style="display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">${this.escapeHtml(extras.button.label)}</a></div>`
-      : '';
-    const manage = extras.manageUrl
-      ? `<p style="margin:16px 0 0;font-size:13px"><a href="${this.escapeHtml(extras.manageUrl)}" style="color:#2563EB">Cambiar horario o cancelar</a></p>`
-      : '';
-    return `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden">
-  <div style="background:#2563EB;padding:24px 32px">
-    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600">${this.escapeHtml(orgName)}</h1>
-  </div>
-  <div style="padding:32px">
-    <p style="margin:0 0 16px;color:#111827;font-size:16px">Hola ${this.escapeHtml(contactName)},</p>
-    <p style="margin:0 0 24px;color:#6B7280;font-size:14px;line-height:1.6">${this.escapeHtml(intro)}</p>
-    <div style="background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px">
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        ${row('Cita', `<strong>${this.escapeHtml(data.title)}</strong>`)}
-        ${row('Fecha', this.escapeHtml(variables.date))}
-        ${row('Hora', `${this.escapeHtml(variables.time)} – ${this.escapeHtml(variables.end_time)} (${this.escapeHtml(data.timezone)})`)}
-        ${data.location ? row('Ubicación', this.escapeHtml(data.location)) : ''}
-      </table>
-    </div>
-    ${button}
-    ${manage}
-    ${extras.footer ? `<p style="margin:24px 0 0;color:#6B7280;font-size:13px;line-height:1.5">${this.escapeHtml(extras.footer)}</p>` : ''}
-  </div>
-  <div style="padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center">
-    <p style="margin:0;color:#9CA3AF;font-size:12px">${this.escapeHtml(orgName)}</p>
-  </div>
-</div>
-</body>
-</html>`;
-  }
-
-  private escapeHtml(str: string): string {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   }
 }

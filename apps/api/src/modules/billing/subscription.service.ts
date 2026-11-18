@@ -14,8 +14,6 @@ import { Repository } from 'typeorm';
 import type { ClientProxy } from '@nestjs/microservices';
 import type Stripe from 'stripe';
 import {
-  CommunicationEventType,
-  ChannelType,
   UserRole,
   SUBSCRIPTION_STATUSES,
   buildPaginationMeta,
@@ -45,7 +43,8 @@ import { StripeService } from './stripe.service';
 import type { RecurringPriceSpec } from './stripe.service';
 import { BillingAccessService, FREE_PLAN_NAME } from './billing-access.service';
 import { isPaidPlan, isPaymentMethodExpired, NO_LIMITS, resolveDemoEndsAt } from './billing-access.policy';
-import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
+import { MailService } from '../../infrastructure/mail/mail.service';
+import { emailFromTemplate } from '../../infrastructure/messaging';
 import { RABBITMQ_QUEUES, RABBITMQ_SERVICE } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import type { ChangePlanDto, StartCheckoutDto } from './dto/billing.dto';
 
@@ -95,8 +94,7 @@ export class SubscriptionService {
     @Optional()
     @Inject(RABBITMQ_SERVICE)
     private readonly rabbitMQ: ClientProxy | null,
-    @Optional()
-    private readonly dispatchService: CommunicationDispatchService,
+    private readonly mailService: MailService,
   ) {}
 
   // ── Read API ──────────────────────────────────────────────────────────────
@@ -472,9 +470,6 @@ export class SubscriptionService {
       plan_id: sub.plan_id,
       plan_name: sub.plan?.name,
     });
-    void this.dispatchBillingEmail(sub.organization_id, CommunicationEventType.SUBSCRIPTION_CANCELLED, {
-      plan_name: sub.plan?.name ?? '',
-    });
     return sub.organization_id;
   }
 
@@ -507,10 +502,6 @@ export class SubscriptionService {
         amount: (invoice.amount_paid ?? 0) / 100,
         currency: invoice.currency,
       });
-      void this.dispatchBillingEmail(sub.organization_id, CommunicationEventType.PAYMENT_SUCCEEDED, {
-        amount: String((invoice.amount_paid ?? 0) / 100),
-        invoice_id: invoice.id,
-      });
     }
     return sub.organization_id;
   }
@@ -537,10 +528,7 @@ export class SubscriptionService {
       currency: invoice.currency,
       status: sub.status,
     });
-    void this.dispatchBillingEmail(sub.organization_id, CommunicationEventType.PAYMENT_FAILED, {
-      amount: String((invoice.amount_due ?? 0) / 100),
-      invoice_id: invoice.id,
-    });
+    void this.sendPaymentFailedEmail(sub.organization_id, invoice.amount_due ?? 0, invoice.currency);
     return sub.organization_id;
   }
 
@@ -678,7 +666,6 @@ export class SubscriptionService {
       );
       return;
     }
-    const previousStripeSubId = sub.stripe_subscription_id;
     const item = stripeSub.items?.data?.[0];
 
     const plan = await this.resolvePlanForStripeSubscription(stripeSub);
@@ -721,12 +708,6 @@ export class SubscriptionService {
       plan_name: sub.plan?.name,
       status: sub.status,
     });
-
-    if (previousStripeSubId !== stripeSub.id && LIVE_STATUSES.has(sub.status)) {
-      void this.dispatchBillingEmail(sub.organization_id, CommunicationEventType.SUBSCRIPTION_CREATED, {
-        plan_name: sub.plan?.name ?? '',
-      });
-    }
   }
 
   /** Catalog price id → plan product → our own metadata (can be stale after a portal plan switch). */
@@ -936,25 +917,21 @@ export class SubscriptionService {
     }
   }
 
-  private async dispatchBillingEmail(
-    orgId: string,
-    eventType: CommunicationEventType,
-    variables: Record<string, string>,
-  ): Promise<void> {
-    if (!this.dispatchService) return;
+  /** Tells the billing contact (owner, else an admin) that a charge failed. Never throws. */
+  private async sendPaymentFailedEmail(orgId: string, amountDueCents: number, currency: string | null): Promise<void> {
     try {
-      const admin = await this.findBillingContact(orgId);
-      if (!admin) return;
-
-      void this.dispatchService.dispatch({
-        organizationId: orgId,
-        eventType,
-        channelType: ChannelType.EMAIL,
-        recipient: admin.email,
-        variables,
-      }).catch(() => { /* non-critical */ });
-    } catch {
-      /* non-critical */
+      const contact = await this.findBillingContact(orgId);
+      if (!contact?.email) return;
+      await this.mailService.send({
+        to: contact.email,
+        ...emailFromTemplate('payment_failed', {
+          user_name: contact.full_name,
+          amount: `${(amountDueCents / 100).toFixed(2)} ${(currency ?? 'usd').toUpperCase()}`,
+          billing_url: this.billingUrl(),
+        }),
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to send payment-failed email for org ${orgId}: ${(err as Error)?.message}`);
     }
   }
 }

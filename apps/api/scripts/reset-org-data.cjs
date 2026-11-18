@@ -33,7 +33,6 @@ const OPERATIONAL_TABLES = [
   'analytics.conversation_metrics',
   'analytics.agent_metrics',
   'integrations.webhook_deliveries',
-  'integrations.communication_deliveries',
 ];
 
 /**
@@ -53,7 +52,6 @@ const PRESERVED_TABLES = [
   'integrations.webhooks',
   'integrations.channels',
   'integrations.channel_configs',
-  'integrations.communication_templates',
   'agents.ai_agents',
   'agents.agent_capture_fields',
   'ai_agents.agents',

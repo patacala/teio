@@ -65,28 +65,6 @@ export class OrganizationsService {
     return saved;
   }
 
-  async updateBranding(orgId: string, branding: Record<string, unknown>): Promise<OrganizationEntity> {
-    const org = await this.findById(orgId);
-    const settings = (org.settings ?? {}) as Record<string, unknown>;
-    settings.branding = { ...((settings.branding as Record<string, unknown>) ?? {}), ...branding };
-    org.settings = settings;
-    return this.repo.save(org);
-  }
-
-  async updateNotificationPreferences(
-    orgId: string,
-    preferences: Record<string, { enabled: boolean }>,
-  ): Promise<OrganizationEntity> {
-    const org = await this.findById(orgId);
-    const settings = (org.settings ?? {}) as Record<string, unknown>;
-    settings.notification_preferences = {
-      ...((settings.notification_preferences as Record<string, unknown>) ?? {}),
-      ...preferences,
-    };
-    org.settings = settings;
-    return this.repo.save(org);
-  }
-
   /** Credentials to call ProSales' Management API (identity/personality/rules/
    * strategies/knowledge) for this org's single agent. See ai-agents module,
    * which is now a thin proxy over these calls. */

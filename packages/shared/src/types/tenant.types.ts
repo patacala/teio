@@ -18,20 +18,6 @@ export interface Organization extends BaseEntity {
 
 export type OrganizationPlan = 'free' | 'starter' | 'professional' | 'enterprise';
 
-export interface OrganizationBranding {
-  logo_url?: string;
-  primary_color?: string;
-  accent_color?: string;
-  from_name?: string;
-  from_email?: string;
-  support_email?: string;
-  website_url?: string;
-}
-
-export interface NotificationPreferences {
-  [eventType: string]: { enabled: boolean };
-}
-
 export interface OrganizationSettings {
   timezone: string;
   locale: string;
@@ -39,10 +25,7 @@ export interface OrganizationSettings {
   max_agents: number;
   max_conversations_per_month: number;
   channels_enabled: string[];
-  custom_branding: boolean;
   webhook_url?: string;
-  branding?: OrganizationBranding;
-  notification_preferences?: NotificationPreferences;
 }
 
 export interface TenantContext {

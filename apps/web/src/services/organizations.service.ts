@@ -1,5 +1,4 @@
 import { authClient } from '@/lib/auth-client';
-import type { OrganizationBranding, NotificationPreferences } from '@crm/shared';
 
 export interface Organization {
   id: string;
@@ -12,8 +11,6 @@ export interface Organization {
   settings?: {
     timezone?: string;
     locale?: string;
-    branding?: OrganizationBranding;
-    notification_preferences?: NotificationPreferences;
     [key: string]: unknown;
   };
 }
@@ -21,10 +18,6 @@ export interface Organization {
 export const organizationsService = {
   listAll: () => authClient.get<Organization[]>('/organizations'),
   getMyOrganization: () => authClient.get<Organization>('/organizations/me'),
-  updateMyBranding: (branding: Partial<OrganizationBranding>) =>
-    authClient.patch<Organization>('/organizations/me/branding', branding),
-  updateMyNotificationPreferences: (preferences: NotificationPreferences) =>
-    authClient.patch<Organization>('/organizations/me/notifications', { preferences }),
   updateSequenceSettings: (enabled: boolean) =>
     authClient.patch<Organization>('/organizations/me/sequences', { enabled }),
   /** Platform admins: internal organizations are left out of the platform dashboard. */

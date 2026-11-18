@@ -8,6 +8,7 @@ import { AuthService } from '../../modules/auth/auth.service';
 import { UsersService } from '../../modules/users/users.service';
 import { UserEntity } from '../../modules/users/user.entity';
 import { REDIS_CLIENT } from '../redis/redis.module';
+import { MailService } from '../mail/mail.service';
 
 async function compile(env: Record<string, string>) {
   return Test.createTestingModule({
@@ -24,6 +25,7 @@ async function compile(env: Record<string, string>) {
       UsersService,
       { provide: getRepositoryToken(UserEntity), useValue: {} },
       { provide: REDIS_CLIENT, useValue: {} },
+      { provide: MailService, useValue: {} },
     ],
   }).compile();
 }

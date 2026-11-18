@@ -11,6 +11,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { registerProcessSafetyNet } from './common/process-safety';
+import { parseTrustProxy } from './common/trust-proxy';
 
 async function bootstrap() {
   registerProcessSafetyNet();
@@ -30,6 +31,9 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('api.port', 3001);
+
+  // Real client IP behind Traefik / the web app's /api rewrite (rate limits, demo IP checks).
+  app.set('trust proxy', parseTrustProxy(configService.get<string>('TRUST_PROXY')));
 
   // Security
   app.use(helmet());

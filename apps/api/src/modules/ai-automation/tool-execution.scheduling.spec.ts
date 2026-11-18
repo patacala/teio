@@ -41,7 +41,8 @@ function build() {
     ]),
   };
   const sequences = { findActive: jest.fn(async () => null), cancel: jest.fn() };
-  const dispatch = { dispatch: jest.fn() };
+  const mail = { send: jest.fn() };
+  const sms = { send: jest.fn() };
   const service = new ToolExecutionService(
     { create: (x: unknown) => x, save: async (x: unknown) => x } as never,
     { findToolByName: async () => null } as never,
@@ -51,15 +52,14 @@ function build() {
     availability as never,
     calendars as never,
     { emit: jest.fn() } as never,
-    {} as never,
-    {} as never,
-    dispatch as never,
+    mail as never,
+    sms as never,
     sequences as never,
     undefined,
     undefined,
     { findAll: async () => [{ id: 'svc-1', name: 'Evaluación', amount: 50000 }] } as never,
   );
-  return { service, scheduling, availability, calendars, dispatch };
+  return { service, scheduling, availability, calendars, mail, sms };
 }
 
 describe('scheduling tools', () => {
@@ -92,7 +92,7 @@ describe('scheduling tools', () => {
   });
 
   it('create_appointment books as the AI with calendar defaults and sends no SMS of its own', async () => {
-    const { service, scheduling, dispatch } = build();
+    const { service, scheduling, mail, sms } = build();
     const execution = await service.execute('org', 'agent', 'create_appointment', {
       contact_id: CONTACT,
       calendar_id: CAL,
@@ -104,7 +104,8 @@ describe('scheduling tools', () => {
       { kind: 'ai' },
     );
     expect(execution.result).toMatchObject({ status: 'scheduled', local_start: '2026-03-23 09:00' });
-    expect(dispatch.dispatch).not.toHaveBeenCalled();
+    expect(mail.send).not.toHaveBeenCalled();
+    expect(sms.send).not.toHaveBeenCalled();
   });
 
   it('create_appointment rejects a missing calendar or a bad start with 400', async () => {

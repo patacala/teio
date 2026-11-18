@@ -191,7 +191,7 @@ export class CalendarService {
       if (dto.payment_service_id) {
         // Follow-up cadences must never ask a contact for money.
         if (cal.type !== 'appointments') {
-          throw new BadRequestException('Solo los calendarios de citas pueden cobrar un servicio');
+          throw new BadRequestException('Only appointment calendars can charge for a service');
         }
         const [service] = await manager.query(
           'SELECT id FROM payments.services WHERE id = $1 AND organization_id = $2',
@@ -203,7 +203,7 @@ export class CalendarService {
           select: ['id'],
         });
         if (other && other.id !== cal.id) {
-          throw new BadRequestException('Ese servicio ya está ligado a otro calendario de citas');
+          throw new BadRequestException('That service is already linked to another appointments calendar');
         }
       }
       cal.payment_service_id = dto.payment_service_id;
@@ -230,13 +230,13 @@ export class CalendarService {
 
       if (cal.system_key === CalendarSystemKey.FOLLOW_UP) {
         throw new ConflictException({
-          message: 'El calendario de seguimiento lo usa la automatización; desactívalo en lugar de eliminarlo',
+          message: 'The follow-up calendar is used by automation; deactivate it instead of deleting it',
           errors: { code: 'CALENDAR_IS_SYSTEM' },
         });
       }
 
       const total = await calendars.count({ where: { organization_id: organizationId } });
-      if (total <= 1) throw new BadRequestException('No se puede eliminar el último calendario');
+      if (total <= 1) throw new BadRequestException('The last calendar cannot be deleted');
 
       const upcoming = await appointments
         .createQueryBuilder('a')
@@ -246,7 +246,7 @@ export class CalendarService {
         .getCount();
       if (upcoming > 0) {
         throw new ConflictException({
-          message: `Este calendario tiene ${upcoming} cita(s) próximas; cancélalas o muévelas antes de eliminarlo`,
+          message: `This calendar has ${upcoming} upcoming appointment(s); cancel or move them before deleting it`,
           errors: { code: 'CALENDAR_HAS_UPCOMING_BOOKINGS', count: upcoming },
         });
       }
@@ -255,7 +255,7 @@ export class CalendarService {
       if (remaining > 0) {
         if (!moveTo) {
           throw new ConflictException({
-            message: `Elige a qué calendario mover las ${remaining} cita(s) anteriores`,
+            message: `Choose which calendar to move the ${remaining} past appointment(s) to`,
             errors: { code: 'CALENDAR_MOVE_TARGET_REQUIRED', count: remaining },
           });
         }

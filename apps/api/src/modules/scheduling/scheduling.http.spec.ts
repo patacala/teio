@@ -265,12 +265,12 @@ describeDb('scheduling HTTP routes', () => {
     const html = await page.text();
     expect(page.status).toBe(200);
     expect(page.headers.get('cache-control')).toBe('no-store');
-    expect(html).toContain('Confirmar cita');
+    expect(html).toContain('Confirm appointment');
     expect(html).toContain('Clínica Sol');
     expect((await call('agent', 'GET', `/appointments/${created.body.data.id}`)).body.data.status).toBe('scheduled');
 
     const confirmed = await fetch(`${baseUrl}/public/appointments/confirm`, form({ token: link.searchParams.get('token')!, c: '' }));
-    expect(await confirmed.text()).toContain('¡Cita confirmada!');
+    expect(await confirmed.text()).toContain('Appointment confirmed!');
     expect((await call('agent', 'GET', `/appointments/${created.body.data.id}`)).body.data).toMatchObject({
       status: 'confirmed',
       confirmed_via: 'email_link',
@@ -278,7 +278,7 @@ describeDb('scheduling HTTP routes', () => {
 
     const forged = await fetch(`${baseUrl}/public/appointments/confirm?token=%3Cscript%3E`);
     const forgedHtml = await forged.text();
-    expect(forgedHtml).toContain('Enlace no válido');
+    expect(forgedHtml).toContain('Invalid link');
     expect(forgedHtml).not.toContain('<script>');
   });
 
@@ -289,16 +289,16 @@ describeDb('scheduling HTTP routes', () => {
     const token = link.searchParams.get('token')!;
 
     const landing = await (await fetch(link)).text();
-    expect(landing).toContain('Cambiar horario');
-    expect(landing).toContain('Cancelar cita');
+    expect(landing).toContain('Reschedule');
+    expect(landing).toContain('Cancel appointment');
 
     const choose = await (await fetch(`${baseUrl}/public/appointments/reschedule?token=${encodeURIComponent(token)}`)).text();
-    expect(choose).toContain('Elige un nuevo horario');
+    expect(choose).toContain('Choose a new time');
     expect(choose).toContain(`value="${at(11, '09:00')}"`);
     expect(choose).not.toContain(`value="${at(11, '10:00')}"`);
 
     const moved = await (await fetch(`${baseUrl}/public/appointments/reschedule`, form({ token, c: 's', starts_at: at(11, '15:00') }))).text();
-    expect(moved).toContain('Cita reprogramada');
+    expect(moved).toContain('Appointment rescheduled');
     expect((await call('agent', 'GET', `/appointments/${id}`)).body.data).toMatchObject({
       status: 'confirmed',
       confirmed_via: 'sms_link',
@@ -306,17 +306,17 @@ describeDb('scheduling HTTP routes', () => {
       confirmation_version: 2,
     });
     // The old link stopped working with the change of time.
-    expect(await (await fetch(link)).text()).toContain('Este enlace ya no es válido');
+    expect(await (await fetch(link)).text()).toContain('This link is no longer valid');
 
     await outbox.relay();
     const rescheduled = [...emitted].reverse().find((e) => e.queue === 'appointment.rescheduled' && e.data.appointment_id === id)!;
     const fresh = new URL(String(rescheduled.data.manage_url).replace('https://api.test', baseUrl.replace('/api/v1', '')));
     const freshToken = fresh.searchParams.get('token')!;
     expect(await (await fetch(`${baseUrl}/public/appointments/cancel?token=${encodeURIComponent(freshToken)}`)).text()).toContain(
-      '¿Cancelar tu cita?',
+      'Cancel your appointment?',
     );
     const cancelled = await (await fetch(`${baseUrl}/public/appointments/cancel`, form({ token: freshToken, c: '' }))).text();
-    expect(cancelled).toContain('Cita cancelada');
+    expect(cancelled).toContain('Appointment cancelled');
     expect((await call('agent', 'GET', `/appointments/${id}`)).body.data).toMatchObject({
       status: 'cancelled',
       cancel_reason: 'contact',
@@ -328,7 +328,7 @@ describeDb('scheduling HTTP routes', () => {
     await call('agent', 'POST', '/appointments', booking(at(12, '10:00')));
     const token = (await lastLink()).searchParams.get('token')!;
     const html = await (await fetch(`${baseUrl}/public/appointments/reschedule`, form({ token, c: '', starts_at: at(12, '11:00') }))).text();
-    expect(html).toContain('Ese horario ya no está disponible');
+    expect(html).toContain('That time is no longer available');
   });
 
   it('saves identity and rules in one call and rejects a bad one without partial changes', async () => {

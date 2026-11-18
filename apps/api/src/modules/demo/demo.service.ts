@@ -14,6 +14,8 @@ import type { Redis } from 'ioredis';
 import { DemoType, DemoRequestStatus, MagicLinkType } from '@crm/shared';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
 import { MailService } from '../../infrastructure/mail/mail.service';
+import { emailFromTemplate } from '../../infrastructure/messaging';
+import { demoTypeLabel } from '../platform-analytics/organization-insights';
 import { ClientManagementService } from '../client-management/client-management.service';
 import { CompaniesService } from '../client-management/companies.service';
 import { MagicLinkEntity } from './magic-link.entity';
@@ -284,16 +286,14 @@ export class DemoService {
           },
         });
       } else {
+        // first_name comes from the public demo form: the layout escapes every value.
         await this.mailService.send({
           to: recipientEmail,
-          subject: '¡Tu demo está listo!',
-          html: `
-            <h2>¡Tu demo está listo!</h2>
-            <p>Hola ${contact?.first_name ?? ''},</p>
-            <p>Tu demo personalizado de tipo <strong>${demoType}</strong> está listo.</p>
-            <p><a href="${demoUrl}" style="background:#2563EB;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block">Ver mi demo</a></p>
-            <p style="color:#6B7280;font-size:14px">Este enlace expira en 7 días y puede usarse hasta 3 veces.</p>
-          `,
+          ...emailFromTemplate('demo_ready', {
+            user_name: contact?.first_name,
+            demo_type: demoTypeLabel(demoType),
+            demo_url: demoUrl,
+          }),
         });
       }
     } catch (err) {

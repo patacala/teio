@@ -18,8 +18,8 @@ import { PaymentServiceService } from '../payments/payment-service.service';
 import { PaymentSettingsService } from '../payments/payment-settings.service';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { MailService } from '../../infrastructure/mail/mail.service';
+import { emailFromTemplate } from '../../infrastructure/messaging';
 import { SmsService } from '../../infrastructure/sms/sms.service';
-import { CommunicationDispatchService } from '../communications/communication-dispatch.service';
 import type {
   CreateContactDto,
   UpdateContactDto,
@@ -40,11 +40,27 @@ interface ToolContext {
   paymentSettingsService?: PaymentSettingsService;
   mailService: MailService;
   smsService: SmsService;
-  communicationDispatch: CommunicationDispatchService;
   logger: Logger;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const MAX_AGENT_EMAIL_SUBJECT = 200;
+const MAX_AGENT_EMAIL_BODY = 10_000;
+/** 10 SMS segments. */
+const MAX_AGENT_SMS = 1_600;
+
+/** A required, non-empty string from the agent's input, trimmed and length-capped. */
+function requireText(input: Record<string, unknown>, key: string, max: number): string {
+  const value = input[key];
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new BadRequestException(`${key} must be a non-empty string`);
+  }
+  if (value.length > max) {
+    throw new BadRequestException(`${key} must be at most ${max} characters`);
+  }
+  return value.trim();
+}
 
 function requireUuid(input: Record<string, unknown>, key: string): string {
   const value = input[key];
@@ -385,24 +401,25 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
   [
     'send_email',
     async (input, ctx) => {
+      // The agent writes plain text (see the tool schema). It is escaped into the
+      // email layout, so prompt-injected HTML/links cannot become markup.
+      const subject = requireText(input, 'subject', MAX_AGENT_EMAIL_SUBJECT);
+      const body = requireText(input, 'body', MAX_AGENT_EMAIL_BODY);
       const contact = await ctx.clientService.findById(input.contact_id as string, ctx.orgId);
       const to = contact.email as string | undefined;
       if (!to) throw new Error('Contact has no email on file');
-      await ctx.mailService.send({
-        to,
-        subject: input.subject as string,
-        html: (input.body as string).replace(/\n/g, '<br>'),
-      });
+      await ctx.mailService.send({ to, ...emailFromTemplate('agent_email', { subject, message: body }) });
       return { sent: true, to };
     },
   ],
   [
     'send_sms',
     async (input, ctx) => {
+      const text = requireText(input, 'message', MAX_AGENT_SMS);
       const contact = await ctx.clientService.findById(input.contact_id as string, ctx.orgId);
       const to = contact.phone as string | undefined;
       if (!to) throw new Error('Contact has no phone on file');
-      const result = await ctx.smsService.send({ to, text: input.message as string });
+      const result = await ctx.smsService.send({ to, text });
       return { sent: true, to, provider_id: result.providerId };
     },
   ],
@@ -425,7 +442,6 @@ export class ToolExecutionService {
     private readonly rmqClient: ClientProxy,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
-    private readonly communicationDispatch: CommunicationDispatchService,
     @Optional() private readonly automationSequenceService?: AutomationSequenceService,
     @Optional() private readonly scheduledActionService?: ScheduledActionService,
     @Optional() private readonly paymentsService?: PaymentsService,
@@ -477,7 +493,6 @@ export class ToolExecutionService {
         paymentSettingsService: this.paymentSettingsService,
         mailService: this.mailService,
         smsService: this.smsService,
-        communicationDispatch: this.communicationDispatch,
         logger: this.logger,
       };
 

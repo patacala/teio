@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware, Inject, Optional } from '@nestjs/common';
+import { Injectable, NestMiddleware, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
@@ -6,13 +6,16 @@ import * as bcrypt from 'bcrypt';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type Redis from 'ioredis';
 import type { SupabaseJwtPayload } from '@crm/shared';
-import { CommunicationEventType, ChannelType } from '@crm/shared';
 import { UsersService } from '../../modules/users/users.service';
 import { userAuthCacheKey } from '../../modules/users/users.constants';
 import { ApiKeysService } from '../../modules/api-keys/api-keys.service';
 import { OrganizationsService } from '../../modules/organizations/organizations.service';
-import { CommunicationDispatchService } from '../../modules/communications/communication-dispatch.service';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
+import { MailService } from '../../infrastructure/mail/mail.service';
+import { emailFromTemplate, webAppUrl } from '../../infrastructure/messaging';
+
+/** Welcome is claimed once per account, so parallel first requests cannot send it twice. */
+const WELCOME_CLAIM_TTL_SECONDS = 7 * 24 * 3600;
 
 // JWKS set is created once at module level (caches public keys)
 let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -27,13 +30,15 @@ function getJWKS(supabaseUrl: string) {
 
 @Injectable()
 export class TenantContextMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(TenantContextMiddleware.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly apiKeysService: ApiKeysService,
     private readonly orgsService: OrganizationsService,
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
-    @Optional() private readonly dispatchService: CommunicationDispatchService,
+    private readonly mailService: MailService,
   ) {}
 
   async use(req: Request, _res: Response, next: NextFunction) {
@@ -96,8 +101,10 @@ export class TenantContextMiddleware implements NestMiddleware {
 
       if (!user) {
         // Auto-provision: create org + user on first login
-        const email = (payload.email as string | undefined) ?? `user-${sub.slice(0, 8)}@local`;
-        user = await this.provision(sub, email);
+        const realEmail = payload.email as string | undefined;
+        user = await this.provision(sub, realEmail ?? `user-${sub.slice(0, 8)}@local`);
+        // Never mail the placeholder address used when the token carries no email.
+        if (user && realEmail) void this.sendWelcome(sub, user.email, user.full_name);
       }
 
       if (user) await this.redis.setex(cacheKey, 300, JSON.stringify(user));
@@ -150,22 +157,20 @@ export class TenantContextMiddleware implements NestMiddleware {
         org = await this.orgsService.create({ name: email.split('@')[0], slug });
       }
 
-      const user = await this.usersService.findOrCreate(authUserId, email, org.id, 'admin');
-
-      // Fire-and-forget welcome email
-      if (user && this.dispatchService) {
-        void this.dispatchService.dispatch({
-          organizationId: user.organization_id,
-          eventType: CommunicationEventType.WELCOME,
-          channelType: ChannelType.EMAIL,
-          recipient: user.email,
-          variables: { user_name: user.full_name, organization_name: org.name },
-        }).catch(() => { /* non-critical */ });
-      }
-
-      return user;
+      return await this.usersService.findOrCreate(authUserId, email, org.id, 'admin');
     } catch {
       return null;
+    }
+  }
+
+  /** Fire-and-forget welcome for a self-signup's first login. Never throws. */
+  private async sendWelcome(authUserId: string, to: string, name: string | null): Promise<void> {
+    try {
+      const claimed = await this.redis.set(`welcome-sent:${authUserId}`, '1', 'EX', WELCOME_CLAIM_TTL_SECONDS, 'NX');
+      if (!claimed) return;
+      await this.mailService.send({ to, ...emailFromTemplate('welcome', { user_name: name, app_url: webAppUrl(this.config) }) });
+    } catch (err) {
+      this.logger.warn(`Failed to send welcome email: ${(err as Error).message}`);
     }
   }
 

@@ -8,7 +8,6 @@ import { InvoiceEntity } from './entities/invoice.entity';
 import { StripeEventEntity } from './entities/stripe-event.entity';
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { UserEntity } from '../users/user.entity';
-import { CommunicationsModule } from '../communications/communications.module';
 import { StripeService } from './stripe.service';
 import { SubscriptionService } from './subscription.service';
 import { UsageTrackingService } from './usage-tracking.service';
@@ -32,7 +31,6 @@ import { DemoLimitsService } from './demo-limits.service';
       OrganizationEntity,
       UserEntity,
     ]),
-    CommunicationsModule,
   ],
   providers: [
     StripeService,

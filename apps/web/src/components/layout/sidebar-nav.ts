@@ -4,7 +4,6 @@ import {
   Repeat,
   Zap,
   Plug,
-  Mail,
   Wallet,
   BarChart,
   Users,
@@ -41,7 +40,6 @@ export const MAIN_ITEMS: NavItem[] = [
 /** Platform admins outside an organization. */
 export const PLATFORM_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/platform', icon: LayoutDashboard, exact: true },
-  { label: 'Communications', href: '/config/communications', icon: Mail },
   { label: 'Demos', href: '/admin/demo', icon: MonitorPlay },
   { label: 'Demo accounts', href: '/platform/demo-accounts', icon: Gauge },
 ];
@@ -61,10 +59,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
   },
   {
     label: 'Messaging',
-    items: [
-      { label: 'Quick replies', href: '/templates', icon: FileText },
-      { label: 'Notifications', href: '/config/communications', icon: Mail },
-    ],
+    items: [{ label: 'Quick replies', href: '/templates', icon: FileText }],
   },
   {
     label: 'Payments setup',

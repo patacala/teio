@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CommunicationEventType } from '@crm/shared';
 import type { IActionHandler, ActionResult } from './action-handler.interface';
 import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
-import { CommunicationDispatchService } from '../../communications/communication-dispatch.service';
+import { MailService } from '../../../infrastructure/mail/mail.service';
+import { emailFromTemplate } from '../../../infrastructure/messaging';
+import { followUpText } from './follow-up-text';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
 
 @Injectable()
@@ -12,9 +13,7 @@ export class SendEmailHandler implements IActionHandler {
   readonly actionType = 'send_email';
   private readonly logger = new Logger(SendEmailHandler.name);
 
-  constructor(
-    private readonly dispatchService: CommunicationDispatchService,
-  ) {}
+  constructor(private readonly mailService: MailService) {}
 
   async execute(
     appointment: ScheduledActionEntity,
@@ -27,24 +26,14 @@ export class SendEmailHandler implements IActionHandler {
       throw new Error(`Contact ${contact.id} has no email address`);
     }
 
-    const variables: Record<string, string> = {
-      contact_name: `${contact.first_name} ${contact.last_name ?? ''}`.trim(),
-      organization_name: org.name,
-      message: appointment.message_content ?? '',
-    };
-
-    const result = await this.dispatchService.dispatch({
-      organizationId: appointment.organization_id,
-      eventType: CommunicationEventType.APPOINTMENT_REMINDER,
-      channelType: 'email',
-      recipient: email,
-      variables,
-      subject: appointment.title ?? 'Follow-up',
+    await this.mailService.send({
+      to: email,
+      ...emailFromTemplate('follow_up', {
+        subject: appointment.title ?? 'Follow-up',
+        message: followUpText(appointment, contact, org),
+        organization_name: org.name,
+      }),
     });
-
-    if (!result.dispatched) {
-      throw new Error(result.error ?? 'Email dispatch failed');
-    }
 
     this.logger.log(`Sent follow-up email to ${email} for appointment ${appointment.id}`);
     return { completed: true, channel: 'email' };

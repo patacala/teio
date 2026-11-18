@@ -25,6 +25,7 @@ import { isValidTimeZone } from '../scheduling/domain/timezone';
 import { WebhookDispatcherService } from '../integrations/webhook-dispatcher.service';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
 import { MailService } from '../../infrastructure/mail/mail.service';
+import { NOTIFICATION_TEMPLATES, emailFromTemplate, webAppUrl } from '../../infrastructure/messaging';
 import { OutboxService } from '../../infrastructure/outbox/outbox.service';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
@@ -250,7 +251,7 @@ export class PaymentsService {
   async verifyWebhookSignature(organizationId: string, payload: Buffer, signature: string): Promise<Stripe.Event> {
     const settings = await this.settingsService.getRaw(organizationId);
     if (!settings.stripe_secret_key || !settings.stripe_webhook_secret) {
-      throw new BadRequestException('Stripe no está configurado para esta organización');
+      throw new BadRequestException('Stripe is not configured for this organization');
     }
     const stripe = new Stripe(settings.stripe_secret_key);
     return stripe.webhooks.constructEvent(payload, signature, settings.stripe_webhook_secret);
@@ -491,8 +492,8 @@ export class PaymentsService {
       payment_status: status,
       message:
         status === 'expired'
-          ? 'El link de pago expiró. La cita no se agendó y el horario quedó libre.'
-          : 'El pago no se completó. La cita no se agendó y el horario quedó libre.',
+          ? 'The payment link expired. The appointment was not booked and the time slot was released.'
+          : 'The payment was not completed. The appointment was not booked and the time slot was released.',
       payment_id: payment.id,
       contact_id: payment.contact_id,
       conversation_id: payment.conversation_id,
@@ -537,7 +538,7 @@ export class PaymentsService {
     try {
       await this.realtime?.notifyOrg(payment.organization_id, {
         type: 'system',
-        title: 'Pago por revisar',
+        title: NOTIFICATION_TEMPLATES.payment_needs_review,
         description: `${who}: ${reason}`,
         href: '/payments?tab=attention',
         contactId: payment.contact_id ?? undefined,
@@ -548,26 +549,25 @@ export class PaymentsService {
           { organization_id: payment.organization_id, role: 'owner', is_active: true },
           { organization_id: payment.organization_id, role: 'admin', is_active: true },
         ],
-        select: ['id', 'email'],
+        select: ['id', 'email', 'full_name'],
       });
       const amount = `${(payment.amount / 100).toFixed(2)} ${payment.currency.toUpperCase()}`;
+      const reviewUrl = `${webAppUrl(this.config)}/payments?tab=attention`;
       for (const admin of admins) {
         await this.mailService.send({
           to: admin.email,
-          subject: 'Un pago necesita revisión manual',
-          html:
-            `<p>Se recibió un pago de <strong>${amount}</strong> de ${this.escape(who)}, ` +
-            `pero no se pudo confirmar la cita (${this.escape(reason)}).</p>` +
-            '<p>No se hizo ningún reembolso automático. Revísalo en Configuración → Pagos.</p>',
+          ...emailFromTemplate('payment_needs_review', {
+            user_name: admin.full_name,
+            amount,
+            payer_name: who,
+            reason,
+            review_url: reviewUrl,
+          }),
         });
       }
     } catch (err) {
       this.logger.warn(`Could not notify attention for payment ${payment.id}: ${(err as Error).message}`);
     }
-  }
-
-  private escape(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   /** Stripe needs 30 min – 24 h; the hold is stretched to match the checkout. */
@@ -681,20 +681,20 @@ export class PaymentsService {
     const service = args.serviceName ? ` (${args.serviceName})` : '';
 
     if (args.appointmentConfirmed) {
-      const title = args.booking?.title ?? 'la cita';
-      const when = args.booking ? ` el ${args.booking.starts_at}` : '';
+      const title = args.booking?.title ?? 'the appointment';
+      const when = args.booking ? ` on ${args.booking.starts_at}` : '';
       return (
-        `Pago confirmado${service} (${amountLabel}). Cita confirmada: "${title}"${when}` +
+        `Payment confirmed${service} (${amountLabel}). Appointment confirmed: "${title}"${when}` +
         (args.appointmentId ? ` (appointment_id=${args.appointmentId})` : '') +
         '.'
       );
     }
     if (args.needsAttention) {
       return (
-        `Pago confirmado${service} (${amountLabel}), pero ese horario ya no estaba disponible. ` +
-        'El equipo revisará el caso y contactará al cliente para reagendar; no prometas un nuevo horario ni un reembolso.'
+        `Payment confirmed${service} (${amountLabel}), but that time slot was no longer available. ` +
+        'The team will review the case and contact the customer to reschedule; do not promise a new time or a refund.'
       );
     }
-    return `Pago confirmado${service} (${amountLabel}). No se creó cita: el link no incluía el horario.`;
+    return `Payment confirmed${service} (${amountLabel}). No appointment was created: the link did not include a time slot.`;
   }
 }

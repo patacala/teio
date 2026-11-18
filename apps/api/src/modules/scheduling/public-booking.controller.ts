@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpStatus, Post, Query, Res } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Response } from 'express';
@@ -23,28 +24,28 @@ function formatWhen(instant: Date, timeZone: string, withDate = true): string {
     ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
     : { hour: '2-digit', minute: '2-digit' };
   try {
-    return instant.toLocaleString('es-ES', { ...options, timeZone });
+    return instant.toLocaleString('en-US', { ...options, timeZone });
   } catch {
-    return instant.toLocaleString('es-ES', { ...options, timeZone: 'UTC' });
+    return instant.toLocaleString('en-US', { ...options, timeZone: 'UTC' });
   }
 }
 
 const MESSAGES: Record<string, { title: string; body: string }> = {
-  confirmed: { title: '¡Cita confirmada!', body: 'Gracias, te esperamos.' },
-  already_confirmed: { title: 'Tu cita está confirmada', body: 'Si lo necesitas, puedes cambiar el horario o cancelar.' },
-  rescheduled: { title: 'Cita reprogramada', body: 'Tu cita quedó confirmada en el nuevo horario. Te enviamos los detalles.' },
-  cancelled: { title: 'Cita cancelada', body: 'Si quieres agendar de nuevo, contáctanos.' },
-  closed: { title: 'Esta cita ya pasó', body: 'Si necesitas otra cita, contáctanos.' },
-  awaiting_payment: { title: 'Cita pendiente de pago', body: 'Se confirma automáticamente cuando recibamos el pago.' },
-  outdated: { title: 'Este enlace ya no es válido', body: 'La cita cambió de horario. Usa el enlace del mensaje más reciente.' },
-  expired: { title: 'Este enlace expiró', body: 'La cita ya empezó o el enlace caducó.' },
-  invalid: { title: 'Enlace no válido', body: 'Revisa que el enlace esté completo.' },
-  slot_unavailable: { title: 'Ese horario ya no está disponible', body: 'Elige otro horario.' },
+  confirmed: { title: 'Appointment confirmed!', body: 'Thank you, see you soon.' },
+  already_confirmed: { title: 'Your appointment is confirmed', body: 'If you need to, you can reschedule or cancel.' },
+  rescheduled: { title: 'Appointment rescheduled', body: 'Your appointment is confirmed at the new time. We sent you the details.' },
+  cancelled: { title: 'Appointment cancelled', body: 'If you want to book again, please contact us.' },
+  closed: { title: 'This appointment has already passed', body: 'If you need another appointment, please contact us.' },
+  awaiting_payment: { title: 'Appointment pending payment', body: "It will be confirmed automatically once we receive the payment." },
+  outdated: { title: 'This link is no longer valid', body: 'The appointment was rescheduled. Use the link in the most recent message.' },
+  expired: { title: 'This link has expired', body: 'The appointment has already started or the link expired.' },
+  invalid: { title: 'Invalid link', body: 'Please check that the link is complete.' },
+  slot_unavailable: { title: 'That time is no longer available', body: 'Please choose another time.' },
 };
 
 function page(title: string, inner: string): string {
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -77,6 +78,8 @@ function page(title: string, inner: string): string {
  */
 @ApiExcludeController()
 @Controller({ path: 'public/appointments', version: '1' })
+// Pages: 60/min per IP; the actions (POST) are tighter, see below.
+@Throttle({ default: { limit: 60, ttl: 60_000 } })
 export class PublicBookingController {
   constructor(
     private readonly scheduling: SchedulingService,
@@ -94,7 +97,7 @@ export class PublicBookingController {
     const appt = view.appointment;
     const orgName = await this.orgName(appt.organization_id);
     const hidden = this.hidden(token, channel);
-    const header = view.canConfirm ? 'Confirma tu cita' : MESSAGES.already_confirmed.title;
+    const header = view.canConfirm ? 'Confirm your appointment' : MESSAGES.already_confirmed.title;
     this.html(
       res,
       page(
@@ -102,7 +105,7 @@ export class PublicBookingController {
         `<h1>${escapeHtml(header)}</h1>
          <p>${escapeHtml(orgName)}</p>
          ${this.details(appt)}
-         ${view.canConfirm ? `<form method="POST" action="confirm">${hidden}<button type="submit">Confirmar cita</button></form>` : ''}
+         ${view.canConfirm ? `<form method="POST" action="confirm">${hidden}<button type="submit">Confirm appointment</button></form>` : ''}
          ${this.changeLinks(view, token, channel)}`,
       ),
     );
@@ -110,6 +113,7 @@ export class PublicBookingController {
 
   @Public()
   @Post('confirm')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async confirm(@Body() body: Record<string, string>, @Res() res: Response): Promise<void> {
     const { state, appointment } = await this.scheduling.confirmByContact(String(body?.token ?? ''), this.channel(body?.c));
     return this.result(res, state, appointment);
@@ -132,7 +136,7 @@ export class PublicBookingController {
     const hidden = this.hidden(token, channel);
     const days = [...byDay.entries()]
       .map(([, slots]) => {
-        const label = new Date(slots[0].starts_at).toLocaleDateString('es-ES', {
+        const label = new Date(slots[0].starts_at).toLocaleDateString('en-US', {
           weekday: 'long',
           day: 'numeric',
           month: 'long',
@@ -151,17 +155,18 @@ export class PublicBookingController {
     this.html(
       res,
       page(
-        'Elige un nuevo horario',
-        `<h1>Elige un nuevo horario</h1>
+        'Choose a new time',
+        `<h1>Choose a new time</h1>
          ${this.details(view.appointment)}
-         <p>Horarios en ${escapeHtml(availability.timezone)}</p>
-         ${days || '<p>No hay horarios disponibles en los próximos días. Contáctanos para reagendar.</p>'}`,
+         <p>Times in ${escapeHtml(availability.timezone)}</p>
+         ${days || '<p>There are no available times in the next few days. Please contact us to reschedule.</p>'}`,
       ),
     );
   }
 
   @Public()
   @Post('reschedule')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async reschedule(@Body() body: Record<string, string>, @Res() res: Response): Promise<void> {
     const result = await this.scheduling.rescheduleByContact(
       String(body?.token ?? ''),
@@ -173,7 +178,7 @@ export class PublicBookingController {
       const { title, body: text } = MESSAGES.slot_unavailable;
       return this.html(
         res,
-        page(title, `<h1>${escapeHtml(title)}</h1><p>${escapeHtml(text)}</p><a class="link" href="${escapeHtml(again)}">Ver horarios</a>`),
+        page(title, `<h1>${escapeHtml(title)}</h1><p>${escapeHtml(text)}</p><a class="link" href="${escapeHtml(again)}">See available times</a>`),
       );
     }
     return this.result(res, result.state, result.appointment);
@@ -187,16 +192,17 @@ export class PublicBookingController {
     this.html(
       res,
       page(
-        '¿Cancelar tu cita?',
-        `<h1>¿Cancelar tu cita?</h1>
+        'Cancel your appointment?',
+        `<h1>Cancel your appointment?</h1>
          ${this.details(view.appointment)}
-         <form method="POST" action="cancel">${this.hidden(token, channel)}<button class="danger" type="submit">Sí, cancelar</button></form>`,
+         <form method="POST" action="cancel">${this.hidden(token, channel)}<button class="danger" type="submit">Yes, cancel</button></form>`,
       ),
     );
   }
 
   @Public()
   @Post('cancel')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async cancel(@Body() body: Record<string, string>, @Res() res: Response): Promise<void> {
     const result = await this.scheduling.cancelByContact(String(body?.token ?? ''));
     return this.result(res, result.state, result.appointment);
@@ -220,8 +226,8 @@ export class PublicBookingController {
     if (!view.canChange) return '';
     const q = `token=${encodeURIComponent(token)}${channel === 's' ? '&c=s' : ''}`;
     return `<div class="actions">
-      <a class="link secondary" href="reschedule?${escapeHtml(q)}">Cambiar horario</a>
-      <a class="link secondary" href="cancel?${escapeHtml(q)}">Cancelar cita</a>
+      <a class="link secondary" href="reschedule?${escapeHtml(q)}">Reschedule</a>
+      <a class="link secondary" href="cancel?${escapeHtml(q)}">Cancel appointment</a>
     </div>`;
   }
 

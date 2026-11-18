@@ -118,7 +118,7 @@ describeE2E('Schedule page against the real API (e2e)', () => {
     const { url } = await api<{ url: string }>(`/__e2e/contact-link?appointment_id=${state.appointments.ana}`);
     const token = new URL(url).searchParams.get('token')!;
     const page = await (await fetch(bypass(`${API}/api/v1/public/appointments/confirm?token=${encodeURIComponent(token)}`))).text();
-    expect(page).toContain('Confirmar cita');
+    expect(page).toContain('Confirm appointment');
     const confirmed = await (
       await fetch(
         bypass(`${API}/api/v1/public/appointments/confirm`, {
@@ -128,7 +128,7 @@ describeE2E('Schedule page against the real API (e2e)', () => {
         }),
       )
     ).text();
-    expect(confirmed).toContain('¡Cita confirmada!');
+    expect(confirmed).toContain('Appointment confirmed!');
 
     renderPage();
     const after = await row('Consulta Ana (e2e)');

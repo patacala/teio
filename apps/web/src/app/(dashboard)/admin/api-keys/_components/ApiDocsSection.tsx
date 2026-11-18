@@ -485,68 +485,6 @@ const GROUPS: EndpointGroup[] = [
     ],
   },
   {
-    label: 'Communications',
-    description: 'Map system events (appointment_created, demo_ready, etc.) to external email templates (Resend, SendGrid). Includes delivery audit log.',
-    endpoints: [
-      {
-        method: 'GET',
-        path: '/api/v1/communications/templates/events',
-        description: 'List all available event types: appointment_created, appointment_rescheduled, appointment_cancelled, appointment_reminder, demo_ready, welcome, contact_created, custom.',
-      },
-      {
-        method: 'GET',
-        path: '/api/v1/communications/templates',
-        description: 'List communication templates for your organization.',
-        queryParams: [
-          { name: 'event_type', type: 'string', description: 'Filter by event type (e.g. "appointment_created").' },
-          { name: 'channel_type', type: 'string', description: 'Filter by channel (e.g. "email").' },
-        ],
-      },
-      {
-        method: 'POST',
-        path: '/api/v1/communications/templates',
-        description: 'Create a communication template mapping an event to an external provider template.',
-        bodyParams: [
-          { name: 'event_type', type: 'string', required: true, description: 'Event type (e.g. "appointment_created").' },
-          { name: 'channel_type', type: 'string', required: true, description: 'Channel: email, sms, whatsapp.' },
-          { name: 'provider', type: 'string', required: true, description: 'Provider: resend, sendgrid, ses.' },
-          { name: 'provider_template_id', type: 'string', required: true, description: 'Template ID in the external provider.' },
-          { name: 'name', type: 'string', description: 'Display name for this mapping.' },
-          { name: 'from_override', type: 'string', description: 'Override sender address.' },
-          { name: 'variables_schema', type: 'object', description: 'Document expected template variables.' },
-          { name: 'is_active', type: 'boolean', description: 'Enable/disable (default: true).' },
-          { name: 'priority', type: 'number', description: 'Priority when multiple templates match (higher wins).' },
-        ],
-        note: 'Only one active template per (org, event_type, channel_type, provider). The system uses this to resolve which external template to send when an event fires.',
-      },
-      {
-        method: 'GET',
-        path: '/api/v1/communications/templates/:id',
-        description: 'Get a single communication template by ID.',
-      },
-      {
-        method: 'PATCH',
-        path: '/api/v1/communications/templates/:id',
-        description: 'Update a communication template.',
-      },
-      {
-        method: 'DELETE',
-        path: '/api/v1/communications/templates/:id',
-        description: 'Delete a communication template.',
-      },
-      {
-        method: 'GET',
-        path: '/api/v1/communications/deliveries',
-        description: 'Audit log of all dispatched communications (paginated).',
-        queryParams: [
-          { name: 'page', type: 'number', description: 'Page number (default 1).' },
-          { name: 'limit', type: 'number', description: 'Items per page (default 20, max 100).' },
-        ],
-        note: 'Each entry shows: event_type, recipient, provider, status (pending/sent/delivered/failed/bounced), error_message, and timestamps.',
-      },
-    ],
-  },
-  {
     label: 'Knowledge Base',
     description: 'Search and manage the AI knowledge base.',
     endpoints: [

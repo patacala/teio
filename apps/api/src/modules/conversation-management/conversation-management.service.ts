@@ -17,6 +17,7 @@ import type { PaginationQuery, PaginatedResponse, MessageReceivedEvent } from '@
 import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
 import type { IngestMessageDto } from './ingest-message.dto';
+import { NOTIFICATION_TEMPLATES, UNNAMED_CONTACT, renderTemplate } from '../../infrastructure/messaging';
 
 export interface ConversationContact {
   id: string;
@@ -491,11 +492,11 @@ export class ConversationManagementService {
     }
 
     if (direction === 'inbound') {
-      const name = `${contact.first_name} ${contact.last_name ?? ''}`.trim() || 'un contacto';
+      const name = `${contact.first_name} ${contact.last_name ?? ''}`.trim() || UNNAMED_CONTACT;
       void this.realtimeBroadcast?.notifyOrg(orgId, {
         id: message.id,
         type: 'message',
-        title: `Nuevo mensaje de ${name}`,
+        title: renderTemplate(NOTIFICATION_TEMPLATES.new_message, { contact_name: name }),
         description: dto.content.slice(0, 100),
         href: `/inbox?conversationId=${conversation.id}`,
         conversationId: conversation.id,

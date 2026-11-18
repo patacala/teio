@@ -19,6 +19,7 @@ import { UserEntity } from '../users/user.entity';
 import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
 import type { PaginationQuery } from '@crm/shared';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
+import { NOTIFICATION_TEMPLATES, renderTemplate } from '../../infrastructure/messaging';
 
 export interface CreateContactCompanyDto {
   name: string;
@@ -291,10 +292,12 @@ export class ClientManagementService {
       name: saved.first_name,
     });
 
-    const name = `${saved.first_name} ${saved.last_name ?? ''}`.trim() || 'Nuevo contacto';
+    const name = `${saved.first_name ?? ''} ${saved.last_name ?? ''}`.trim();
     void this.realtimeBroadcast?.notifyOrg(organizationId, {
       type: 'lead',
-      title: `Nuevo contacto: ${name}`,
+      title: name
+        ? renderTemplate(NOTIFICATION_TEMPLATES.new_contact, { contact_name: name })
+        : NOTIFICATION_TEMPLATES.new_contact_unnamed,
       href: `/inbox?lead=${saved.id}`,
       contactId: saved.id,
       actorUserId,

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Query, Res, HttpStatus } from '@nestjs/common';
 import type { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto, ResolvePaymentDto } from './dto/create-payment.dto';
@@ -11,7 +12,7 @@ import type { TenantContext } from '@crm/shared';
 
 function confirmationPage(title: string, message: string): string {
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -82,12 +83,13 @@ export class PaymentsController {
    */
   @Public()
   @Get('return')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiExcludeEndpoint()
   returnPage(@Query('status') status: string, @Res() res: Response): void {
     const html =
       status === 'success'
-        ? confirmationPage('¡Gracias por tu pago!', 'Ya registramos tu pago. Puedes cerrar esta ventana.')
-        : confirmationPage('Pago cancelado', 'No se realizó ningún cargo. Puedes cerrar esta ventana.');
+        ? confirmationPage('Thank you for your payment!', 'We have received your payment. You can close this window.')
+        : confirmationPage('Payment cancelled', 'You have not been charged. You can close this window.');
     res.status(HttpStatus.OK).setHeader('Content-Type', 'text/html; charset=utf-8').send(html);
   }
 }

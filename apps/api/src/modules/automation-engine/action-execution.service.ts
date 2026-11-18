@@ -17,6 +17,7 @@ import { NotifyAgentHandler } from './handlers/notify-agent.handler';
 import { CreateTaskHandler } from './handlers/create-task.handler';
 import { CallHandler } from './handlers/call.handler';
 import { BillingAccessService } from '../billing/billing-access.service';
+import { NOTIFICATION_TEMPLATES, UNNAMED_CONTACT, renderTemplate } from '../../infrastructure/messaging';
 
 const CHANNEL_REQUIRED_ACTIONS = new Set(['send_message']);
 
@@ -195,12 +196,12 @@ export class ActionExecutionService {
     const moved = await this.actions.markAwaitingUser(step.organization_id, step.id);
     if (!moved) return;
     const contact = await this.contactRepo.findOne({ where: { id: step.contact_id }, select: ['id', 'first_name', 'last_name'] });
-    const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'a contact';
+    const name = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || UNNAMED_CONTACT;
     await this.realtimeService
       ?.notifyOrg(step.organization_id, {
         type: 'system',
-        title: `Follow-up due: ${step.title}`,
-        description: `${name} — mark it done in the agenda when finished`,
+        title: renderTemplate(NOTIFICATION_TEMPLATES.follow_up_due, { step_title: step.title }),
+        description: renderTemplate(NOTIFICATION_TEMPLATES.follow_up_due_detail, { contact_name: name }),
         href: '/schedule',
         contactId: step.contact_id,
       })

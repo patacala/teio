@@ -16,7 +16,6 @@ import { ClientManagementModule } from '../client-management/client-management.m
 import { ConversationManagementModule } from '../conversation-management/conversation-management.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { PaymentsModule } from '../payments/payments.module';
-import { CommunicationsModule } from '../communications/communications.module';
 import { AGENT_TRIGGER_QUEUE, TOOL_EXECUTION_QUEUE } from './ai-automation.constants';
 
 export { AGENT_TRIGGER_QUEUE, TOOL_EXECUTION_QUEUE };
@@ -42,7 +41,6 @@ function redisConnectionFactory(config: ConfigService) {
     ConversationManagementModule,
     SchedulingModule,
     PaymentsModule,
-    CommunicationsModule,
   ],
   providers: [
     {

@@ -5,8 +5,6 @@ import { CreateOrganizationDto, UpdateOrganizationDto, UpdateSequenceSettingsDto
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
 import { SkipBillingCheck } from '../billing/billing-access.decorators';
-import { UpdateBrandingDto } from './dto/update-branding.dto';
-import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateProsalesIntegrationDto } from './dto/update-prosales-integration.dto';
 import type { TenantContext } from '@crm/shared';
 
@@ -39,19 +37,6 @@ export class OrganizationsController {
       };
     }
     return org;
-  }
-
-  @Patch('me/branding')
-  updateBranding(@CurrentTenant() tenant: TenantContext, @Body() dto: UpdateBrandingDto) {
-    return this.service.updateBranding(tenant.organization_id, dto as unknown as Record<string, unknown>);
-  }
-
-  @Patch('me/notifications')
-  updateNotifications(
-    @CurrentTenant() tenant: TenantContext,
-    @Body() dto: UpdateNotificationPreferencesDto,
-  ) {
-    return this.service.updateNotificationPreferences(tenant.organization_id, dto.preferences);
   }
 
   @Patch('me/prosales-integration')

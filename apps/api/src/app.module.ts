@@ -28,7 +28,6 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ChannelWebhookModule } from './modules/channel-webhooks/channel-webhook.module';
 import { DemoModule } from './modules/demo/demo.module';
 import { PlatformAnalyticsModule } from './modules/platform-analytics/platform-analytics.module';
-import { CommunicationsModule } from './modules/communications/communications.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AutomationEngineModule } from './modules/automation-engine/automation-engine.module';
@@ -40,6 +39,7 @@ import { MailModule as MailAPIModule } from './modules/mail/mail.module';
 import { HealthController } from './health.controller';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { OptInThrottlerGuard } from './common/guards/opt-in-throttler.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PlatformAdminGuard } from './common/guards/platform-admin.guard';
 import { BillingAccessGuard } from './modules/billing/billing-access.guard';
@@ -81,7 +81,6 @@ import { BillingAccessGuard } from './modules/billing/billing-access.guard';
     ChannelWebhookModule,
     DemoModule,
     PlatformAnalyticsModule,
-    CommunicationsModule,
     AuthModule,
     NotificationsModule,
     AutomationEngineModule,
@@ -90,6 +89,8 @@ import { BillingAccessGuard } from './modules/billing/billing-access.guard';
   controllers: [HealthController],
   providers: [
     TenantContextMiddleware,
+    // First, so rejected floods never reach the DB-backed guards. Only routes with @Throttle() are limited.
+    { provide: APP_GUARD, useClass: OptInThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PlatformAdminGuard },

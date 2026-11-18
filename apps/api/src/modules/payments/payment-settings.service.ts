@@ -74,7 +74,7 @@ export class PaymentSettingsService {
     const settings = await this.getRaw(organizationId);
     if (!settings.stripe_secret_key) {
       throw new BadRequestException(
-        'Stripe no está configurado para esta organización. Ve a Configuración → Pagos.',
+        'Stripe is not configured for this organization. Go to Settings → Payments.',
       );
     }
     return new Stripe(settings.stripe_secret_key);

@@ -379,7 +379,7 @@ export class ChannelsService {
 
   private async testRetell(cfg: Record<string, string>): Promise<TestConnectionResult> {
     if (!cfg.api_key) {
-      return { success: false, message: 'Falta la API key de Retell' };
+      return { success: false, message: 'The Retell API key is missing' };
     }
     const agentIds = [cfg.inbound_agent_id, cfg.outbound_agent_id, cfg.agent_id]
       .filter((id): id is string => Boolean(id))
@@ -390,7 +390,7 @@ export class ChannelsService {
         headers: { Authorization: `Bearer ${cfg.api_key}` },
       });
       return res.ok
-        ? { success: true, message: 'API key válida. Falta el agent id de inbound o de outbound.' }
+        ? { success: true, message: 'Valid API key. The inbound or outbound agent id is missing.' }
         : { success: false, message: `Retell returned ${res.status}` };
     }
 
@@ -399,10 +399,10 @@ export class ChannelsService {
         headers: { Authorization: `Bearer ${cfg.api_key}` },
       });
       if (!res.ok) {
-        return { success: false, message: `Agente ${agentId}: Retell returned ${res.status}` };
+        return { success: false, message: `Agent ${agentId}: Retell returned ${res.status}` };
       }
     }
-    return { success: true, message: `Conexión ok (${agentIds.join(', ')})` };
+    return { success: true, message: `Connection OK (${agentIds.join(', ')})` };
   }
 }
 

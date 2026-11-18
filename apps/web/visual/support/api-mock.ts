@@ -11,7 +11,6 @@ import type {
   PlatformOrganizationsPage,
   PlatformOverview,
 } from '@crm/shared';
-import { ORG_COMMUNICATION_EVENTS, PLATFORM_COMMUNICATION_EVENTS } from '@crm/shared';
 import { billingAccess } from '@/test/fixtures/billing';
 import { PLANS } from './data';
 import type { FunnelScenario } from './funnel';
@@ -52,26 +51,6 @@ const TEAM = [
   ...m,
   organization_id: ORG_ID,
   is_active: true,
-  created_at: '2026-01-05T09:00:00.000Z',
-  updated_at: '2026-01-05T09:00:00.000Z',
-}));
-
-const SYSTEM_TEMPLATES = [
-  ['tpl-1', 'appointment_created', 'email', 'Appointment Created'],
-  ['tpl-2', 'appointment_reminder', 'sms', 'Appointment Reminder'],
-  ['tpl-3', 'welcome', 'email', 'Welcome'],
-].map(([id, event_type, channel_type, name]) => ({
-  id,
-  organization_id: null,
-  event_type,
-  channel_type,
-  provider: channel_type === 'email' ? 'resend' : 'telnyx',
-  provider_template_id: `tpl_${event_type}`,
-  name,
-  description: null,
-  is_active: true,
-  is_system: true,
-  priority: 0,
   created_at: '2026-01-05T09:00:00.000Z',
   updated_at: '2026-01-05T09:00:00.000Z',
 }));
@@ -147,16 +126,6 @@ export async function mockApi(page: Page, scenario: Scenario): Promise<{ unexpec
         return respond(route, mockList(scenario.platformLeads));
       case '/platform/analytics/organizations':
         return respond(route, scenario.platformOrganizations);
-      case '/communications/templates/system':
-        return respond(route, SYSTEM_TEMPLATES);
-      case '/communications/templates/events':
-        return respond(route, ORG_COMMUNICATION_EVENTS);
-      case '/communications/templates/events/platform':
-        return respond(route, PLATFORM_COMMUNICATION_EVENTS);
-      case '/communications/deliveries':
-        return respond(route, { items: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
-      case '/communications/templates':
-        return respond(route, []);
       case '/conversations':
         return respond(route, paginated([]));
       case '/contacts': {

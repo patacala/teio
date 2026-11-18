@@ -25,7 +25,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/config/sequences': 'Follow-up sequences',
   '/config/webhooks': 'Webhooks',
   '/config/channels': 'Channels',
-  '/config/communications': 'Notifications',
   '/config/payments': 'Payments setup',
   // Admin
   '/admin': 'Admin Panel',

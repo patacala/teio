@@ -6,6 +6,7 @@ import { OrganizationEntity } from '../../organizations/organization.entity';
 import { ConversationManagementService } from '../../conversation-management/conversation-management.service';
 import { ProsalesClientService } from '../../ai-agents/prosales-client.service';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
+import { followUpText } from './follow-up-text';
 
 /**
  * Places the follow-up call through ProSales (CRM -> ProSales -> Retell), which
@@ -65,8 +66,7 @@ export class CallHandler implements IActionHandler {
       );
     }
 
-    const content = appointment.message_content
-      ?? `Hola ${contact.first_name}, te contactamos para dar seguimiento. ¿Hay algo en lo que podamos ayudarte? - ${org.name}`;
+    const content = followUpText(appointment, contact, org);
 
     const { conversation } = await this.conversationService.findOrCreateActiveConversation(
       appointment.organization_id,

@@ -64,6 +64,8 @@ describeDb('scheduling against PostgreSQL', () => {
   let outbox: OutboxService;
   let actions: ScheduledActionService;
   const sequences = { advanceOrComplete: jest.fn(async () => undefined) };
+  const realtime = { notifyOrg: jest.fn(async (_org: string, _n: Record<string, unknown>) => undefined) };
+  const mail = { send: jest.fn(async (_m: { to: string; subject: string; html: string }) => undefined) };
   const stripeSessions: Array<Record<string, unknown>> = [];
   const stripe = {
     checkout: {
@@ -113,7 +115,11 @@ describeDb('scheduling against PostgreSQL', () => {
 
     const config = {
       get: (key: string, def?: unknown) =>
-        ({ 'scheduling.linkSecret': 'integration-test-secret-0123456789', 'webhooks.baseUrl': 'https://api.test' })[key] ??
+        ({
+          'scheduling.linkSecret': 'integration-test-secret-0123456789',
+          'webhooks.baseUrl': 'https://api.test',
+          NEXT_PUBLIC_WEB_URL: 'https://app.test',
+        })[key] ??
         def,
     } as unknown as ConfigService;
 
@@ -145,6 +151,10 @@ describeDb('scheduling against PostgreSQL', () => {
       calendars,
       config,
       outbox,
+      undefined,
+      undefined,
+      realtime as never,
+      mail as never,
     );
     actions = new ScheduledActionService(
       ds.getRepository(ScheduledActionEntity),
@@ -165,6 +175,8 @@ describeDb('scheduling against PostgreSQL', () => {
     await outbox.relay();
     emitted.length = 0;
     brokerDown = false;
+    realtime.notifyOrg.mockClear();
+    mail.send.mockClear();
     stripeSessions.length = 0;
     org = randomUUID();
     contact = randomUUID();
@@ -253,6 +265,22 @@ describeDb('scheduling against PostgreSQL', () => {
       await ds.query(`INSERT INTO core.organizations (id, name, slug) VALUES ($1, 'Other', $2)`, [otherOrg, `o-${otherOrg}`]);
       await ds.query(`INSERT INTO clients.contacts (id, organization_id, first_name) VALUES ($1, $2, 'X')`, [stranger, otherOrg]);
       await expect(book(at(7, '12:00'), agent, { contact_id: stranger })).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('only lets appointment calendars charge, one calendar per service', async () => {
+      const service = await ds.getRepository(PaymentServiceEntity).save({ organization_id: org, name: 'Consulta', amount: 5000 });
+      const followUp = await ds.getRepository(WorkScheduleEntity).findOneByOrFail({ organization_id: org, type: 'follow_up' });
+      await expect(calendars.updateCalendar(org, followUp.id, { payment_service_id: service.id })).rejects.toMatchObject({
+        status: 400,
+        response: { message: 'Only appointment calendars can charge for a service' },
+      });
+
+      await calendars.updateCalendar(org, calendar, { payment_service_id: service.id });
+      const extra = await calendars.createCalendar(org, { name: 'Room 2' });
+      await expect(calendars.updateCalendar(org, extra.id, { payment_service_id: service.id })).rejects.toMatchObject({
+        status: 400,
+        response: { message: 'That service is already linked to another appointments calendar' },
+      });
     });
 
     it('asks staff to charge or waive on a charging calendar, and sends the AI to a payment link', async () => {
@@ -482,10 +510,26 @@ describeDb('scheduling against PostgreSQL', () => {
       // Another contact books the slot (staff, waived) — the expired hold is released on the way.
       await book(at(7, '10:00'), agent, { contact_id: otherContact, waive_payment: true });
 
+      await ds.query(
+        `INSERT INTO core.users (organization_id, email, full_name, role, is_active) VALUES
+           ($1, $2, 'Olga Owner', 'owner', true), ($1, $3, 'Andy Agent', 'agent', true), ($1, $4, 'Old Admin', 'admin', false)`,
+        [org, `olga-${org}@x.test`, `andy-${org}@x.test`, `old-${org}@x.test`],
+      );
       await payments.handleWebhookEvent(org, paidEvent(String(stripeSessions[0].id)));
       const payment = await ds.getRepository(PaymentEntity).findOneByOrFail({ id: result.payment_id });
       expect(payment).toMatchObject({ status: 'paid', attention_reason: 'slot_unavailable' });
       expect(await payments.findNeedingAttention(org)).toHaveLength(1);
+
+      // The team hears about it: in-app notification + an English email to active owners/admins only.
+      await new Promise((r) => setTimeout(r, 50));
+      expect(realtime.notifyOrg).toHaveBeenCalledWith(org, expect.objectContaining({ title: 'Payment needs review', href: '/payments?tab=attention' }));
+      expect(mail.send).toHaveBeenCalledTimes(1);
+      const sent = mail.send.mock.calls[0][0];
+      expect(sent.to).toBe(`olga-${org}@x.test`);
+      expect(sent.subject).toBe('A payment needs manual review');
+      expect(sent.html).toContain('Hi Olga Owner,');
+      expect(sent.html).toMatch(/We received a payment of [\d.]+ USD from .+, but the appointment could not be confirmed \(slot unavailable\)\./);
+      expect(sent.html).toContain('href="https://app.test/payments?tab=attention"');
 
       const rebooked = await book(at(8, '10:00'), agent, { waive_payment: true });
       await payments.resolveAttention(org, payment.id, { resolution: 'rebooked' as never, appointment_id: rebooked.id }, null);

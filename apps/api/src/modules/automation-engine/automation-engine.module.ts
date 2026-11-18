@@ -8,7 +8,6 @@ import { ConversationEntity } from '../conversation-management/conversation.enti
 import { OrganizationEntity } from '../organizations/organization.entity';
 import { ConversationManagementModule } from '../conversation-management/conversation-management.module';
 import { ClientManagementModule } from '../client-management/client-management.module';
-import { CommunicationsModule } from '../communications/communications.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AIAgentsModule } from '../ai-agents/ai-agents.module';
@@ -54,7 +53,6 @@ const logger = new Logger('AutomationEngineModule');
     ConfigModule,
     ConversationManagementModule,
     ClientManagementModule,
-    CommunicationsModule,
     AIAgentsModule,
     IntegrationsModule,
     PaymentsModule,

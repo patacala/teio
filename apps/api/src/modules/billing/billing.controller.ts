@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import type Stripe from 'stripe';
@@ -48,6 +49,7 @@ export class BillingController {
 
   @Public()
   @Get('plans')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'List all available billing plans (public)' })
   @ApiResponse({ status: 200, description: 'Plans with DB-defined pricing, limits and features' })
   getPlans() {
