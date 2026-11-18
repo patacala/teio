@@ -1,6 +1,11 @@
 import { ConversationManagementService } from './conversation-management.service';
 import type { IngestMessageDto } from './ingest-message.dto';
 
+/**
+ * Ingesting only records the message and publishes message.received. Whether
+ * the AI answers (and whether a team member took over) is decided by the
+ * organization's automations, started from that event.
+ */
 function buildService(opts: { botActive: boolean }) {
   const conversation = {
     id: 'conv-1',
@@ -22,6 +27,8 @@ function buildService(opts: { botActive: boolean }) {
     save: jest.fn().mockResolvedValue({ id: 'msg-1', sent_at: new Date() }),
   };
   const rmqClient = { emit: jest.fn() };
+  const published: Array<{ topic: string; data: Record<string, unknown> }> = [];
+  const outbox = { publish: jest.fn(async (topic: string, data: Record<string, unknown>) => void published.push({ topic, data })) };
   const clientService = {
     findOrCreateByChannel: jest.fn().mockResolvedValue({ id: 'contact-1', first_name: 'Ada', last_name: 'Lovelace' }),
     updateLastContacted: jest.fn().mockResolvedValue(undefined),
@@ -30,7 +37,6 @@ function buildService(opts: { botActive: boolean }) {
     findById: jest.fn().mockResolvedValue({ id: 'chan-1', organization_id: 'org-1', type: 'whatsapp', is_active: true, config: {} }),
     findByWidgetId: jest.fn(),
   };
-  const agentQueue = { add: jest.fn().mockResolvedValue(undefined) };
 
   const service = new ConversationManagementService(
     conversationRepo as never,
@@ -39,15 +45,14 @@ function buildService(opts: { botActive: boolean }) {
     clientService as never,
     channelsService as never,
     undefined,
-    agentQueue as never,
     undefined,
     undefined,
-    undefined,
+    outbox as never,
   );
 
-  jest.spyOn(service, 'findOrCreateActiveConversation').mockResolvedValue({ conversation: conversation as never, created: true });
+  jest.spyOn(service, 'findOrCreateActiveConversation').mockResolvedValue({ conversation: conversation as never, created: false });
 
-  return { service, agentQueue };
+  return { service, published, rmqClient };
 }
 
 const dto: IngestMessageDto = {
@@ -56,16 +61,21 @@ const dto: IngestMessageDto = {
   sender_identifier: '+15550000000',
 };
 
-describe('ConversationManagementService.ingestMessage — human handoff guard', () => {
-  it('enqueues the agent trigger while the AI owns the conversation', async () => {
-    const { service, agentQueue } = buildService({ botActive: true });
+describe('ConversationManagementService.ingestMessage', () => {
+  it.each([true, false])('publishes message.received whoever answers the conversation (AI active: %s)', async (botActive) => {
+    const { service, published } = buildService({ botActive });
     await service.ingestMessage(dto);
-    expect(agentQueue.add).toHaveBeenCalledWith('trigger', expect.objectContaining({ event_type: 'message.received' }), expect.anything());
-  });
-
-  it('never enqueues the agent trigger once a human has taken the conversation over', async () => {
-    const { service, agentQueue } = buildService({ botActive: false });
-    await service.ingestMessage(dto);
-    expect(agentQueue.add).not.toHaveBeenCalled();
+    expect(published).toEqual([
+      {
+        topic: 'message.received',
+        data: expect.objectContaining({
+          organization_id: 'org-1',
+          conversation_id: 'conv-1',
+          contact_id: 'contact-1',
+          channel: 'whatsapp',
+          message: expect.objectContaining({ content: 'hola', direction: 'inbound' }),
+        }),
+      },
+    ]);
   });
 });

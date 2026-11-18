@@ -14,6 +14,7 @@ import { WahaChannelController } from '../../modules/integrations/waha-channel.c
 import { IntegrationsController } from '../../modules/integrations/integrations.controller';
 import { PaymentServiceController } from '../../modules/payments/payment-service.controller';
 import { PaymentsController } from '../../modules/payments/payments.controller';
+import { AutomationsController } from '../../modules/automation-engine/workflows/automations.controller';
 
 type Ctor = { prototype: any; name: string };
 
@@ -41,6 +42,7 @@ const ADMIN_ONLY: Array<[Ctor, string[]]> = [
   [WahaChannelController, ['createSession', 'getQr', 'requestPairingCode', 'relink', 'unlink']],
   [IntegrationsController, ['create', 'testWebhook', 'update', 'delete']],
   [PaymentServiceController, ['create', 'update', 'remove']],
+  [AutomationsController, ['create', 'rename', 'saveDraft', 'publish', 'pause', 'resume', 'duplicate', 'remove']],
 ];
 
 const OPEN_READS: Array<[Ctor, string[]]> = [
@@ -48,6 +50,7 @@ const OPEN_READS: Array<[Ctor, string[]]> = [
   [AutomationAgentsController, ['findAll']],
   [ChannelsController, ['findAll', 'findOne']],
   [PaymentServiceController, ['findAll']],
+  [AutomationsController, ['list', 'catalog', 'detail', 'versions', 'automationRuns', 'contactRuns', 'run', 'validate', 'audiencePreview', 'enroll', 'cancelRun']],
 ];
 
 describe('admin-only configuration routes', () => {

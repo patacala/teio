@@ -22,7 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
   // Settings
   '/templates': 'Quick replies',
   '/config/agents': 'AI Agent',
-  '/config/sequences': 'Follow-up sequences',
+  '/config/automations': 'Automations',
   '/config/webhooks': 'Webhooks',
   '/config/channels': 'Channels',
   '/config/payments': 'Payments setup',

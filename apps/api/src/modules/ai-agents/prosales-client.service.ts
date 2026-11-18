@@ -37,9 +37,9 @@ export class ProsalesClientService {
    * ProSales (POST /provisioning/bootstrap, protected by a server-side-only
    * secret — never sent to the frontend), stores the returned credentials
    * in this org's settings.prosales, and registers the message.received
-   * automation-agent row pointing at ProSales' /crm/inbound (inactive by
-   * default — switching it on is still the manual step, via
-   * MessageRoutingSection).
+   * AI connection row pointing at ProSales' /crm/inbound. Turning the AI on
+   * for incoming messages is done by activating the "AI agent: answer
+   * incoming messages" automation.
    *
    * Idempotent: POST /provisioning/bootstrap reuses the org by slug, so
    * calling this again for an org that already has one just re-syncs the
@@ -106,14 +106,17 @@ export class ProsalesClientService {
       await this.agentTriggerService.update(existingRow.id, orgId, {
         workflow_endpoint: inboundUrl,
         auth_header_value: apiKey,
+        is_active: true,
       });
     } else {
+      // The connection is enabled; whether messages reach it is decided by
+      // the organization's automations ("AI agent: answer incoming messages").
       await this.agentTriggerService.create(orgId, {
         name: 'ProSales',
         trigger_event: 'message.received',
         workflow_endpoint: inboundUrl,
         auth_header_value: apiKey,
-        is_active: false,
+        is_active: true,
       });
     }
 

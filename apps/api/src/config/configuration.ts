@@ -56,7 +56,8 @@ export default () => ({
   },
   demo: {
     orgId:         process.env.DEMO_ORG_ID ?? '',
-    webhookUrl:    process.env.N8N_DEMO_WEBHOOK_URL ?? '',
+    // The service that builds demos.
+    generatorUrl:  process.env.DEMO_GENERATOR_URL || '',
     webhookSecret: process.env.DEMO_WEBHOOK_SECRET ?? '',
     landingUrl:    process.env.NEXT_PUBLIC_LANDING_URL ?? '',
   },
@@ -90,7 +91,7 @@ export default () => ({
     baseUrl: (process.env.WAHA_BASE_URL ?? 'http://localhost:3000').replace(/\/+$/, ''),
     apiKey:  process.env.WAHA_API_KEY ?? '',
     // Where WAHA delivers webhooks back to us. Separate from BASE_URL because
-    // that one is also handed to external services (n8n demo callback) and must
+    // that one is also handed to external services (the demo generator callback) and must
     // stay publicly reachable — this one can be a container-internal address
     // when WAHA runs on the same host. Falls back to BASE_URL when unset.
     webhookBaseUrl: (process.env.WAHA_WEBHOOK_BASE_URL ?? '').replace(/\/+$/, ''),

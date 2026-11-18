@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockApi } from '@/test/msw/api';
 import { ContactSidebar } from './contact-sidebar';
 import type { Contact } from '@/services/contacts.service';
 import type { Payment } from '@/services/payments.service';
@@ -35,7 +36,8 @@ vi.mock('@/hooks/useConversations', () => ({
 vi.mock('@/hooks/usePayments', () => ({
   usePayments: () => ({ data: state.payments, isLoading: state.paymentsLoading }),
 }));
-vi.mock('@/hooks/useToast', () => ({ toast: vi.fn() }));
+const toast = vi.hoisted(() => vi.fn());
+vi.mock('@/hooks/useToast', () => ({ toast }));
 
 const optOutMock = vi.hoisted(() => vi.fn());
 vi.mock('@/services/contacts.service', async (importOriginal) => ({
@@ -45,6 +47,11 @@ vi.mock('@/services/contacts.service', async (importOriginal) => ({
     optOut: optOutMock,
   },
 }));
+
+beforeEach(() => {
+  mockApi('get', '/automations', { data: [] });
+  mockApi('get', '/automations/contact/contact-1/runs', { data: [] });
+});
 
 function contact(overrides: Partial<Contact> = {}): Contact {
   return {
@@ -122,25 +129,36 @@ describe('ContactSidebar — channel opt-out', () => {
     state.contact = contact({ tags: [] });
     state.payments = [];
     renderWithQueryClient(<ContactSidebar contactId="contact-1" conversationId={null} />);
-    expect(screen.getByRole('button', { name: 'Opt out of follow-ups' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Opt out of automated messages' })).toBeInTheDocument();
   });
 
   it('shows the opted-out badge once the lead already has the tag', () => {
     state.contact = contact({ tags: ['opt-out'] });
     state.payments = [];
     renderWithQueryClient(<ContactSidebar contactId="contact-1" conversationId={null} />);
-    expect(screen.getByText('Opted out of automated follow-ups')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Opt out of follow-ups' })).not.toBeInTheDocument();
+    expect(screen.getByText('Opted out of automated messages')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Opt out of automated messages' })).not.toBeInTheDocument();
   });
 
   it('calls the opt-out endpoint when the agent clicks the button', async () => {
     state.contact = contact({ tags: [] });
     state.payments = [];
-    optOutMock.mockResolvedValue({ contact: { ...state.contact, tags: ['opt-out'] }, sequences_cancelled: 1 });
+    optOutMock.mockResolvedValue({ contact: { ...state.contact, tags: ['opt-out'] }, automations_stopped: 1 });
     renderWithQueryClient(<ContactSidebar contactId="contact-1" conversationId={null} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Opt out of follow-ups' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Opt out of automated messages' }));
 
     await waitFor(() => expect(optOutMock).toHaveBeenCalledWith('contact-1'));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'Opted out. Stopped 1 automation(s) for this contact.' }));
+  });
+});
+
+describe('ContactSidebar — Automations', () => {
+  it('shows the automations section for the lead', async () => {
+    state.contact = contact();
+    state.payments = [];
+    renderWithQueryClient(<ContactSidebar contactId="contact-1" conversationId={null} />);
+    expect(screen.getByText('Automations')).toBeInTheDocument();
+    expect(await screen.findByText('Not in any automation right now.')).toBeInTheDocument();
   });
 });

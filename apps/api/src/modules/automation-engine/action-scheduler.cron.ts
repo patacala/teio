@@ -3,7 +3,6 @@ import { Cron } from '@nestjs/schedule';
 import { Queue } from 'bullmq';
 import { ScheduledActionService } from './scheduled-action.service';
 import { ActionExecutionService } from './action-execution.service';
-import { AutomationSequenceService } from './automation-sequence.service';
 import { ACTION_EXECUTION_QUEUE } from './automation-engine.constants';
 
 @Injectable()
@@ -15,7 +14,6 @@ export class ActionSchedulerCron implements OnModuleInit {
   constructor(
     private readonly actions: ScheduledActionService,
     private readonly actionExecutionService: ActionExecutionService,
-    private readonly sequenceService: AutomationSequenceService,
     @Optional() @Inject(ACTION_EXECUTION_QUEUE) private readonly queue?: Queue,
   ) {}
 
@@ -85,12 +83,9 @@ export class ActionSchedulerCron implements OnModuleInit {
   }
 
   /**
-   * Unblocks sequences whose step was dispatched to n8n but never completed.
-   *
-   * Relies on markFailed's existing retry accounting: it bumps `attempts` and
-   * puts the appointment back to `pending` while under `max_attempts`, then
-   * marks it `failed`. Calls make this necessary — a message almost always
-   * gets an answer from n8n, an unanswered call may never produce one.
+   * Agenda call steps whose call never reported back (voicemail, a dropped
+   * call): markFailed bumps `attempts` and puts the step back to `pending`
+   * while under `max_attempts`, then marks it `failed`.
    */
   @Cron('*/15 * * * *')
   async reapStuck(): Promise<void> {
@@ -101,14 +96,7 @@ export class ActionSchedulerCron implements OnModuleInit {
       if (stuck.length === 0) return;
 
       for (const appt of stuck) {
-        const outcome = await this.actions.markFailed(
-          appt.organization_id,
-          appt.id,
-          `No completion received within ${timeoutHours}h of dispatch`,
-        );
-        if (outcome === 'failed' && appt.sequence_id) {
-          await this.sequenceService.advanceOrComplete(appt.organization_id, appt.sequence_id);
-        }
+        await this.actions.markFailed(appt.organization_id, appt.id, `No completion received within ${timeoutHours}h of dispatch`);
       }
 
       this.logger.warn(

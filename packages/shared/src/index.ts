@@ -27,4 +27,5 @@ export {
   PlanFeature,
 } from './enums';
 export * from './types/automation.types';
+export * from './automation/index';
 export * from './dtos/pagination.dto';

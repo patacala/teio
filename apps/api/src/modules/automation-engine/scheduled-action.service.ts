@@ -1,12 +1,12 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CalendarSystemKey } from '@crm/shared';
 import { ScheduledActionEntity, ScheduledActionStatus } from './scheduled-action.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
 import { ContactEntity } from '../client-management/contact.entity';
-import { AutomationSequenceService } from './automation-sequence.service';
 import { ensureSystemCalendar, findOrganizationTimezone } from '../scheduling/system-calendars';
+import { TaskHooksService } from './core/task-hooks.service';
 
 const ACTION_TITLES: Record<string, string> = {
   send_message: 'Follow-up: Send Message',
@@ -32,7 +32,9 @@ export interface CreateScheduledActionInput {
   description?: string | null;
   source?: string;
   metadata?: Record<string, unknown>;
-  sequence_id?: string | null;
+  /** Set by an automation's "Create task" step: finishing the task can resume the run. */
+  run_id?: string | null;
+  node_key?: string | null;
 }
 
 export interface ScheduledActionFilters {
@@ -56,9 +58,10 @@ export interface ScheduledActionMetrics {
 }
 
 /**
- * Follow-up steps. Every state change is a conditional UPDATE on the current
- * status, so the scheduler, the reaper, n8n callbacks and people acting in the
- * agenda can never undo each other.
+ * Follow-up steps of the agenda (scheduled by people, or tasks created by
+ * automations). Every state change is a conditional UPDATE on the current
+ * status, so the scheduler, the reaper, call completions and people acting in
+ * the agenda can never undo each other.
  */
 @Injectable()
 export class ScheduledActionService {
@@ -71,7 +74,7 @@ export class ScheduledActionService {
     private readonly calendarRepo: Repository<WorkScheduleEntity>,
     @InjectRepository(ContactEntity)
     private readonly contactRepo: Repository<ContactEntity>,
-    private readonly sequences: AutomationSequenceService,
+    @Optional() private readonly taskHooks?: TaskHooksService,
   ) {}
 
   // ── Creation ────────────────────────────────────────────────────────────
@@ -101,7 +104,8 @@ export class ScheduledActionService {
         calendar_id: calendar.id,
         contact_id: input.contact_id,
         conversation_id: input.conversation_id ?? null,
-        sequence_id: input.sequence_id ?? null,
+        run_id: input.run_id ?? null,
+        node_key: input.node_key ?? null,
         title: input.title?.trim() || ACTION_TITLES[input.action] || 'Follow-up',
         description: input.description ?? null,
         action: input.action,
@@ -133,7 +137,7 @@ export class ScheduledActionService {
       .getMany();
   }
 
-  /** Steps dispatched to n8n that never reported back. */
+  /** Call steps whose call never reported back. */
   async findStuckProcessing(olderThanHours: number, limit = 50): Promise<ScheduledActionEntity[]> {
     return this.repo
       .createQueryBuilder('s')
@@ -197,9 +201,9 @@ export class ScheduledActionService {
     return row.status === 'failed' ? 'failed' : 'retrying';
   }
 
-  // ── People and n8n acting on a step ─────────────────────────────────────
+  // ── People and calls acting on a step ───────────────────────────────────
 
-  /** Done (by n8n, a call, or a person); the sequence moves on to its next step. */
+  /** Done (by a call, or a person). A run waiting for this task continues. */
   async complete(
     organizationId: string,
     id: string,
@@ -210,16 +214,16 @@ export class ScheduledActionService {
     if (!changed && step.status !== 'completed') {
       throw new ConflictException(`A ${step.status} follow-up step cannot be completed`);
     }
-    if (changed && step.sequence_id) await this.advance(organizationId, step.sequence_id);
+    if (changed && step.run_id) await this.taskHooks?.taskClosed(step);
     return this.findById(id, organizationId);
   }
 
-  /** Skips a step; the sequence moves on instead of stalling. */
+  /** Skips a step. A run waiting for this task continues instead of stalling. */
   async skip(organizationId: string, id: string): Promise<ScheduledActionEntity> {
     const step = await this.findById(id, organizationId);
     const changed = await this.transition(organizationId, id, OPEN_ACTION_STATUSES, { status: 'cancelled' });
     if (!changed) throw new ConflictException(`A ${step.status} follow-up step cannot be cancelled`);
-    if (step.sequence_id) await this.advance(organizationId, step.sequence_id);
+    if (step.run_id) await this.taskHooks?.taskClosed(step);
     return this.findById(id, organizationId);
   }
 
@@ -250,9 +254,7 @@ export class ScheduledActionService {
   async remove(organizationId: string, id: string): Promise<void> {
     const step = await this.findById(id, organizationId);
     await this.repo.delete({ id, organization_id: organizationId });
-    if (step.sequence_id && OPEN_ACTION_STATUSES.includes(step.status)) {
-      await this.advance(organizationId, step.sequence_id);
-    }
+    if (step.run_id && OPEN_ACTION_STATUSES.includes(step.status)) await this.taskHooks?.taskClosed(step);
   }
 
   // ── Reads ───────────────────────────────────────────────────────────────
@@ -263,16 +265,14 @@ export class ScheduledActionService {
     return step;
   }
 
-  async findProcessingBySequence(organizationId: string, sequenceId: string): Promise<ScheduledActionEntity | null> {
-    return this.repo.findOne({
-      where: { organization_id: organizationId, sequence_id: sequenceId, status: 'processing' },
-    });
+  /** The task an automation step created (a retried step reuses it). */
+  async findByRunStep(organizationId: string, runId: string, nodeKey: string): Promise<ScheduledActionEntity | null> {
+    return this.repo.findOne({ where: { organization_id: organizationId, run_id: runId, node_key: nodeKey }, order: { created_at: 'DESC' } });
   }
 
   /**
-   * The dispatched step of this kind waiting on this contact, whether or not
-   * its sequence is still active, so a call still closes its step when the
-   * sequence has since been paused or when the step was created outside one.
+   * The dispatched step of this kind waiting on this contact (a call step
+   * waiting for its call to end).
    */
   async findProcessingByContactAndAction(
     organizationId: string,
@@ -376,13 +376,5 @@ export class ScheduledActionService {
       .andWhere('status IN (:...from)', { from })
       .execute();
     return (result.affected ?? 0) > 0;
-  }
-
-  private async advance(organizationId: string, sequenceId: string): Promise<void> {
-    try {
-      await this.sequences.advanceOrComplete(organizationId, sequenceId);
-    } catch (err) {
-      this.logger.warn(`Could not advance sequence ${sequenceId}: ${(err as Error).message}`);
-    }
   }
 }

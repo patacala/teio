@@ -1,0 +1,328 @@
+{
+  "confirmation request / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Please confirm your appointment: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">You have an upcoming appointment. Please confirm it:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "confirmation request / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, please confirm your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM: https://api.example.com/confirm?token=e&c=s"
+    }
+  ],
+  "confirmation request / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Please confirm your appointment: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">You have an upcoming appointment. Please confirm it:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "confirmation request / unreachable": [],
+  "confirmation request (reminder) / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Reminder: please confirm your appointment Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is coming up and hasn&#39;t been confirmed yet. Please confirm it:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "confirmation request (reminder) / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, please confirm your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM: https://api.example.com/confirm?token=e&c=s"
+    }
+  ],
+  "confirmation request (rescheduled) / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Please confirm the new time: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been moved. Please confirm the new time:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "confirmation request (rescheduled) / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, please confirm your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM: https://api.example.com/confirm?token=e&c=s"
+    }
+  ],
+  "confirmed with location, meeting and manage link / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment confirmed: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    }
+  ],
+  "confirmed with location, meeting and manage link / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, your appointment \"Initial consultation\" is confirmed for Monday, March 23, 2026 at 09:00 AM. Reschedule or cancel: https://api.example.com/m/abc"
+    }
+  ],
+  "confirmed with location, meeting and manage link / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment confirmed: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana García, your appointment \"Initial consultation\" is confirmed for Monday, March 23, 2026 at 09:00 AM. Reschedule or cancel: https://api.example.com/m/abc"
+    }
+  ],
+  "confirmed with location, meeting and manage link / unnamed": [
+    {
+      "channel": "email",
+      "to": "anon@example.com",
+      "subject": "Appointment confirmed: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi there,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=anon@example.com;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:\r\n anon@example.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550002",
+      "text": "Clínica Sol: Hi there, your appointment \"Initial consultation\" is confirmed for Monday, March 23, 2026 at 09:00 AM. Reschedule or cancel: https://api.example.com/m/abc"
+    }
+  ],
+  "confirmed with location, meeting and manage link / unreachable": [],
+  "confirmed without location, meeting or manage link / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment confirmed: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n      </table>\n    </div>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana García, your appointment \"Initial consultation\" is confirmed for Monday, March 23, 2026 at 09:00 AM."
+    }
+  ],
+  "confirmed, created by a team member (invite organizer) / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment confirmed: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Dr. Luis Pérez:mailto:luis@clinicasol.example.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    }
+  ],
+  "confirmed, title with HTML / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment confirmed: Consulta <b>VIP</b> & más",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is confirmed. Here are the details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Consulta &lt;b&gt;VIP&lt;/b&gt; &amp; más</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:2\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Consulta <b>VIP</b> & más\r\nDESCRIPTION:Bring your ID\\, please\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Consulta <b>VIP</b> & más\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    }
+  ],
+  "rescheduled (confirmed) / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Your appointment has been rescheduled: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been moved. Here are the new details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:3\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    }
+  ],
+  "rescheduled (confirmed) / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, your appointment \"Initial consultation\" has been moved to Monday, March 23, 2026 at 09:00 AM. Reschedule or cancel: https://api.example.com/m/abc"
+    }
+  ],
+  "rescheduled (confirmed) / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Your appointment has been rescheduled: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been moved. Here are the new details:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "invite.ics",
+          "contentType": "text/calendar; method=REQUEST",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:3\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:ana@e\r\n xample.com\r\nSTATUS:CONFIRMED\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder: Initial consultation\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana García, your appointment \"Initial consultation\" has been moved to Monday, March 23, 2026 at 09:00 AM. Reschedule or cancel: https://api.example.com/m/abc"
+    }
+  ],
+  "rescheduled, still awaiting confirmation / both": [],
+  "cancelled / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment cancelled: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been cancelled:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "cancel.ics",
+          "contentType": "text/calendar; method=CANCEL",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:CANCEL\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:4\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED:mailto:ana@e\r\n xample.com\r\nSTATUS:CANCELLED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    }
+  ],
+  "cancelled / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM has been cancelled."
+    }
+  ],
+  "cancelled / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Appointment cancelled: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been cancelled:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "cancel.ics",
+          "contentType": "text/calendar; method=CANCEL",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:CANCEL\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:4\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=Ana García;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED:mailto:ana@e\r\n xample.com\r\nSTATUS:CANCELLED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana García, your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM has been cancelled."
+    }
+  ],
+  "cancelled / unnamed": [
+    {
+      "channel": "email",
+      "to": "anon@example.com",
+      "subject": "Appointment cancelled: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi there,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment has been cancelled:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": [
+        {
+          "filename": "cancel.ics",
+          "contentType": "text/calendar; method=CANCEL",
+          "content": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Clínica Sol//CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:CANCEL\r\nBEGIN:VEVENT\r\nUID:a0000000-0000-4000-8000-000000000001@crm\r\nSEQUENCE:4\r\nDTSTAMP:<now>\r\nDTSTART:20260323T150000Z\r\nDTEND:20260323T153000Z\r\nSUMMARY:Initial consultation\r\nLOCATION:Main office\\, 2nd floor\r\nURL:https://meet.example.com/abc\r\nORGANIZER;CN=Clínica Sol:mailto:noreply@prosalesia.com\r\nATTENDEE;CN=anon@example.com;ROLE=REQ-PARTICIPANT;PARTSTAT=DECLINED:mailto:\r\n anon@example.com\r\nSTATUS:CANCELLED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+        }
+      ]
+    },
+    {
+      "channel": "sms",
+      "to": "+5215550002",
+      "text": "Clínica Sol: Hi there, your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM has been cancelled."
+    }
+  ],
+  "reminder, confirmed booking / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Reminder: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">This is a reminder of your upcoming appointment:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "reminder, confirmed booking / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, this is a reminder of your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM."
+    }
+  ],
+  "reminder, confirmed booking / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Reminder: Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">This is a reminder of your upcoming appointment:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://meet.example.com/abc\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Join meeting</a></div>\n    <p style=\"margin:16px 0 0;font-size:13px\"><a href=\"https://api.example.com/manage?token=m\" style=\"color:#2563EB\">Reschedule or cancel</a></p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "reminder, unconfirmed booking / emailOnly": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Reminder: please confirm your appointment Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is coming up and hasn&#39;t been confirmed yet. Please confirm it:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ],
+  "reminder, unconfirmed booking / phoneOnly": [
+    {
+      "channel": "sms",
+      "to": "+5215550001",
+      "text": "Clínica Sol: Hi Ana, please confirm your appointment \"Initial consultation\" on Monday, March 23, 2026 at 09:00 AM: https://api.example.com/confirm?token=e&c=s"
+    }
+  ],
+  "reminder, unconfirmed booking / both": [
+    {
+      "channel": "email",
+      "to": "ana@example.com",
+      "subject": "Reminder: please confirm your appointment Initial consultation",
+      "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#F7F8FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif\">\n<div style=\"max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #E6E8EB;overflow:hidden\">\n  <div style=\"background:#2563EB;padding:24px 32px\">\n    <h1 style=\"margin:0;color:#ffffff;font-size:20px;font-weight:600\">Clínica Sol</h1>\n  </div>\n  <div style=\"padding:32px\">\n    <p style=\"margin:0 0 16px;color:#111827;font-size:16px\">Hi Ana García,</p>\n    <p style=\"margin:0 0 16px;color:#6B7280;font-size:14px;line-height:1.6\">Your appointment is coming up and hasn&#39;t been confirmed yet. Please confirm it:</p>\n    <div style=\"background:#F7F8FA;border-radius:6px;padding:16px 20px;margin-bottom:8px\">\n      <table style=\"width:100%;border-collapse:collapse;font-size:14px\">\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Appointment</td><td style=\"padding:8px 0;color:#111827\"><strong>Initial consultation</strong></td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Date</td><td style=\"padding:8px 0;color:#111827\">Monday, March 23, 2026</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Time</td><td style=\"padding:8px 0;color:#111827\">09:00 AM – 09:30 AM (America/Mexico_City)</td></tr>\n        <tr><td style=\"padding:8px 0;color:#6B7280;width:120px\">Location</td><td style=\"padding:8px 0;color:#111827\">Main office, 2nd floor</td></tr>\n      </table>\n    </div>\n    <div style=\"text-align:center;margin:24px 0\"><a href=\"https://api.example.com/confirm?token=e\" style=\"display:inline-block;background:#2563EB;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px\">Confirm appointment</a></div>\n    <p style=\"margin:16px 0 0;color:#6B7280;font-size:13px;line-height:1.5\">You can also reschedule or cancel from the same link.</p>\n  </div>\n  <div style=\"padding:16px 32px;background:#F7F8FA;border-top:1px solid #E6E8EB;text-align:center\">\n    <p style=\"margin:0;color:#9CA3AF;font-size:12px\">Clínica Sol</p>\n  </div>\n</div>\n</body>\n</html>",
+      "attachments": []
+    }
+  ]
+}

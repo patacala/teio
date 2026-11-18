@@ -19,19 +19,57 @@ import { ActionExecutionService } from './action-execution.service';
 import { ActionExecutionProcessor } from './action-execution.processor';
 import { ActionSchedulerCron } from './action-scheduler.cron';
 import { AutomationEngineController } from './automation-engine.controller';
+import { AgendaCallConsumer } from './agenda-call.consumer';
 import { SendMessageHandler } from './handlers/send-message.handler';
 import { SendEmailHandler } from './handlers/send-email.handler';
 import { NotifyAgentHandler } from './handlers/notify-agent.handler';
-import { CreateTaskHandler } from './handlers/create-task.handler';
 import { CallHandler } from './handlers/call.handler';
-import { AutomationSequenceEntity } from './automation-sequence.entity';
-import { AutomationSequenceService } from './automation-sequence.service';
-import { SequenceTemplateEntity } from './sequence-template.entity';
-import { SequenceTemplateStepEntity } from './sequence-template-step.entity';
-import { SequenceStepEntity } from './sequence-step.entity';
-import { FollowUpContextBuilder } from './handlers/context-builder.service';
-import { OutboundMessageConsumer } from './outbound-message.consumer';
 import { MessageEntity } from '../conversation-management/message.entity';
+import { FunnelStageEntity } from '../funnels/funnel-stage.entity';
+import { UserEntity } from '../users/user.entity';
+import { AutomationAgentEntity } from '../ai-automation/entities/automation-agent.entity';
+import { AUTOMATION_ENTITIES } from './workflows/entities';
+import { ActionGuardService } from './core/action-guard.service';
+import { TaskHooksService } from './core/task-hooks.service';
+import { OrgTimeService } from './workflows/time/org-time.service';
+import { RunStoreService } from './workflows/runtime/run-store.service';
+import { AutomationRuntimeService } from './workflows/runtime/automation-runtime.service';
+import { RunSchedulerCron } from './workflows/runtime/run-scheduler.cron';
+import { RecipientsService } from './workflows/nodes/recipients.service';
+import { DeliveryRunner } from './workflows/nodes/delivery-runner.service';
+import { NODE_EXECUTORS } from './workflows/nodes/node-executor';
+import { ConditionNode, EndNode, WaitForEventNode, WaitNode } from './workflows/nodes/logic.nodes';
+import { AddTagNode, MoveStageNode, RemoveTagNode, SetAiNode, UpdateContactNode } from './workflows/nodes/contact.nodes';
+import { ChatSender, SendEmailNode, SendMessageNode, SendSmsNode } from './workflows/nodes/messaging.nodes';
+import { CallNode, CreateTaskNode, NotifyTeamNode } from './workflows/nodes/team.nodes';
+import { AiConnectionsService, SendToAiNode } from './workflows/nodes/ai.nodes';
+import { EnrollmentService } from './workflows/triggers/enrollment.service';
+import { ScheduleTriggerService } from './workflows/triggers/schedule-trigger.service';
+import { AutomationEventConsumer } from './workflows/triggers/automation-event.consumer';
+import { AutomationsService } from './workflows/automations.service';
+import { AutomationInstallerService } from './workflows/system/automation-installer.service';
+import { AutomationsController } from './workflows/automations.controller';
+import { RunsService } from './workflows/runs.service';
+
+/** Every step type's executor; the runtime looks them up by type. */
+const NODE_EXECUTOR_CLASSES = [
+  SendMessageNode,
+  SendEmailNode,
+  SendSmsNode,
+  SendToAiNode,
+  SetAiNode,
+  NotifyTeamNode,
+  CreateTaskNode,
+  CallNode,
+  AddTagNode,
+  RemoveTagNode,
+  UpdateContactNode,
+  MoveStageNode,
+  WaitNode,
+  WaitForEventNode,
+  ConditionNode,
+  EndNode,
+];
 
 const logger = new Logger('AutomationEngineModule');
 
@@ -44,11 +82,11 @@ const logger = new Logger('AutomationEngineModule');
       ContactEntity,
       ConversationEntity,
       OrganizationEntity,
-      AutomationSequenceEntity,
-      SequenceTemplateEntity,
-      SequenceTemplateStepEntity,
-      SequenceStepEntity,
       MessageEntity,
+      FunnelStageEntity,
+      UserEntity,
+      AutomationAgentEntity,
+      ...AUTOMATION_ENTITIES,
     ]),
     ConfigModule,
     ConversationManagementModule,
@@ -84,8 +122,7 @@ const logger = new Logger('AutomationEngineModule');
         }
       },
     },
-    // Services
-    AutomationSequenceService,
+    // Follow-up agenda
     ScheduledActionService,
     ChannelStrategyResolverService,
     ActionExecutionService,
@@ -93,15 +130,44 @@ const logger = new Logger('AutomationEngineModule');
     ActionExecutionProcessor,
     // Scheduler
     ActionSchedulerCron,
-    // Handlers
-    FollowUpContextBuilder,
+    // Agenda step handlers
     SendMessageHandler,
     SendEmailHandler,
     NotifyAgentHandler,
-    CreateTaskHandler,
     CallHandler,
+    // Shared by the agenda and automations
+    ActionGuardService,
+    TaskHooksService,
+    // Automations (workflows)
+    OrgTimeService,
+    RunStoreService,
+    AutomationRuntimeService,
+    RunSchedulerCron,
+    RecipientsService,
+    DeliveryRunner,
+    ChatSender,
+    AiConnectionsService,
+    ...NODE_EXECUTOR_CLASSES,
+    {
+      provide: NODE_EXECUTORS,
+      inject: NODE_EXECUTOR_CLASSES,
+      useFactory: (...executors: unknown[]) => executors,
+    },
+    EnrollmentService,
+    ScheduleTriggerService,
+    AutomationsService,
+    AutomationInstallerService,
+    RunsService,
   ],
-  controllers: [AutomationEngineController, OutboundMessageConsumer],
-  exports: [ScheduledActionService, AutomationSequenceService, ACTION_EXECUTION_QUEUE],
+  controllers: [AutomationEngineController, AutomationsController, AgendaCallConsumer, AutomationEventConsumer],
+  exports: [
+    ScheduledActionService,
+    ACTION_EXECUTION_QUEUE,
+    AutomationsService,
+    AutomationRuntimeService,
+    EnrollmentService,
+    AiConnectionsService,
+    AutomationInstallerService,
+  ],
 })
 export class AutomationEngineModule {}

@@ -8,8 +8,7 @@ export interface ActionResult {
   channel?: string;
   /**
    * What actually ran, when it differs from the step's planned action — e.g. a
-   * `call` degraded to `send_message` because the org has no n8n webhook.
-   * Recorded on the sequence step so degradations stay visible.
+   * `call` degraded to `send_message` because the contact has no phone.
    */
   executedAction?: string;
 }

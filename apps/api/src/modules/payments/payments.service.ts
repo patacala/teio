@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,7 +9,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import type { Queue } from 'bullmq';
 import Stripe from 'stripe';
 import { AppointmentStatus, PaymentAttentionReason, PaymentResolution } from '@crm/shared';
 import { PaymentEntity } from './entities/payment.entity';
@@ -28,7 +26,6 @@ import { MailService } from '../../infrastructure/mail/mail.service';
 import { NOTIFICATION_TEMPLATES, emailFromTemplate, webAppUrl } from '../../infrastructure/messaging';
 import { OutboxService } from '../../infrastructure/outbox/outbox.service';
 import { RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
-import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
 import type { CreatePaymentDto, ResolvePaymentDto } from './dto/create-payment.dto';
 
 export interface PaymentBookingIntent {
@@ -88,8 +85,6 @@ export class PaymentsService {
     private readonly calendarService: CalendarService,
     private readonly config: ConfigService,
     private readonly outbox: OutboxService,
-    @Optional() @Inject(AGENT_TRIGGER_QUEUE)
-    private readonly agentQueue?: Queue,
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
     @Optional() private readonly realtime?: RealtimeBroadcastService,
     @Optional() private readonly mailService?: MailService,
@@ -415,7 +410,6 @@ export class PaymentsService {
     if (!result) return;
     if (result.payment.attention_reason) void this.notifyAttention(result.payment);
     void this.webhookDispatcher?.dispatch('payment.received', organizationId, result.payload);
-    this.triggerAgent('payment.received', organizationId, result.payment, result.payload);
   }
 
   private attentionFor(outcome: PaymentBookingOutcome | null): PaymentAttentionReason | null {
@@ -434,7 +428,7 @@ export class PaymentsService {
   private paidPayload(sessionId: string, result: CompletionResult): Record<string, unknown> {
     const { payment, booking, appointmentConfirmed } = result;
     return {
-      // Intentionally NOT a user utterance. n8n often feeds data.message to the LLM —
+      // Intentionally NOT a user utterance. The AI agent may feed data.message to the LLM —
       // this must read as a system confirmation instruction, not "the user said they paid".
       source: 'system',
       payment_status: 'completed',
@@ -507,28 +501,6 @@ export class PaymentsService {
 
     await this.outbox.publish(RABBITMQ_QUEUES.PAYMENT_EXPIRED, { organization_id: organizationId, ...payload });
     void this.webhookDispatcher?.dispatch(`payment.${status}`, organizationId, payload);
-    this.triggerAgent(`payment.${status}`, organizationId, payment, payload);
-  }
-
-  private triggerAgent(
-    eventType: string,
-    organizationId: string,
-    payment: PaymentEntity,
-    payload: Record<string, unknown>,
-  ): void {
-    void this.agentQueue
-      ?.add(
-        'trigger',
-        {
-          event_type: eventType,
-          organization_id: organizationId,
-          conversation_id: payment.conversation_id ?? undefined,
-          contact_id: payment.contact_id,
-          payload,
-        },
-        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-      )
-      .catch((err: Error) => this.logger.warn(`Could not enqueue agent trigger: ${err.message}`));
   }
 
   /** In-app notification plus an email to owners/admins. Best effort. */

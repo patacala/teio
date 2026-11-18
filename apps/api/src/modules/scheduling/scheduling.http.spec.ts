@@ -196,7 +196,7 @@ describeDb('scheduling HTTP routes', () => {
   });
 
   it('validates bookings and refuses fields the client must not set', async () => {
-    // Legacy n8n workflows still send origin: accepted, but the server decides it.
+    // Older integrations still send origin: accepted, but the server decides it.
     expect((await call('agent', 'POST', '/appointments', booking(at(7, '10:00'), { origin: 'banana' }))).status).toBe(400);
     expect((await call('agent', 'POST', '/appointments', booking(at(7, '10:00'), { created_by: randomUUID() }))).status).toBe(400);
     expect((await call('agent', 'POST', '/appointments', booking('tomorrow at 10'))).status).toBe(400);

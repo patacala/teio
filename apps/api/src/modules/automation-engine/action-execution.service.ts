@@ -8,13 +8,11 @@ import { OrganizationEntity } from '../organizations/organization.entity';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
 import { ScheduledActionService } from './scheduled-action.service';
-import { AutomationSequenceService } from './automation-sequence.service';
 import { ChannelStrategyResolverService } from './channel-strategy-resolver.service';
 import type { IActionHandler } from './handlers/action-handler.interface';
 import { SendMessageHandler } from './handlers/send-message.handler';
 import { SendEmailHandler } from './handlers/send-email.handler';
 import { NotifyAgentHandler } from './handlers/notify-agent.handler';
-import { CreateTaskHandler } from './handlers/create-task.handler';
 import { CallHandler } from './handlers/call.handler';
 import { BillingAccessService } from '../billing/billing-access.service';
 import { NOTIFICATION_TEMPLATES, UNNAMED_CONTACT, renderTemplate } from '../../infrastructure/messaging';
@@ -35,7 +33,6 @@ export class ActionExecutionService {
 
   constructor(
     private readonly actions: ScheduledActionService,
-    private readonly sequenceService: AutomationSequenceService,
     private readonly channelResolver: ChannelStrategyResolverService,
     @InjectRepository(ContactEntity)
     private readonly contactRepo: Repository<ContactEntity>,
@@ -46,7 +43,6 @@ export class ActionExecutionService {
     @Optional() private readonly sendMessageHandler?: SendMessageHandler,
     @Optional() private readonly sendEmailHandler?: SendEmailHandler,
     @Optional() private readonly notifyAgentHandler?: NotifyAgentHandler,
-    @Optional() private readonly createTaskHandler?: CreateTaskHandler,
     @Optional() private readonly callHandler?: CallHandler,
     @Optional() private readonly billingAccess?: BillingAccessService,
   ) {
@@ -54,7 +50,6 @@ export class ActionExecutionService {
       this.sendMessageHandler,
       this.sendEmailHandler,
       this.notifyAgentHandler,
-      this.createTaskHandler,
       this.callHandler,
     ].filter(Boolean) as IActionHandler[];
 
@@ -131,25 +126,8 @@ export class ActionExecutionService {
     try {
       const result = await handler.execute(appt, contact, resolved, org);
 
-      // Record what actually ran on the sequence step, so a degraded action
-      // (call → message with no webhook) and the channel the resolver picked
-      // stay visible for auditing. Fire-and-forget: never block execution.
-      if (appt.sequence_id) {
-        void this.sequenceService.recordStepOutcome(
-          appt.sequence_id,
-          appt.metadata?.attempt as number | undefined,
-          result.executedAction ?? appt.action,
-          result.channel ?? resolved?.channel,
-        );
-      }
-
       if (result.completed) {
         await this.actions.markCompleted(appt.organization_id, appointmentId, result.channel ?? resolved?.channel);
-
-        // If sequence appointment, advance or complete
-        if (appt.sequence_id) {
-          await this.sequenceService.advanceOrComplete(appt.organization_id, appt.sequence_id);
-        }
 
         try {
           this.rmqClient?.emit(RABBITMQ_QUEUES.FOLLOW_UP_COMPLETED, {
@@ -167,8 +145,8 @@ export class ActionExecutionService {
           contact_id: appt.contact_id,
         }).catch(() => {});
       }
-      // If !result.completed → appointment stays in 'processing'.
-      // n8n will complete via complete_follow_up tool.
+      // If !result.completed (a call in progress) the step stays in 'processing'
+      // until CALL_COMPLETED closes it (AgendaCallConsumer).
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -186,11 +164,6 @@ export class ActionExecutionService {
     }
   }
 
-  /**
-   * A retry keeps the same appointment as the sequence trigger. Once retries
-   * are exhausted the step is over, so the sequence must schedule the next
-   * agenda or close. Leaving it active with no appointment drops the cadence.
-   */
   /** Leaves the step to a person and tells the team it is due. */
   private async handOver(step: ScheduledActionEntity): Promise<void> {
     const moved = await this.actions.markAwaitingUser(step.organization_id, step.id);
@@ -209,10 +182,7 @@ export class ActionExecutionService {
     this.logger.log(`Follow-up step ${step.id} handed to the team (${step.action})`);
   }
 
-  private async failStep(appt: { id: string; organization_id: string; sequence_id?: string | null }, error: string): Promise<void> {
-    const outcome = await this.actions.markFailed(appt.organization_id, appt.id, error);
-    if (outcome === 'failed' && appt.sequence_id) {
-      await this.sequenceService.advanceOrComplete(appt.organization_id, appt.sequence_id);
-    }
+  private async failStep(appt: { id: string; organization_id: string }, error: string): Promise<void> {
+    await this.actions.markFailed(appt.organization_id, appt.id, error);
   }
 }

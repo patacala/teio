@@ -7,7 +7,6 @@ import { AppointmentEntity } from '../scheduling/appointment.entity';
 import { WorkScheduleEntity } from '../scheduling/work-schedule.entity';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AIAgentsModule } from '../ai-agents/ai-agents.module';
-import { AppointmentEmailConsumer } from './appointment-email.consumer';
 import { ConversationEventConsumer } from './conversation-event.consumer';
 import { VoiceEventConsumer } from './voice-event.consumer';
 import { AIEventConsumer } from './ai-event.consumer';
@@ -22,8 +21,9 @@ import { OutcomeFeedbackConsumer } from './outcome-feedback.consumer';
     AnalyticsModule,
     AIAgentsModule,
   ],
+  // Booking messages to contacts are sent by the organization's booking
+  // automations (automation-engine/workflows/system).
   controllers: [
-    AppointmentEmailConsumer,
     ConversationEventConsumer,
     VoiceEventConsumer,
     AIEventConsumer,

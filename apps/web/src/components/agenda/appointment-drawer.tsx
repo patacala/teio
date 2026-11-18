@@ -16,12 +16,10 @@ import {
   useRescheduleAppointment,
   useCalendars,
 } from '@/hooks/useAppointments';
-import { useCreateFollowUp, useCreateSequence, useUpdateFollowUp } from '@/hooks/useAutomation';
+import { useCreateFollowUp, useUpdateFollowUp } from '@/hooks/useAutomation';
+import { useAutomations, useEnrollInAutomation } from '@/hooks/useAutomations';
 import { useCreatePayment } from '@/hooks/usePayments';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSequenceTemplates } from '@/hooks/useSequenceTemplates';
-import { SequenceTimelinePreview } from '@/components/sequences/SequenceTimelinePreview';
-import { SEQUENCE_TYPE_LABELS } from '@/components/sequences/sequence-constants';
 import { ApiError } from '@/lib/auth-client';
 import { fromZonedInputValue, toZonedInputValue } from '@/lib/timezone';
 import { toast } from '@/hooks/useToast';
@@ -95,8 +93,8 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
   const [executor, setExecutor] = useState('system');
   const [channelStrategy, setChannelStrategy] = useState('auto');
   const [messageContent, setMessageContent] = useState('');
-  const [templateId, setTemplateId] = useState('');
-  const [useSequence, setUseSequence] = useState(false);
+  const [automationId, setAutomationId] = useState('');
+  const [enrollMode, setEnrollMode] = useState(false);
   const [chargeMode, setChargeMode] = useState<'link' | 'waive'>('link');
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
@@ -106,16 +104,16 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
   const updateMutation = useUpdateAppointment();
   const rescheduleMutation = useRescheduleAppointment();
   const paymentMutation = useCreatePayment();
-  const sequenceMutation = useCreateSequence();
+  const enrollMutation = useEnrollInAutomation();
   const createStepMutation = useCreateFollowUp();
   const updateStepMutation = useUpdateFollowUp();
   const { data: calendars } = useCalendars();
-  const { data: templates } = useSequenceTemplates();
+  const { data: automations } = useAutomations();
   const { canOverrideCalendarRules: isAdmin } = usePermissions();
 
   const isLoading = [
     createMutation, updateMutation, rescheduleMutation, paymentMutation,
-    sequenceMutation, createStepMutation, updateStepMutation,
+    enrollMutation, createStepMutation, updateStepMutation,
   ].some((m) => m.isPending);
   const selectedCalendar = calendars?.find((c) => c.id === selectedCalendarId);
   const isFollowUpCalendar = editingStep || (!isEdit && selectedCalendar?.type === 'follow_up');
@@ -128,16 +126,17 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
     [duration],
   );
 
-  const runnableTemplates = useMemo(
-    () => (templates ?? []).filter((t) => t.is_active && t.steps?.length),
-    [templates],
+  // Only live automations with the "Added manually" trigger accept a contact from here.
+  const manualAutomations = useMemo(
+    () => (automations ?? []).filter((a) => a.status === 'active' && a.trigger_keys.includes('manual')),
+    [automations],
   );
-  const selectedTemplate = runnableTemplates.find((t) => t.id === templateId);
+  const selectedAutomation = manualAutomations.find((a) => a.id === automationId);
 
   useEffect(() => {
-    if (!useSequence || templateId || !runnableTemplates.length) return;
-    setTemplateId(runnableTemplates[0].id);
-  }, [useSequence, templateId, runnableTemplates]);
+    if (!enrollMode || automationId || !manualAutomations.length) return;
+    setAutomationId(manualAutomations[0].id);
+  }, [enrollMode, automationId, manualAutomations]);
 
   useEffect(() => {
     const tz = calendars?.find((c) => c.id === (appointment?.calendar_id ?? calendarId))?.timezone ?? appointment?.timezone ?? 'UTC';
@@ -172,8 +171,8 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
       setChannelStrategy('auto');
       setMessageContent('');
     }
-    setTemplateId('');
-    setUseSequence(false);
+    setAutomationId('');
+    setEnrollMode(false);
     setChargeMode('link');
     setOverrideOpen(false);
     setOverrideReason('');
@@ -242,18 +241,18 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
         if (!start) return;
         if (editingStep) await saveStepEdit(appointment!, start);
         else await saveBookingEdit(appointment!, start);
-      } else if (isFollowUpCalendar && useSequence) {
-        if (!selectedTemplate) return;
-        // The cadence of the chosen template is cloned and drives every attempt.
-        await sequenceMutation.mutateAsync({
-          contact_id: contactId,
-          template_id: selectedTemplate.id,
-          sequence_type: selectedTemplate.sequence_type,
-          source: 'manual',
-          due_at: start ?? undefined,
-          message_content: messageContent || undefined,
-        });
-        toast({ title: 'Sequence started' });
+      } else if (isFollowUpCalendar && enrollMode) {
+        if (!selectedAutomation) return;
+        // The automation decides what happens and when; it starts right away.
+        const { started } = await enrollMutation.mutateAsync({ id: selectedAutomation.id, contactIds: [contactId] });
+        if (!started.length) {
+          toast({
+            title: 'Not added: the contact opted out, is already in this automation, or cannot enter it again',
+            variant: 'error',
+          });
+          return;
+        }
+        toast({ title: `Added to ${selectedAutomation.name}` });
       } else if (isFollowUpCalendar) {
         if (!start || !action) return;
         await createStepMutation.mutateAsync({
@@ -312,8 +311,8 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
       ? 'Book anyway'
       : isEdit
         ? 'Save changes'
-        : useSequence
-          ? 'Start sequence'
+        : enrollMode
+          ? 'Add to automation'
           : isFollowUpCalendar
             ? 'Schedule follow-up'
             : chargesService && chargeMode === 'link'
@@ -361,27 +360,31 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-primary">
-              Title {useSequence || isFollowUpCalendar ? '' : '*'}
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={useSequence ? 'Defined by the sequence' : isFollowUpCalendar ? 'Defaults to the action' : 'e.g. Initial consultation'}
-              required={!useSequence && !isFollowUpCalendar}
-            />
-          </div>
+          {!enrollMode && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-primary">
+                  Title {isFollowUpCalendar ? '' : '*'}
+                </label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={isFollowUpCalendar ? 'Defaults to the action' : 'e.g. Initial consultation'}
+                  required={!isFollowUpCalendar}
+                />
+              </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-primary">Description</label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Additional notes..."
-              rows={3} className="resize-none"
-            />
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-primary">Description</label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Additional notes..."
+                  rows={3} className="resize-none"
+                />
+              </div>
+            </>
+          )}
 
           {!isFollowUpCalendar && (
             <div className="flex flex-col gap-1.5">
@@ -423,7 +426,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
                 Enter a time manually
               </button>
             </div>
-          ) : (
+          ) : enrollMode ? null : (
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-primary">Date & time *</label>
               <Input
@@ -476,72 +479,44 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="useSequence"
-                checked={useSequence}
-                onChange={(e) => setUseSequence(e.target.checked)}
+                id="enrollMode"
+                checked={enrollMode}
+                onChange={(e) => setEnrollMode(e.target.checked)}
                 className="rounded-sm border-strong"
               />
-              <label htmlFor="useSequence" className="text-sm font-medium text-primary">
-                Start automatic sequence
+              <label htmlFor="enrollMode" className="text-sm font-medium text-primary">
+                Add to an automation instead
               </label>
             </div>
           )}
 
-          {isFollowUpCalendar && useSequence && !isEdit && (
-            <>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-primary">Sequence</label>
-                {runnableTemplates.length ? (
-                  <Select value={templateId} onValueChange={setTemplateId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a sequence" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {runnableTemplates.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                          <span className="ml-1.5 text-xs text-secondary">
-                            · {SEQUENCE_TYPE_LABELS[t.sequence_type] ?? t.sequence_type}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-secondary">
-                    No sequences with configured steps. Create one in Settings → Sequences.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-primary">Message (optional)</label>
-                <Textarea
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder="Leave empty for an AI-generated message"
-                  rows={3} className="resize-none"
-                />
-                <p className="text-xs text-muted">Only replaces the first message.</p>
-              </div>
-
-              {selectedTemplate && (
-                <div className="rounded-lg border border-subtle bg-surface-raised p-3">
-                  <p className="mb-3 text-xs font-medium text-primary">
-                    Cadence ({selectedTemplate.steps.length} steps)
-                  </p>
-                  <SequenceTimelinePreview
-                    steps={[...selectedTemplate.steps].sort((a, b) => a.position - b.position)}
-                  />
-                  <p className="mt-3 text-xs text-secondary">
-                    Each step&apos;s channel is resolved when it runs. Cancels automatically if the contact replies.
-                  </p>
-                </div>
+          {isFollowUpCalendar && enrollMode && !isEdit && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-primary">Automation</label>
+              {manualAutomations.length ? (
+                <Select value={automationId} onValueChange={setAutomationId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an automation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {manualAutomations.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="rounded-lg bg-surface-raised px-3 py-2 text-xs text-secondary">
+                  No active automation accepts contacts added by hand. Add the &quot;Added manually&quot; trigger
+                  to one in Automation → Automations.
+                </p>
               )}
-            </>
+              <p className="text-xs text-muted">
+                It starts right away; the automation decides what to send and when, and stops on its own exit rules.
+              </p>
+            </div>
           )}
 
-          {isFollowUpCalendar && !useSequence && !isEdit && (
+          {isFollowUpCalendar && !enrollMode && !isEdit && (
             <>
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-primary">Action *</label>
@@ -592,7 +567,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
             </>
           )}
 
-          {isFollowUpCalendar && !useSequence && (
+          {isFollowUpCalendar && !enrollMode && (
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-primary">Message (optional)</label>
               <Textarea
@@ -631,7 +606,7 @@ export function AppointmentDrawer({ open, onClose, appointment, calendarId, init
               className="flex-1"
               disabled={
                 isLoading ||
-                (useSequence && !selectedTemplate) ||
+                (enrollMode && !selectedAutomation) ||
                 (overrideOpen && isAdmin && overrideReason.trim().length < 3) ||
                 (usesPicker && !startsAt) ||
                 !!paymentUrl

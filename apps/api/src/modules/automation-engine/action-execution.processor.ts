@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Worker, Job, Queue } from 'bullmq';
 import { ActionExecutionService } from './action-execution.service';
 import { ACTION_EXECUTION_QUEUE, ACTION_EXECUTION_QUEUE_NAME } from './automation-engine.constants';
+import { AUTOMATION_RUN_JOB, AutomationRuntimeService, type AutomationRunJobData } from './workflows/runtime/automation-runtime.service';
 
 export interface ActionExecutionJobData {
   appointmentId: string;
@@ -17,6 +18,7 @@ export class ActionExecutionProcessor implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     private readonly actionExecutionService: ActionExecutionService,
     @Optional() @Inject(ACTION_EXECUTION_QUEUE) private readonly queue?: Queue,
+    @Optional() private readonly automationRuntime?: AutomationRuntimeService,
   ) {}
 
   async onModuleInit() {
@@ -37,8 +39,13 @@ export class ActionExecutionProcessor implements OnModuleInit, OnModuleDestroy {
     const connection = this.getRedisConnection();
     this.worker = new Worker(
       ACTION_EXECUTION_QUEUE_NAME,
-      async (job: Job<ActionExecutionJobData>) => {
-        await this.actionExecutionService.execute(job.data.appointmentId);
+      async (job: Job<ActionExecutionJobData | AutomationRunJobData>) => {
+        // One worker for the follow-up agenda and automation runs.
+        if (job.name === AUTOMATION_RUN_JOB) {
+          await this.automationRuntime?.execute((job.data as AutomationRunJobData).runId);
+          return;
+        }
+        await this.actionExecutionService.execute((job.data as ActionExecutionJobData).appointmentId);
       },
       { connection, concurrency: 5 },
     );
@@ -47,7 +54,7 @@ export class ActionExecutionProcessor implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Job ${job?.id} failed: ${err.message}`, err.stack);
     });
 
-    this.logger.log('✓ BullMQ worker started for action_execution queue (concurrency: 5)');
+    this.logger.log('✓ BullMQ worker started for action_execution queue (follow-ups and automation runs, concurrency: 5)');
   }
 
   async onModuleDestroy() {

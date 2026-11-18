@@ -17,11 +17,6 @@ export class CreateOrganizationDto {
   settings?: Record<string, unknown>;
 }
 
-export class UpdateSequenceSettingsDto {
-  @StrictBoolean()
-  enabled: boolean;
-}
-
 export class UpdateOrganizationDto {
   @IsOptional()
   @IsString()

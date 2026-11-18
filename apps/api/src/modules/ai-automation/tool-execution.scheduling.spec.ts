@@ -40,7 +40,6 @@ function build() {
       { id: 'off', name: 'Old', type: 'appointments', is_active: false, timezone: 'UTC', slot_duration_minutes: 30, system_key: null, payment_service_id: null },
     ]),
   };
-  const sequences = { findActive: jest.fn(async () => null), cancel: jest.fn() };
   const mail = { send: jest.fn() };
   const sms = { send: jest.fn() };
   const service = new ToolExecutionService(
@@ -54,8 +53,6 @@ function build() {
     { emit: jest.fn() } as never,
     mail as never,
     sms as never,
-    sequences as never,
-    undefined,
     undefined,
     { findAll: async () => [{ id: 'svc-1', name: 'Evaluación', amount: 50000 }] } as never,
   );

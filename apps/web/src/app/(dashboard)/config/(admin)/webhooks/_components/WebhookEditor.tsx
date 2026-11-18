@@ -27,7 +27,6 @@ const ALL_EVENTS = [
   'voice.call.started',
   'voice.transcript.received',
   'voice.call.completed',
-  'follow_up.due',
   'payment.received',
   'payment.expired',
 ];
@@ -123,7 +122,7 @@ export function WebhookEditor({ webhook, open, onClose }: Props) {
               type="url"
               value={draft.url}
               onChange={(e) => setDraft((d) => ({ ...d, url: e.target.value }))}
-              placeholder="https://n8n.server/webhook/..."
+              placeholder="https://your-server.com/webhooks/crm"
             />
           </div>
 

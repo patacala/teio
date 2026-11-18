@@ -11,7 +11,7 @@ function conversation() {
 const org = { id: 'org', name: 'Clínica Sol' } as never;
 const contact = { id: 'c1', first_name: 'Ana', last_name: 'García', phone: null } as never;
 const step = (extra: Record<string, unknown> = {}) =>
-  ({ id: 's1', organization_id: 'org', sequence_id: null, message_content: null, ...extra }) as never;
+  ({ id: 's1', organization_id: 'org', message_content: null, ...extra }) as never;
 const resolved = { channel: 'whatsapp', recipientId: '+1555' } as never;
 const DEFAULT = "Hi Ana García, we're following up to see if there's anything we can help you with. - Clínica Sol";
 
@@ -32,5 +32,22 @@ describe('follow-up default text', () => {
     const conv = conversation();
     await new CallHandler(conv as never, {} as never).execute(step(), contact, resolved, org);
     expect(conv.sendMessage.mock.calls[0][2].content).toBe(DEFAULT);
+  });
+});
+
+describe('agenda follow-up on the email channel', () => {
+  it('is sent as an email (it used to be saved to a conversation that is never dispatched)', async () => {
+    const conv = conversation();
+    const mail = { send: jest.fn(async (_m: { to: string; subject: string; html: string }) => undefined) };
+    const result = await new SendMessageHandler(conv as never, mail as never).execute(
+      step({ title: 'Checking in' }),
+      contact,
+      { channel: 'email', recipientId: 'ana@example.com' } as never,
+      org,
+    );
+    expect(result).toEqual({ completed: true, channel: 'email' });
+    expect(conv.sendMessage).not.toHaveBeenCalled();
+    expect(mail.send.mock.calls[0][0]).toMatchObject({ to: 'ana@example.com', subject: 'Checking in' });
+    expect(mail.send.mock.calls[0][0].html).toContain('Hi Ana García, we&#39;re following up');
   });
 });

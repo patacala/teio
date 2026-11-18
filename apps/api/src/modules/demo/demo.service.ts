@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Redis } from 'ioredis';
 import { DemoType, DemoRequestStatus, MagicLinkType } from '@crm/shared';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
@@ -140,42 +140,54 @@ export class DemoService {
       }),
     );
 
-    // Fire-and-forget n8n webhook
-    void this.callN8nWebhook(contact.id, company.id, dto.website ?? '', dto.demo_type, demoRequest.id);
+    // Fire-and-forget: the demo generator calls /webhooks/demo-ready when done.
+    void this.requestDemoGeneration(contact.id, company.id, dto.website ?? '', dto.demo_type, demoRequest.id);
 
     return { request_id: demoRequest.id };
   }
 
-  private async callN8nWebhook(
+  /**
+   * Asks the demo generator (any service at DEMO_GENERATOR_URL) to build the
+   * demo. The body is signed with DEMO_WEBHOOK_SECRET (`X-Signature:
+   * sha256=<hex HMAC of the body>`) so the generator can check it came from
+   * the CRM; it answers on `callback_url` with the same secret as token.
+   */
+  private async requestDemoGeneration(
     contactId: string,
     companyId: string,
     website: string,
     demoType: DemoType,
     requestId: string,
   ): Promise<void> {
-    const webhookUrl = this.config.get<string>('demo.webhookUrl', '');
-    if (!webhookUrl) {
-      this.logger.warn('N8N_DEMO_WEBHOOK_URL is not configured, skipping webhook');
+    const generatorUrl = this.config.get<string>('demo.generatorUrl', '');
+    if (!generatorUrl) {
+      this.logger.warn('DEMO_GENERATOR_URL is not configured, the demo will not be generated');
       return;
     }
 
     const apiBaseUrl = this.config.get<string>('webhooks.baseUrl', 'http://localhost:3001');
+    const body = JSON.stringify({
+      contact_id: contactId,
+      company_id: companyId,
+      website,
+      demo_type: demoType,
+      request_id: requestId,
+      callback_url: `${apiBaseUrl}/api/v1/webhooks/demo-ready`,
+    });
+    const secret = this.config.get<string>('demo.webhookSecret', '');
 
     try {
-      await fetch(webhookUrl, {
+      await fetch(generatorUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contact_id: contactId,
-          company_id: companyId,
-          website,
-          demo_type: demoType,
-          request_id: requestId,
-          callback_url: `${apiBaseUrl}/api/v1/webhooks/demo-ready`,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Request-Id': requestId,
+          ...(secret ? { 'X-Signature': `sha256=${createHmac('sha256', secret).update(body).digest('hex')}` } : {}),
+        },
+        body,
       });
     } catch (err) {
-      this.logger.warn(`n8n webhook call failed: ${(err as Error).message}`);
+      this.logger.warn(`Demo generator request failed: ${(err as Error).message}`);
     }
   }
 

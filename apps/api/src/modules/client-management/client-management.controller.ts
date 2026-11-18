@@ -57,7 +57,7 @@ export class ClientManagementController {
     @Body() dto: UpdateContactDto,
     @CurrentTenant() tenant: TenantContext,
   ) {
-    return this.service.update(id, tenant.organization_id, dto);
+    return this.service.update(id, tenant.organization_id, dto, tenant.role === 'api_key' ? 'api' : 'manual');
   }
 
   @Delete(':id')
@@ -68,7 +68,7 @@ export class ClientManagementController {
 
   @Post(':id/opt-out')
   optOut(@Param('id') id: string, @CurrentTenant() tenant: TenantContext) {
-    return this.service.optOut(id, tenant.organization_id);
+    return this.service.optOut(id, tenant.organization_id, tenant.role === 'api_key' ? 'api' : 'manual');
   }
 
   // ── Activity timeline ────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export class ClientManagementController {
     @Body('tag') tag: string,
     @CurrentTenant() tenant: TenantContext,
   ) {
-    return this.service.addTag(id, tenant.organization_id, tag);
+    return this.service.addTag(id, tenant.organization_id, tag, tenant.role === 'api_key' ? 'api' : 'manual');
   }
 
   @Delete(':id/tags/:tagId')
@@ -99,7 +99,7 @@ export class ClientManagementController {
     @Param('tagId') tagId: string,
     @CurrentTenant() tenant: TenantContext,
   ) {
-    return this.service.removeTag(id, tenant.organization_id, tagId);
+    return this.service.removeTag(id, tenant.organization_id, tagId, tenant.role === 'api_key' ? 'api' : 'manual');
   }
 
   // ── Captured data ────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ export class ClientManagementController {
   }
 
   // ── Lead stage ───────────────────────────────────────────────────────
-  // Users only: integrations (API keys, n8n) don't move stages — funnel rules do.
+  // Users only: integrations (API keys) don't move stages — funnel rules and automations do.
   @Patch(':id/stage')
   @Roles(...Object.values(UserRole))
   updateStage(

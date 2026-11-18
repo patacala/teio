@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bot } from 'lucide-react';
 import { toast } from '@/hooks/useToast';
-import { MessageRoutingSection } from './_components/MessageRoutingSection';
+import { AiRepliesCard } from './_components/AiRepliesCard';
 import { BriefTab } from './_components/BriefTab';
 import { IdentityTab } from './_components/IdentityTab';
 import { QualificationTab } from './_components/QualificationTab';
@@ -48,7 +48,7 @@ export default function ConfigAgentsPage() {
         </p>
       </div>
 
-      <MessageRoutingSection />
+      <AiRepliesCard />
 
       <div className="rounded-xl border border-subtle bg-surface p-5">
         {isLoading && (

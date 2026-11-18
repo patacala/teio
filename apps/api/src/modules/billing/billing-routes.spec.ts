@@ -97,7 +97,6 @@ describe('Route behavior (HTTP, real guards and pipes)', () => {
     findById: jest.fn(async (id: string) => ({ id, settings: {} })),
     create: jest.fn(async (dto: unknown) => dto),
     update: jest.fn(async (id: string, dto: object) => ({ id, ...dto })),
-    updateSequenceSettings: jest.fn(async () => ({})),
   };
   const paymentSettings = { getMasked: jest.fn(async () => ({})), update: jest.fn(async () => ({})) };
   const users = {
@@ -311,12 +310,6 @@ describe('Route behavior (HTTP, real guards and pipes)', () => {
     });
   });
 
-  it('PATCH /organizations/me/sequences requires a boolean "enabled"', async () => {
-    expect((await call('owner', 'PATCH', '/organizations/me/sequences', { enabled: 'yes' })).status).toBe(400);
-    expect((await call('owner', 'PATCH', '/organizations/me/sequences', {})).status).toBe(400);
-    expect((await call('owner', 'PATCH', '/organizations/me/sequences', { enabled: true })).status).toBe(200);
-    expect(organizations.updateSequenceSettings).toHaveBeenCalledWith(ORG, true);
-  });
 
   describe('payment settings (org-collected payments)', () => {
     it('PATCH /payments/settings is only for owners and admins', async () => {

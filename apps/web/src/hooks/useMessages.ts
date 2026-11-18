@@ -11,7 +11,7 @@ export function useMessages(conversationId: string | null) {
     queryKey: ['messages', conversationId],
     queryFn: () => conversationsService.getMessages(conversationId!),
     enabled: !!conversationId,
-    // No WebSocket backend — poll the open thread so inbound (customer / n8n)
+    // No WebSocket backend — poll the open thread so inbound (customer / AI agent)
     // messages appear on their own. Only while the tab is focused.
     refetchInterval: 4000,
     refetchIntervalInBackground: false,

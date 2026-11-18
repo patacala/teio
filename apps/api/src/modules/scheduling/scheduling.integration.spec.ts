@@ -63,7 +63,7 @@ describeDb('scheduling against PostgreSQL', () => {
   };
   let outbox: OutboxService;
   let actions: ScheduledActionService;
-  const sequences = { advanceOrComplete: jest.fn(async () => undefined) };
+  const taskHooks = { taskClosed: jest.fn(async () => undefined) };
   const realtime = { notifyOrg: jest.fn(async (_org: string, _n: Record<string, unknown>) => undefined) };
   const mail = { send: jest.fn(async (_m: { to: string; subject: string; html: string }) => undefined) };
   const stripeSessions: Array<Record<string, unknown>> = [];
@@ -152,7 +152,6 @@ describeDb('scheduling against PostgreSQL', () => {
       config,
       outbox,
       undefined,
-      undefined,
       realtime as never,
       mail as never,
     );
@@ -160,7 +159,7 @@ describeDb('scheduling against PostgreSQL', () => {
       ds.getRepository(ScheduledActionEntity),
       ds.getRepository(WorkScheduleEntity),
       ds.getRepository(ContactEntity),
-      sequences as never,
+      taskHooks as never,
     );
   });
 
@@ -681,20 +680,25 @@ describeDb('scheduling against PostgreSQL', () => {
       ).rejects.toMatchObject({ status: 400 });
     });
 
-    it('never undoes a completion and advances the sequence only once', async () => {
-      const seq = randomUUID();
+    it('never undoes a completion and resumes the waiting automation run only once', async () => {
+      const [automation, version, run] = [randomUUID(), randomUUID(), randomUUID()];
+      await ds.query(`INSERT INTO automation.automations (id, organization_id, name) VALUES ($1, $2, 'Tasks')`, [automation, org]);
       await ds.query(
-        `INSERT INTO scheduling.automation_sequences (id, organization_id, contact_id) VALUES ($1, $2, $3)`,
-        [seq, org, contact],
+        `INSERT INTO automation.automation_versions (id, automation_id, organization_id, version, graph) VALUES ($1, $2, $3, 1, '{}')`,
+        [version, automation, org],
       );
-      const step = await actions.create(org, { contact_id: contact, action: 'send_message', due_at: new Date(), sequence_id: seq });
-      sequences.advanceOrComplete.mockClear();
+      await ds.query(
+        `INSERT INTO automation.automation_runs (id, organization_id, automation_id, version_id, contact_id, trigger_key) VALUES ($1, $2, $3, $4, $5, 'manual')`,
+        [run, org, automation, version, contact],
+      );
+      const step = await actions.create(org, { contact_id: contact, action: 'send_message', due_at: new Date(), run_id: run, node_key: 'task' });
+      taskHooks.taskClosed.mockClear();
 
       expect(await actions.markProcessing(org, step.id)).toBe(true);
       expect(await actions.markProcessing(org, step.id)).toBe(false);
       await actions.complete(org, step.id, { resolvedChannel: 'whatsapp' });
       await actions.complete(org, step.id, { resolvedChannel: 'whatsapp' });
-      expect(sequences.advanceOrComplete).toHaveBeenCalledTimes(1);
+      expect(taskHooks.taskClosed).toHaveBeenCalledTimes(1);
       // The stuck-step reaper arriving late must not put it back to pending (which would send it again).
       expect(await actions.markFailed(org, step.id, 'timeout')).toBe('missing');
       expect((await actions.findById(step.id, org)).status).toBe('completed');

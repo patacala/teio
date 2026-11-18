@@ -1,0 +1,466 @@
+{
+  "inbound → ProSales": {
+    "requests": [
+      {
+        "url": "https://prosales.example.com/api/v1/crm/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "ps_live_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "message.received",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000001",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "whatsapp"
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "workflow_called"
+      }
+    ]
+  },
+  "inbound → two active inbound agents (both called)": {
+    "requests": [
+      {
+        "url": "https://prosales.example.com/api/v1/crm/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "ps_live_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "message.received",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000001",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "whatsapp"
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      },
+      {
+        "url": "https://hooks.example.com/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "message.received",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000002",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "whatsapp"
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "workflow_called"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000002",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000002",
+        "event": "workflow_called"
+      }
+    ]
+  },
+  "inbound → no active agent": {
+    "requests": [],
+    "logs": []
+  },
+  "inbound → billing restricted": {
+    "requests": [],
+    "logs": []
+  },
+  "inbound → AI call limit reached": {
+    "requests": [],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "usage_limit_reached"
+      }
+    ]
+  },
+  "payment.received → falls back to the inbound agent": {
+    "requests": [
+      {
+        "url": "https://prosales.example.com/api/v1/crm/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "ps_live_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "payment.received",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "received",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "message": "Payment update"
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "workflow_called"
+      }
+    ]
+  },
+  "payment.expired → falls back to the inbound agent": {
+    "requests": [
+      {
+        "url": "https://prosales.example.com/api/v1/crm/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "ps_live_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "payment.expired",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "expired",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "message": "Payment update"
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "workflow_called"
+      }
+    ]
+  },
+  "payment.failed → no fallback, not sent": {
+    "requests": [],
+    "logs": []
+  },
+  "call.completed → only a dedicated call agent": {
+    "requests": [
+      {
+        "url": "https://hooks.example.com/calls",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "call_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "call.completed",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "agent_id": "ag000000-0000-4000-8000-000000000003",
+          "payload": {
+            "call_id": "ca000000-0000-4000-8000-000000000009",
+            "duration_seconds": 184,
+            "summary": "Asked to book next week."
+          },
+          "contact": {
+            "id": "c0000000-0000-4000-8000-000000000001",
+            "first_name": "Ana",
+            "last_name": "García",
+            "email": "ana@example.com",
+            "phone": "+5215550001",
+            "tags": [
+              "vip"
+            ]
+          },
+          "upcoming_appointments": [
+            {
+              "id": "a0000000-0000-4000-8000-000000000001",
+              "calendar_id": "cal-1",
+              "title": "Initial consultation",
+              "starts_at": "2026-03-23T15:00:00.000Z",
+              "ends_at": "2026-03-23T15:30:00.000Z",
+              "timezone": "America/Mexico_City",
+              "status": "confirmed",
+              "location": null,
+              "meeting_url": null
+            }
+          ],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000003",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000003",
+        "event": "workflow_called"
+      }
+    ]
+  },
+  "call.completed → no dedicated agent, not sent": {
+    "requests": [],
+    "logs": []
+  },
+  "job without contact (no enrichment)": {
+    "requests": [
+      {
+        "url": "https://prosales.example.com/api/v1/crm/inbound",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-API-Key": "ps_live_key"
+        },
+        "body": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "event_type": "message.received",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": null,
+          "agent_id": "ag000000-0000-4000-8000-000000000001",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "whatsapp"
+          },
+          "contact": null,
+          "upcoming_appointments": [],
+          "payment_services": [
+            {
+              "id": "s0000000-0000-4000-8000-000000000001",
+              "name": "Initial consultation",
+              "description": "First visit",
+              "amount": 5000,
+              "currency": "mxn"
+            }
+          ],
+          "payment_currency": "mxn"
+        }
+      }
+    ],
+    "logs": [
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "agent_triggered"
+      },
+      {
+        "agent_id": "ag000000-0000-4000-8000-000000000001",
+        "event": "workflow_called"
+      }
+    ]
+  }
+}

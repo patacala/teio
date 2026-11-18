@@ -10,11 +10,11 @@ import { ClientManagementService } from '../client-management/client-management.
 import { ChannelsService } from '../integrations/channels.service';
 import { WebhookDispatcherService } from '../integrations/webhook-dispatcher.service';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
-import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
 import { OUTBOUND_DISPATCH_QUEUE } from './outbound-dispatch.constants';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
+import { OutboxService } from '../../infrastructure/outbox/outbox.service';
+import { publishDomainEvent } from '../../infrastructure/outbox/domain-events';
 import type { PaginationQuery, PaginatedResponse, MessageReceivedEvent } from '@crm/shared';
-import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
 import type { IngestMessageDto } from './ingest-message.dto';
 import { NOTIFICATION_TEMPLATES, UNNAMED_CONTACT, renderTemplate } from '../../infrastructure/messaging';
@@ -47,14 +47,26 @@ export interface CreateConversationDto {
   assigned_agent_id?: string;
 }
 
+/**
+ * Who produced an outbound message. Automations filter on it — e.g. a
+ * follow-up started by "a person or the AI replied" must not be re-armed by
+ * its own automated touches.
+ */
+export type MessageSenderType = 'agent' | 'ai' | 'api' | 'automation' | 'system';
+
 export interface SendMessageDto {
   content: string;
   type?: string;
   direction?: string;
   sender_id?: string;
+  /** Set by the server from the caller, never taken from a request body. */
+  sender_type?: MessageSenderType;
   media_url?: string;
   metadata?: Record<string, unknown>;
 }
+
+/** Who started a conversation: the contact writing in, or the business reaching out. */
+export type ConversationOpenedBy = 'contact' | 'business';
 
 // Channel types that support outbound dispatch via external API
 const OUTBOUND_CHANNEL_TYPES = new Set<string>([
@@ -75,26 +87,10 @@ export class ConversationManagementService {
     private readonly clientService: ClientManagementService,
     private readonly channelsService: ChannelsService,
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
-    @Optional() @Inject(AGENT_TRIGGER_QUEUE) private readonly agentQueue?: Queue,
     @Optional() @Inject(OUTBOUND_DISPATCH_QUEUE) private readonly outboundQueue?: Queue,
     @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
-    @Optional() private readonly sequenceService?: AutomationSequenceService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
-
-  private isOptOutMessage(content: string): boolean {
-    const normalized = content.toLowerCase().trim();
-    
-    const optOutPatterns = [
-      /\bno\s+(quiero|deseo|necesito)\b/i,
-      /\bya\s+no\b/i,
-      /\bno\s+m[aá]s\b/i,
-      /\b(stop|cancelar|parar|desuscribir|unsubscribe)\b/i,
-      /\bdeja\s+de\s+(escribir|enviar|mandar)/i,
-      /\bno\s+(me\s+)?(contacten|escriban|envien|manden)/i,
-    ];
-
-    return optOutPatterns.some(pattern => pattern.test(normalized));
-  }
 
   async findAll(
     organizationId: string,
@@ -220,6 +216,7 @@ export class ConversationManagementService {
       type: dto.type ?? 'text',
       direction: dto.direction ?? 'outbound',
       sender_id: dto.sender_id,
+      ...(dto.sender_type ? { sender_type: dto.sender_type } : {}),
       media_url: dto.media_url,
       metadata: dto.metadata ?? {},
       status: 'pending',
@@ -232,13 +229,16 @@ export class ConversationManagementService {
       { last_message_at: new Date() },
     );
 
-    this.rmqClient.emit(RABBITMQ_QUEUES.MESSAGE_SEND, {
+    await publishDomainEvent(this.outbox, this.rmqClient, RABBITMQ_QUEUES.MESSAGE_SEND, {
       message_id: saved.id,
       conversation_id: conversationId,
       organization_id: organizationId,
       contact_id: conv.contact_id,
       direction: dto.direction ?? 'outbound',
       channel: conv.channel,
+      content: dto.content,
+      sender_type: dto.sender_type ?? 'agent',
+      automation_run_id: (dto.metadata?.automation_run_id as string | undefined) ?? null,
     });
 
     void this.webhookDispatcher?.dispatch('message.sent', organizationId, {
@@ -328,7 +328,7 @@ export class ConversationManagementService {
     conv.resolved_at = new Date();
     const saved = await this.conversationRepo.save(conv);
 
-    this.rmqClient.emit(RABBITMQ_QUEUES.CONVERSATION_CLOSED, {
+    await publishDomainEvent(this.outbox, this.rmqClient, RABBITMQ_QUEUES.CONVERSATION_CLOSED, {
       organization_id: organizationId,
       conversation_id: saved.id,
       contact_id: saved.contact_id,
@@ -352,11 +352,28 @@ export class ConversationManagementService {
     return saved;
   }
 
+  /**
+   * Sets who answers a conversation: the AI (true) or the team (false).
+   * Unlike handoff() it sets rather than toggles, so an automation step is
+   * safe to repeat. Returns false when nothing changed.
+   */
+  async setBotActive(id: string, organizationId: string, active: boolean): Promise<boolean> {
+    const result = await this.conversationRepo.update({ id, organization_id: organizationId, bot_active: !active }, { bot_active: active });
+    if (!result.affected) return false;
+    this.rmqClient.emit(RABBITMQ_QUEUES.CONVERSATION_ASSIGN, {
+      conversation_id: id,
+      organization_id: organizationId,
+      bot_active: active,
+    });
+    return true;
+  }
+
   async findOrCreateActiveConversation(
     orgId: string,
     contactId: string,
     _channelId: string,
     channel: string,
+    openedBy: ConversationOpenedBy = 'business',
   ): Promise<{ conversation: ConversationEntity; created: boolean }> {
     const existing = await this.conversationRepo.findOne({
       where: { organization_id: orgId, contact_id: contactId, channel, status: 'open' },
@@ -375,6 +392,14 @@ export class ConversationManagementService {
     this.rmqClient.emit(RABBITMQ_QUEUES.CONVERSATION_ASSIGN, {
       conversation_id: conv.id,
       organization_id: orgId,
+    });
+
+    await publishDomainEvent(this.outbox, this.rmqClient, RABBITMQ_QUEUES.CONVERSATION_OPENED, {
+      organization_id: orgId,
+      conversation_id: conv.id,
+      contact_id: contactId,
+      channel,
+      opened_by: openedBy,
     });
 
     return { conversation: conv, created: true };
@@ -437,6 +462,7 @@ export class ConversationManagementService {
       contact.id,
       dto.channel_id,
       channelEntity.type,
+      direction === 'inbound' ? 'contact' : 'business',
     );
 
     // Step 5: Save message — catch race-condition dupe via unique constraint
@@ -476,21 +502,6 @@ export class ConversationManagementService {
     void this.conversationRepo.update({ id: conversation.id }, { last_message_at: now });
     void this.clientService.updateLastContacted(contact.id, orgId, now);
 
-    // Step 6b: Inbound message → check for opt-out or reset sequence timer (event-driven, fire-and-forget)
-    if (direction === 'inbound' && this.sequenceService) {
-      void this.sequenceService.findActive(orgId, contact.id).then(async (active) => {
-        if (active) {
-          // Check if message indicates opt-out or final intent
-          const isOptOut = this.isOptOutMessage(dto.content);
-          if (isOptOut) {
-            await this.sequenceService!.cancel(orgId, active.id, 'opt_out');
-          } else {
-            await this.sequenceService!.resetTimer(orgId, active.id);
-          }
-        }
-      }).catch(() => {});
-    }
-
     if (direction === 'inbound') {
       const name = `${contact.first_name} ${contact.last_name ?? ''}`.trim() || UNNAMED_CONTACT;
       void this.realtimeBroadcast?.notifyOrg(orgId, {
@@ -504,8 +515,9 @@ export class ConversationManagementService {
       });
     }
 
-    // Step 7: Emit RabbitMQ event — fire-and-forget
-    this.rmqClient.emit(RABBITMQ_QUEUES.MESSAGE_RECEIVED, {
+    // Step 7: Publish the event (outbox: survives a broker outage). Automations,
+    // including the one sending incoming messages to the AI agent, start from it.
+    await publishDomainEvent(this.outbox, this.rmqClient, RABBITMQ_QUEUES.MESSAGE_RECEIVED, {
       organization_id: orgId,
       conversation_id: conversation.id,
       contact_id: contact.id,
@@ -529,27 +541,8 @@ export class ConversationManagementService {
       channel: channelEntity.type,
     });
 
-    // Step 9: Enqueue agent trigger — fire-and-forget. Inbound only: this event
-    // feeds bots that reply to the customer (n8n workflows, ProSales) — firing
-    // it for our own outbound sends would let a bot react to its own message
-    // (and, once ProSales' send_message loop is wired in, loop forever).
-    // Also skip while a human has taken this conversation over (bot_active
-    // false) — the toggle must actually silence the bot, not just show it off.
-    if (direction === 'inbound' && conversation.bot_active) {
-      void this.agentQueue?.add(
-        'trigger',
-        {
-          event_type: 'message.received',
-          organization_id: orgId,
-          conversation_id: conversation.id,
-          contact_id: contact.id,
-          payload: { message: dto.content, channel: channelEntity.type },
-        },
-        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-      ).catch((err: Error) =>
-        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
-      );
-    }
+    // What happens next (the AI answering, follow-ups stopping, …) is up to
+    // the organization's automations, started by the event published above.
 
     return { conversation_id: conversation.id, message_id: message.id, contact_id: contact.id };
   }

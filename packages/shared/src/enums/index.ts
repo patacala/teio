@@ -123,7 +123,6 @@ export enum WebhookEventType {
   APPOINTMENT_COMPLETED = 'appointment.completed',
   APPOINTMENT_NO_SHOW = 'appointment.no_show',
   APPOINTMENT_HOLD_RELEASED = 'appointment.hold_released',
-  FOLLOW_UP_DUE = 'follow_up.due',
 }
 
 export enum OrganizationPlan {

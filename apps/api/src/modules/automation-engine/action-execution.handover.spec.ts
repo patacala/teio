@@ -12,7 +12,6 @@ describe('ActionExecutionService hand-over (executor = user)', () => {
     const sendMessage = { actionType: 'send_message', execute: jest.fn() };
     const service = new ActionExecutionService(
       actions as never,
-      { advanceOrComplete: jest.fn() } as never,
       { resolve: jest.fn(async () => null) } as never,
       { findOne: jest.fn(async () => ({ id: 'c1', first_name: 'Ana', last_name: 'Pérez' })) } as never,
       { findOne: jest.fn(async () => ({ id: 'org' })) } as never,

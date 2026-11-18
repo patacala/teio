@@ -17,12 +17,6 @@ export class AgentTriggerService {
     private readonly toolRepo: Repository<AgentToolEntity>,
   ) {}
 
-  async findAgentsForEvent(orgId: string, eventType: string): Promise<AutomationAgentEntity[]> {
-    return this.agentRepo.find({
-      where: { organization_id: orgId, trigger_event: eventType, is_active: true },
-    });
-  }
-
   async findAgentById(agentId: string, orgId: string): Promise<AutomationAgentEntity> {
     const agent = await this.agentRepo.findOne({
       where: { id: agentId, organization_id: orgId },

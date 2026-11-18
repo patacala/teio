@@ -39,7 +39,7 @@ const GROUPS: EndpointGroup[] = [
   {
     label: 'Webchat / Landing Page — Start here',
     description:
-      'Use this endpoint to receive the first message from a new visitor on your landing page. No API key required — it is a public endpoint. The CRM automatically creates the contact and the conversation, then fires a webhook to n8n.',
+      'Use this endpoint to receive the first message from a new visitor on your landing page. No API key required — it is a public endpoint. The CRM automatically creates the contact and the conversation; your automations (e.g. the AI agent one) take it from there.',
     endpoints: [
       {
         method: 'POST',
@@ -60,8 +60,8 @@ const GROUPS: EndpointGroup[] = [
         note: [
           'RESPONSE → { conversation_id, contact_id, message_id }',
           'Store conversation_id in the chat state. On subsequent messages from the same visitor, send the same sender_identifier — the CRM reuses the open conversation automatically.',
-          'After ingestion, the CRM fires a webhook (message.received) to n8n with conversation_id + contact_id + content.',
-          'n8n replies via POST /api/v1/conversations/:conversation_id/messages using an API key.',
+          'After ingestion, the message runs your "Incoming message" automations (the AI agent answers if that automation is on) and fires the message.received webhook to your integrations.',
+          'An external system can reply via POST /api/v1/conversations/:conversation_id/messages using an API key.',
         ].join(' | '),
       },
     ],
@@ -94,7 +94,7 @@ const GROUPS: EndpointGroup[] = [
           { name: 'handled_by', type: '"ai" | "human"', description: 'Who handles this contact (default: "human").' },
           { name: 'custom_fields', type: 'object', description: 'Arbitrary key-value metadata.' },
         ],
-        note: 'n8n: use "HTTP Request" node → POST → Body type: JSON.',
+        note: 'Send a JSON body with the x-api-key header.',
       },
       {
         method: 'GET',
@@ -151,12 +151,12 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'POST',
         path: '/api/v1/conversations/:id/messages',
-        description: 'Send a message into an existing conversation. Use this from n8n to reply to a visitor — you have the conversation_id from the message.received webhook payload.',
+        description: 'Send a message into an existing conversation. Use this from an integration to reply to a visitor — you have the conversation_id from the message.received webhook payload.',
         bodyParams: [
           { name: 'content', type: 'string', required: true, description: 'Message text.' },
           { name: 'type', type: 'string', description: 'Message type (default: "text").' },
         ],
-        note: 'n8n flow: trigger on message.received webhook → read conversation_id from payload → POST here to reply. Requires API key.',
+        note: 'Integration flow: receive the message.received webhook → read conversation_id from the payload → POST here to reply. Requires API key.',
       },
       {
         method: 'GET',
@@ -177,7 +177,7 @@ const GROUPS: EndpointGroup[] = [
           { name: 'content', type: 'string', required: true, description: 'Message text.' },
           { name: 'type', type: 'string', description: 'Message type (default: "text").' },
         ],
-        note: 'n8n: use this to send automated replies triggered by webhooks or workflows.',
+        note: 'Use this to send replies from your own systems (webhook-driven).',
       },
       {
         method: 'PATCH',
@@ -265,7 +265,7 @@ const GROUPS: EndpointGroup[] = [
           { name: 'calendar_id', type: 'uuid', description: 'Defaults to the organization appointments calendar.' },
           { name: 'duration_minutes', type: 'number', description: 'Booking length (defaults to the slot size).' },
         ],
-        note: 'Response: Array of { starts_at, ends_at } (UTC). n8n: offer these, then POST /appointments with the chosen starts_at.',
+        note: 'Response: Array of { starts_at, ends_at } (UTC). Offer these, then POST /appointments with the chosen starts_at.',
       },
       {
         method: 'GET',
@@ -322,6 +322,23 @@ const GROUPS: EndpointGroup[] = [
     ],
   },
   {
+    label: 'Automations',
+    description: 'Automations are built in Automation → Automations. From the API you can list them, add contacts to the ones with the "Added manually" trigger, and follow their runs.',
+    endpoints: [
+      { method: 'GET', path: '/api/v1/automations', description: 'List automations with status, trigger keys and run counts.' },
+      {
+        method: 'POST',
+        path: '/api/v1/automations/:id/enroll',
+        description: 'Add contacts to an active automation that has the "Added manually" trigger.',
+        bodyParams: [{ name: 'contact_ids', type: 'uuid[]', required: true, description: 'Contacts to add (opted-out contacts and contacts already in it are skipped).' }],
+        note: 'RESPONSE → { started: string[] (run IDs), skipped: string[] (contact IDs) }.',
+      },
+      { method: 'GET', path: '/api/v1/automations/contact/:contactId/runs', description: 'Runs of one contact (active first).' },
+      { method: 'GET', path: '/api/v1/automations/runs/:runId', description: 'One run with its steps.' },
+      { method: 'POST', path: '/api/v1/automations/runs/:runId/cancel', description: 'Stop a run.' },
+    ],
+  },
+  {
     label: 'Follow-ups',
     description: 'Automated follow-up steps (send a message, email, call, notify the team, or a task for a person). They live on the follow-up calendar and are separate from bookings.',
     endpoints: [
@@ -343,14 +360,14 @@ const GROUPS: EndpointGroup[] = [
         description: 'List steps (filters: status, action, contact_id, calendar_id, from, to, sort, limit, offset). Status: pending | processing | awaiting_user | completed | cancelled | failed.',
       },
       { method: 'PATCH', path: '/api/v1/automation/follow-ups/:id', description: 'Edit title/description/message or move due_at (pending steps).' },
-      { method: 'POST', path: '/api/v1/automation/follow-ups/:id/complete', description: 'Mark done (n8n or a person); the sequence moves on once.' },
-      { method: 'PATCH', path: '/api/v1/automation/follow-ups/:id/cancel', description: 'Skip the step; the sequence moves on.' },
+      { method: 'POST', path: '/api/v1/automation/follow-ups/:id/complete', description: 'Mark done (an integration or a person); an automation waiting on the task moves on.' },
+      { method: 'PATCH', path: '/api/v1/automation/follow-ups/:id/cancel', description: 'Skip the step; an automation waiting on the task moves on.' },
       { method: 'DELETE', path: '/api/v1/automation/follow-ups/:id', description: 'Delete the step.' },
     ],
   },
   {
     label: 'Companies',
-    description: 'Create and manage companies linked to contacts. Useful from n8n to enrich lead data with company information.',
+    description: 'Create and manage companies linked to contacts. Useful from integrations to enrich lead data with company information.',
     endpoints: [
       {
         method: 'GET',
@@ -374,7 +391,7 @@ const GROUPS: EndpointGroup[] = [
           { name: 'demo_link', type: 'string', description: 'Link to company demo or product.' },
           { name: 'company_context', type: 'string', description: 'Free-text context about the company (used by AI agents).' },
         ],
-        note: 'n8n: use this after qualifying a lead to enrich the CRM with company data. Then link via PATCH /contacts/:id with company_id.',
+        note: 'Use this after qualifying a lead to enrich the CRM with company data. Then link via PATCH /contacts/:id with company_id.',
       },
       {
         method: 'GET',
@@ -415,14 +432,14 @@ const GROUPS: EndpointGroup[] = [
       {
         method: 'POST',
         path: '/api/v1/demo/:token/submit',
-        description: 'Submit the demo request form using the init token. Creates contact + company in the CRM, triggers n8n webhook to generate the personalized demo. Public — no auth.',
+        description: 'Submit the demo request form using the init token. Creates contact + company in the CRM and asks the demo generator service to build the personalized demo. Public — no auth.',
         bodyParams: [
           { name: 'first_name', type: 'string', required: true, description: 'Prospect first name.' },
           { name: 'last_name', type: 'string', description: 'Prospect last name.' },
           { name: 'email', type: 'string', required: true, description: 'Email — used to send the demo-ready notification.' },
           { name: 'phone', type: 'string', description: 'Phone number.' },
           { name: 'company_name', type: 'string', required: true, description: 'Company name.' },
-          { name: 'website', type: 'string', description: 'Company website — passed to n8n for screenshot generation.' },
+          { name: 'website', type: 'string', description: 'Company website — passed to the demo generator for screenshots.' },
           { name: 'demo_type', type: '"live_chat" | "ai_voice" | "crm"', required: true, description: 'Type of demo to generate.' },
         ],
         note: 'RESPONSE → { request_id: string }. Use request_id to poll the status.',
@@ -463,8 +480,8 @@ const GROUPS: EndpointGroup[] = [
     ],
   },
   {
-    label: 'AI Automation (n8n)',
-    description: 'Execute CRM tools from n8n workflows. The trigger payload now includes contact info and upcoming_appointments automatically.',
+    label: 'AI agent tools',
+    description: 'Execute CRM tools from the AI agent. The payload the agent receives (from a "Send to AI agent" automation step) already includes contact info and upcoming_appointments.',
     endpoints: [
       {
         method: 'POST',
@@ -495,7 +512,7 @@ const GROUPS: EndpointGroup[] = [
         queryParams: [
           { name: 'q', type: 'string', required: true, description: 'Search query.' },
         ],
-        note: 'n8n: use this to retrieve relevant KB articles before sending AI responses.',
+        note: 'Use this to retrieve relevant KB articles before sending AI responses.',
       },
       {
         method: 'GET',
@@ -525,7 +542,7 @@ const GROUPS: EndpointGroup[] = [
         queryParams: [
           { name: 'channel', type: 'string', description: 'Filter by channel: whatsapp, email, sms.' },
         ],
-        note: 'n8n: fetch templates then interpolate variables before sending via /conversations/:id/messages.',
+        note: 'Fetch templates then interpolate variables before sending via /conversations/:id/messages.',
       },
     ],
   },
@@ -685,7 +702,7 @@ export function ApiDocsSection() {
         <div className="flex items-center gap-2">
           <Book className="h-4 w-4 text-muted" />
           <h2 className="text-base font-semibold text-primary">API Reference</h2>
-          <span className="text-xs text-muted">— endpoints available to n8n and external applications</span>
+          <span className="text-xs text-muted">— endpoints available to integrations and external applications</span>
         </div>
         {open ? <ChevronDown className="h-4 w-4 text-muted" /> : <ChevronRight className="h-4 w-4 text-muted" />}
       </button>
@@ -712,7 +729,7 @@ export function ApiDocsSection() {
             </div>
 
             <div className="border-t border-subtle pt-3">
-              <p className="text-xs font-semibold text-primary mb-2">n8n setup (HTTP Request node)</p>
+              <p className="text-xs font-semibold text-primary mb-2">Calling the API from a workflow tool (HTTP request)</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-secondary">
                 <div className="bg-surface-raised rounded-lg p-2.5 space-y-1">
                   <p className="font-medium text-primary">1. Authentication</p>

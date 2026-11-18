@@ -45,8 +45,12 @@ export class ScheduledActionEntity {
   @Column({ type: 'uuid', nullable: true })
   conversation_id: string | null;
 
+  /** The automation run that created this task ("Create task" step). */
   @Column({ type: 'uuid', nullable: true })
-  sequence_id: string | null;
+  run_id: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  node_key: string | null;
 
   @Column({ length: 500 })
   title: string;

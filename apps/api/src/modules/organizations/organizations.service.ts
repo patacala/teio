@@ -89,12 +89,4 @@ export class OrganizationsService {
     const settings = (org.settings ?? {}) as Record<string, unknown>;
     return (settings.prosales as Record<string, string>) ?? {};
   }
-
-  async updateSequenceSettings(orgId: string, enabled: boolean): Promise<OrganizationEntity> {
-    const org = await this.findById(orgId);
-    const settings = (org.settings ?? {}) as Record<string, unknown>;
-    settings.sequences_enabled = enabled;
-    org.settings = settings;
-    return this.repo.save(org);
-  }
 }

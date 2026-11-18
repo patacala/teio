@@ -1,0 +1,450 @@
+{
+  "inbound whatsapp, AI active": {
+    "events": [
+      {
+        "topic": "message.received",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "channel": "whatsapp",
+          "message": {
+            "id": "m0000000-0000-4000-8000-000000000001",
+            "content": "Hi, do you have availability tomorrow?",
+            "direction": "inbound",
+            "sender_type": "user",
+            "channel_message_id": "wamid.1",
+            "metadata": {},
+            "sent_at": "2026-03-20T14:05:00.000Z"
+          }
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "message.received",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "whatsapp"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "inbound instagram, AI active": {
+    "events": [
+      {
+        "topic": "message.received",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "channel": "instagram",
+          "message": {
+            "id": "m0000000-0000-4000-8000-000000000001",
+            "content": "Hi, do you have availability tomorrow?",
+            "direction": "inbound",
+            "sender_type": "user",
+            "channel_message_id": "wamid.1",
+            "metadata": {},
+            "sent_at": "2026-03-20T14:05:00.000Z"
+          }
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "message.received",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "message": "Hi, do you have availability tomorrow?",
+            "channel": "instagram"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "inbound whatsapp, human took over": {
+    "events": [
+      {
+        "topic": "message.received",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "channel": "whatsapp",
+          "message": {
+            "id": "m0000000-0000-4000-8000-000000000001",
+            "content": "Hi, do you have availability tomorrow?",
+            "direction": "inbound",
+            "sender_type": "user",
+            "channel_message_id": "wamid.1",
+            "metadata": {},
+            "sent_at": "2026-03-20T14:05:00.000Z"
+          }
+        }
+      }
+    ],
+    "jobs": []
+  },
+  "outbound ingested (our own message echoed back)": {
+    "events": [
+      {
+        "topic": "message.received",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "channel": "whatsapp",
+          "message": {
+            "id": "m0000000-0000-4000-8000-000000000001",
+            "content": "Hi, do you have availability tomorrow?",
+            "direction": "outbound",
+            "sender_type": "user",
+            "channel_message_id": "wamid.1",
+            "metadata": {},
+            "sent_at": "2026-03-20T14:05:00.000Z"
+          }
+        }
+      }
+    ],
+    "jobs": []
+  },
+  "payment completed, appointment confirmed": {
+    "events": [
+      {
+        "topic": "payment.completed",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "source": "system",
+          "payment_status": "completed",
+          "message": "Payment confirmed (Initial consultation) (50.00 USD). Appointment confirmed: \"the appointment\" (appointment_id=a0000000-0000-4000-8000-000000000001).",
+          "payment_id": "p0000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "amount": 5000,
+          "currency": "usd",
+          "service_id": "s0000000-0000-4000-8000-000000000001",
+          "service_name": "Initial consultation",
+          "appointment_id": "a0000000-0000-4000-8000-000000000001",
+          "appointment_confirmed": true,
+          "needs_attention": false,
+          "checkout_session_id": "cs_test_1"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "payment.received",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "completed",
+            "message": "Payment confirmed (Initial consultation) (50.00 USD). Appointment confirmed: \"the appointment\" (appointment_id=a0000000-0000-4000-8000-000000000001).",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "contact_id": "c0000000-0000-4000-8000-000000000001",
+            "conversation_id": "cv000000-0000-4000-8000-000000000001",
+            "amount": 5000,
+            "currency": "usd",
+            "service_id": "s0000000-0000-4000-8000-000000000001",
+            "service_name": "Initial consultation",
+            "appointment_id": "a0000000-0000-4000-8000-000000000001",
+            "appointment_confirmed": true,
+            "needs_attention": false,
+            "checkout_session_id": "cs_test_1"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "payment completed, slot no longer available": {
+    "events": [
+      {
+        "topic": "payment.completed",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "source": "system",
+          "payment_status": "completed",
+          "message": "Payment confirmed (Initial consultation) (50.00 USD). No appointment was created: the link did not include a time slot.",
+          "payment_id": "p0000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "amount": 5000,
+          "currency": "usd",
+          "service_id": "s0000000-0000-4000-8000-000000000001",
+          "service_name": "Initial consultation",
+          "appointment_id": "a0000000-0000-4000-8000-000000000001",
+          "appointment_confirmed": false,
+          "needs_attention": false,
+          "checkout_session_id": "cs_test_1"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "payment.received",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "completed",
+            "message": "Payment confirmed (Initial consultation) (50.00 USD). No appointment was created: the link did not include a time slot.",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "contact_id": "c0000000-0000-4000-8000-000000000001",
+            "conversation_id": "cv000000-0000-4000-8000-000000000001",
+            "amount": 5000,
+            "currency": "usd",
+            "service_id": "s0000000-0000-4000-8000-000000000001",
+            "service_name": "Initial consultation",
+            "appointment_id": "a0000000-0000-4000-8000-000000000001",
+            "appointment_confirmed": false,
+            "needs_attention": false,
+            "checkout_session_id": "cs_test_1"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "payment link expired": {
+    "events": [
+      {
+        "topic": "payment.expired",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "source": "system",
+          "payment_status": "expired",
+          "message": "The payment link expired. The appointment was not booked and the time slot was released.",
+          "payment_id": "p0000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "amount": 5000,
+          "currency": "usd",
+          "service_id": "s0000000-0000-4000-8000-000000000001",
+          "service_name": "Initial consultation",
+          "appointment_id": "a0000000-0000-4000-8000-000000000001"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "payment.expired",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "expired",
+            "message": "The payment link expired. The appointment was not booked and the time slot was released.",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "contact_id": "c0000000-0000-4000-8000-000000000001",
+            "conversation_id": "cv000000-0000-4000-8000-000000000001",
+            "amount": 5000,
+            "currency": "usd",
+            "service_id": "s0000000-0000-4000-8000-000000000001",
+            "service_name": "Initial consultation",
+            "appointment_id": "a0000000-0000-4000-8000-000000000001"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "payment failed": {
+    "events": [
+      {
+        "topic": "payment.expired",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "source": "system",
+          "payment_status": "failed",
+          "message": "The payment was not completed. The appointment was not booked and the time slot was released.",
+          "payment_id": "p0000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "amount": 5000,
+          "currency": "usd",
+          "service_id": "s0000000-0000-4000-8000-000000000001",
+          "service_name": "Initial consultation",
+          "appointment_id": "a0000000-0000-4000-8000-000000000001"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "payment.failed",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "source": "system",
+            "payment_status": "failed",
+            "message": "The payment was not completed. The appointment was not booked and the time slot was released.",
+            "payment_id": "p0000000-0000-4000-8000-000000000001",
+            "contact_id": "c0000000-0000-4000-8000-000000000001",
+            "conversation_id": "cv000000-0000-4000-8000-000000000001",
+            "amount": 5000,
+            "currency": "usd",
+            "service_id": "s0000000-0000-4000-8000-000000000001",
+            "service_name": "Initial consultation",
+            "appointment_id": "a0000000-0000-4000-8000-000000000001"
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "call started": {
+    "events": [],
+    "jobs": []
+  },
+  "call ended": {
+    "events": [
+      {
+        "topic": "call.completed",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "call": {
+            "id": "ca000000-0000-4000-8000-000000000009",
+            "external_call_id": "retell_call_1",
+            "phone_from": "+5215550001",
+            "phone_to": "+5215559999",
+            "duration_seconds": 184,
+            "started_at": "2026-03-20T14:00:00.000Z",
+            "ended_at": "2026-03-20T14:03:04.000Z",
+            "summary": "The customer asked to book a consultation next week."
+          }
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "call.completed",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "call_id": "ca000000-0000-4000-8000-000000000009",
+            "duration_seconds": 184,
+            "summary": "The customer asked to book a consultation next week."
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  },
+  "call analyzed": {
+    "events": [
+      {
+        "topic": "call.completed",
+        "data": {
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "call": {
+            "id": "ca000000-0000-4000-8000-000000000009",
+            "external_call_id": "retell_call_1",
+            "phone_from": "+5215550001",
+            "phone_to": "+5215559999",
+            "duration_seconds": 184,
+            "started_at": "2026-03-20T14:00:00.000Z",
+            "ended_at": "2026-03-20T14:03:04.000Z",
+            "summary": "The customer asked to book a consultation next week."
+          }
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "name": "trigger",
+        "data": {
+          "event_type": "call.completed",
+          "organization_id": "0a000000-0000-4000-8000-000000000001",
+          "conversation_id": "cv000000-0000-4000-8000-000000000001",
+          "contact_id": "c0000000-0000-4000-8000-000000000001",
+          "payload": {
+            "call_id": "ca000000-0000-4000-8000-000000000009",
+            "duration_seconds": 184,
+            "summary": "The customer asked to book a consultation next week."
+          }
+        },
+        "opts": {
+          "attempts": 3,
+          "backoff": {
+            "type": "exponential",
+            "delay": 2000
+          }
+        }
+      }
+    ]
+  }
+}

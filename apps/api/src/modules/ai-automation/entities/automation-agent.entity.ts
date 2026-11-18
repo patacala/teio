@@ -35,9 +35,9 @@ export class AutomationAgentEntity {
   @Column({ type: 'text' })
   workflow_endpoint: string;
 
-  // Sent as `X-API-Key` on the webhook POST when set. n8n workflows validate
-  // via a secret embedded in their own URL and leave this null; ProSales'
-  // inbound endpoint requires it (its org-scoped API key).
+  // Sent as `X-API-Key` on the POST when set. Endpoints that validate via a
+  // secret embedded in their own URL leave it null; ProSales' inbound
+  // endpoint requires it (its org-scoped API key).
   @Column({ type: 'text', nullable: true })
   auth_header_value: string | null;
 

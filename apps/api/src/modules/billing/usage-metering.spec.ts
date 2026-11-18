@@ -143,11 +143,11 @@ describe('voice minutes', () => {
 });
 
 describe('AI calls', () => {
-  const agent = { id: 'agent-1', workflow_endpoint: 'https://workflow.test/hook', auth_header_value: null };
+  const agent = { id: 'agent-1', workflow_endpoint: 'https://workflow.test/hook', auth_header_value: null, is_active: true };
 
   function setup(allowed: boolean) {
     const triggers = {
-      findAgentsForEvent: jest.fn(async () => [agent]),
+      findAgentById: jest.fn(async () => agent),
       log: jest.fn(async () => undefined),
     };
     const billingAccess = {
@@ -161,7 +161,7 @@ describe('AI calls', () => {
     );
     const run = () =>
       (processor as unknown as { process(job: object): Promise<void> }).process({
-        data: { event_type: 'message.received', organization_id: ORG, conversation_id: 'conv-1', payload: {} },
+        data: { event_type: 'message.received', organization_id: ORG, conversation_id: 'conv-1', agent_id: 'agent-1', payload: {} },
       });
     return { triggers, usage, run };
   }
@@ -195,7 +195,7 @@ describe('AI calls', () => {
 
 describe('automated actions', () => {
   function setup(action: string, allowed: boolean) {
-    const appt = { id: 'appt-1', organization_id: ORG, contact_id: 'c1', status: 'processing', action, executor: 'system', sequence_id: null };
+    const appt = { id: 'appt-1', organization_id: ORG, contact_id: 'c1', status: 'processing', action, executor: 'system' };
     const appointments = {
       findForExecution: jest.fn(async () => appt),
       markFailed: jest.fn(async () => 'failed'),
@@ -205,9 +205,9 @@ describe('automated actions', () => {
       checkLimit: jest.fn(async (_o: string, metric: string) => ({ allowed, metric, limit: 5, current: 5 })),
     };
     const service = new ActionExecutionService(
-      appointments as never, { advanceOrComplete: jest.fn() } as never, { resolve: jest.fn(async () => null) } as never,
+      appointments as never, { resolve: jest.fn(async () => null) } as never,
       { findOne: jest.fn(async () => ({ id: 'c1' })) } as never, { findOne: jest.fn(async () => ({ id: ORG })) } as never,
-      undefined, undefined, undefined, undefined, undefined, undefined, undefined, billingAccess as never,
+      undefined, undefined, undefined, undefined, undefined, undefined, billingAccess as never,
     );
     return { service, appointments, billingAccess };
   }

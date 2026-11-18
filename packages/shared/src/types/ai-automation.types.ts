@@ -49,6 +49,10 @@ export interface AgentTriggerJobData {
   conversation_id?: string;
   contact_id?: string;
   payload: Record<string, unknown>;
+  /** The AI connection to call (set by the automation's "Send to AI agent" step). */
+  agent_id: string;
+  /** The automation run that sent this event to the AI. */
+  automation_run_id?: string;
 }
 
 export interface AgentToolExecutedEvent {

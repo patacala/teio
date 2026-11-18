@@ -60,7 +60,7 @@ export function fakeSchedulingBackend(timeZone = 'America/Mexico_City'): FakeBac
 
   server.use(
     http.get(`${API_BASE}/calendars`, () => HttpResponse.json({ data: [calendar] })),
-    http.get(`${API_BASE}/automation/sequences/templates`, () => HttpResponse.json({ data: [] })),
+    http.get(`${API_BASE}/automations`, () => HttpResponse.json({ data: [] })),
 
     http.get(`${API_BASE}/appointments/metrics`, () => {
       const now = Date.now();

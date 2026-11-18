@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { automationService } from '@/services/automation.service';
 import type {
   CreateFollowUpInput,
-  CreateSequenceInput,
   FollowUpListParams,
   UpdateFollowUpInput,
 } from '@/services/automation.service';
@@ -92,42 +91,5 @@ export function useCancelFollowUp() {
   return useMutation({
     mutationFn: (id: string) => automationService.cancelFollowUp(id),
     onSuccess: invalidate,
-  });
-}
-
-// ── Sequences ──
-
-export function useSequences(params?: {
-  status?: string;
-  contact_id?: string;
-  sequence_type?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  return useQuery({
-    queryKey: ['sequences', params],
-    queryFn: () => automationService.listSequences(params),
-  });
-}
-
-export function useCreateSequence() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateSequenceInput) => automationService.createSequence(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sequences'] });
-      qc.invalidateQueries({ queryKey: ['appointments'] });
-    },
-  });
-}
-
-export function useCancelSequence() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => automationService.cancelSequence(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sequences'] });
-      qc.invalidateQueries({ queryKey: ['appointments'] });
-    },
   });
 }

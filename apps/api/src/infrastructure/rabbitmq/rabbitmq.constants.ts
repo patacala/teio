@@ -24,6 +24,9 @@ export const RABBITMQ_QUEUES = {
   CONTACT_CREATED: 'contact.created',
   CONTACT_UPDATED: 'contact.updated',
   CONTACT_STAGE_CHANGED: 'contact.stage.changed',
+  // A tag was added to / removed from a contact (one event per tag).
+  CONTACT_TAG_ADDED: 'contact.tag.added',
+  CONTACT_TAG_REMOVED: 'contact.tag.removed',
   // Fired when a contact's captured/custom fields change — carries the BANT
   // qualification signals the funnel evaluates.
   CONTACT_DATA_CAPTURED: 'contact.data.captured',
@@ -44,6 +47,7 @@ export const RABBITMQ_QUEUES = {
   // Funnel automation events
   SEQUENCE_EXHAUSTED: 'sequence.exhausted',
   // Conversation lifecycle
+  CONVERSATION_OPENED: 'conversation.opened',
   CONVERSATION_CLOSED: 'conversation.closed',
   // Billing events
   SUBSCRIPTION_CREATED: 'subscription.created',

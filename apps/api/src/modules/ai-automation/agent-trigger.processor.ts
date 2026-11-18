@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject, Optional } f
 import { ConfigService } from '@nestjs/config';
 import { Worker, Job } from 'bullmq';
 import { AgentTriggerService } from './agent-trigger.service';
+import type { AutomationAgentEntity } from './entities/automation-agent.entity';
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { ClientManagementService } from '../client-management/client-management.service';
 import { PaymentServiceService } from '../payments/payment-service.service';
@@ -13,10 +14,7 @@ import type { AgentTriggerJobData } from '@crm/shared';
 
 export const AGENT_TRIGGER_QUEUE_NAME = 'agent_trigger';
 
-// Payment events have no dedicated agent row; they fall back to the active
-// message.received agent so the conversational agent can acknowledge the
-// payment and continue. The POST still carries the original event_type.
-const PAYMENT_EVENTS = new Set(['payment.received', 'payment.expired']);
+
 
 @Injectable()
 export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
@@ -59,7 +57,7 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   private async process(job: Job<AgentTriggerJobData>): Promise<void> {
-    const { event_type, organization_id, conversation_id, contact_id, payload } = job.data;
+    const { event_type, organization_id, conversation_id, contact_id, payload, agent_id, automation_run_id } = job.data;
 
     this.logger.debug(`Processing agent trigger: ${event_type} for org ${organization_id}`);
 
@@ -68,19 +66,13 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    let agents = await this.agentTriggerService.findAgentsForEvent(organization_id, event_type);
-
-    if (agents.length === 0 && PAYMENT_EVENTS.has(event_type)) {
-      this.logger.debug(
-        `No agent for payment event '${event_type}' in org ${organization_id}; routing to the message.received agent`,
-      );
-      agents = await this.agentTriggerService.findAgentsForEvent(organization_id, 'message.received');
-    }
-
-    if (agents.length === 0) {
-      this.logger.debug(`No active agents for event '${event_type}' in org ${organization_id}`);
+    // Jobs come from an automation's "Send to AI agent" step, which names the connection.
+    const agent = agent_id ? await this.agentTriggerService.findAgentById(agent_id, organization_id).catch(() => null) : null;
+    if (!agent?.is_active) {
+      this.logger.warn(`AI connection ${agent_id ?? '(none)'} is missing or disabled (org ${organization_id}, run ${automation_run_id ?? '-'})`);
       return;
     }
+    const agents: AutomationAgentEntity[] = [agent];
 
     for (const agent of agents) {
       if (this.billingAccess) {
@@ -106,7 +98,7 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
           agent.id,
           conversation_id ?? null,
           'agent_triggered',
-          { event_type, contact_id, payload },
+          { event_type, contact_id, payload, ...(automation_run_id ? { automation_run_id } : {}) },
         );
 
         // Enrich payload with contact context + upcoming appointments + payment catalog
@@ -166,8 +158,8 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
           // Non-critical enrichment — continue without payment catalog
         }
 
-        // Build n8n payload
-        const n8nPayload = {
+        // The request the external agent receives
+        const requestBody = {
           organization_id,
           event_type,
           conversation_id: conversation_id ?? null,
@@ -180,16 +172,14 @@ export class AgentTriggerProcessor implements OnModuleInit, OnModuleDestroy {
           payment_currency: paymentCurrency,
         };
 
-        // POST to the workflow endpoint (n8n, ProSales, or whatever's configured
-        // as the single active agent for this event — only one is ever active
-        // at a time by convention, switched manually from the web).
+        // POST to the agent's endpoint (ProSales' /crm/inbound).
         const response = await fetch(agent.workflow_endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(agent.auth_header_value ? { 'X-API-Key': agent.auth_header_value } : {}),
           },
-          body: JSON.stringify(n8nPayload),
+          body: JSON.stringify(requestBody),
           signal: AbortSignal.timeout(30_000),
         });
 

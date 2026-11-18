@@ -29,7 +29,7 @@ export const AT_LIMIT_PERCENT = 90;
 /** A demo with nothing set up after this many days (and younger than the max) needs onboarding help. */
 export const NOT_ACTIVATED_AFTER_DAYS = 3;
 export const NOT_ACTIVATED_MAX_AGE_DAYS = 30;
-/** A demo request still generating after this long is stuck (n8n never called back). */
+/** A demo request still generating after this long is stuck (the demo generator never called back). */
 export const DEMO_REQUEST_STUCK_MINUTES = 30;
 /** Failed or stuck demo requests older than this are no longer surfaced. */
 export const DEMO_REQUEST_ATTENTION_DAYS = 14;

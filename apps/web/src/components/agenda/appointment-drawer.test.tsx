@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgendaItem, Calendar } from '@/services/scheduling.service';
-import type { SequenceTemplate } from '@/services/automation.service';
+import type { AutomationSummary } from '@crm/shared';
 import { API_BASE, mockApi } from '@/test/msw/api';
 import { server } from '@/test/msw/server';
 import { createQueryWrapper } from '@/test/query';
@@ -39,18 +39,20 @@ function calendar(id: string, name: string, type: string, timezone = MX, payment
   };
 }
 
-function sequenceTemplate(id: string, name: string, overrides: Partial<SequenceTemplate> = {}): SequenceTemplate {
+function automation(id: string, name: string, overrides: Partial<AutomationSummary> = {}): AutomationSummary {
   return {
     id,
-    organization_id: 'org-1',
     name,
-    sequence_type: 'no_response',
-    is_active: true,
-    steps: [
-      { id: `${id}-s1`, template_id: id, position: 1, action: 'send_message', channel_strategy: 'auto', delay_hours: 24 },
-      { id: `${id}-s2`, template_id: id, position: 2, action: 'call', channel_strategy: 'voice_only', delay_hours: 48 },
-    ],
-    created_at: '',
+    description: null,
+    status: 'active',
+    category: 'follow_up',
+    template_key: null,
+    is_system: false,
+    trigger_keys: ['manual'],
+    sends_to_ai: false,
+    published_version: 1,
+    has_unpublished_changes: false,
+    stats: { active_runs: 0, completed_7d: 0, failed_7d: 0 },
     updated_at: '',
     ...overrides,
   };
@@ -67,7 +69,7 @@ const SLOTS = [
   { starts_at: '2026-03-20T15:30:00.000Z', ends_at: '2026-03-20T16:00:00.000Z' },
 ];
 
-function serveAgendaData(templates: SequenceTemplate[] = []) {
+function serveAgendaData(automations: AutomationSummary[] = []) {
   mockApi('get', '/calendars', {
     data: [
       calendar('cal-appt', 'Consultations', 'appointments'),
@@ -75,7 +77,7 @@ function serveAgendaData(templates: SequenceTemplate[] = []) {
       calendar('cal-paid', 'Paid consultations', 'appointments', MX, 'svc-1'),
     ],
   });
-  mockApi('get', '/automation/sequences/templates', { data: templates });
+  mockApi('get', '/automations', { data: automations });
   const availability: URL[] = [];
   server.use(
     http.get(`${API_BASE}/appointments/availability`, ({ request }) => {
@@ -212,44 +214,37 @@ describe('AppointmentDrawer', () => {
   });
 
   describe('follow-up calendars', () => {
-    it('starts a sequence from a runnable template instead of a single step', async () => {
+    it('adds the contact to a live automation with the manual trigger instead of a single step', async () => {
       serveAgendaData([
-        sequenceTemplate('tpl-off', 'Paused cadence', { is_active: false }),
-        sequenceTemplate('tpl-empty', 'Empty cadence', { steps: [] }),
-        sequenceTemplate('tpl-1', 'Lead went quiet'),
+        automation('a-paused', 'Paused cadence', { status: 'paused' }),
+        automation('a-event', 'Tag welcome', { trigger_keys: ['contact.tag_added'] }),
+        automation('a-1', 'Lead went quiet'),
       ]);
-      const started = mockApi('post', '/automation/sequences', { data: { id: 'seq-1' } });
+      const enrolled = mockApi('post', '/automations/a-1/enroll', { data: { started: ['run-1'], skipped: [] } });
       const { user, onClose } = renderDrawer({ calendarId: 'cal-appt' });
 
-      expect(screen.queryByLabelText('Start automatic sequence')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Add to an automation instead')).not.toBeInTheDocument();
       await screen.findByText('Calendar');
       await pickOption(user, within(field('Calendar')).getByRole('combobox'), 'Follow-ups');
       expect(screen.getByText('Action *')).toBeInTheDocument();
 
-      await user.click(screen.getByLabelText('Start automatic sequence'));
+      await user.click(screen.getByLabelText('Add to an automation instead'));
 
       expect(screen.queryByText('Action *')).not.toBeInTheDocument();
-      expect(within(field('Title')).getByRole('textbox')).toHaveAttribute('placeholder', 'Defined by the sequence');
-      const templatePicker = within(field('Sequence')).getByRole('combobox');
-      await waitFor(() => expect(templatePicker).toHaveTextContent('Lead went quiet'));
-      await user.click(templatePicker);
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Lead went quiet· No response']);
+      expect(screen.queryByText('Date & time *')).not.toBeInTheDocument();
+      expect(screen.queryByText('Title')).not.toBeInTheDocument();
+      const picker = within(field('Automation')).getByRole('combobox');
+      await waitFor(() => expect(picker).toHaveTextContent('Lead went quiet'));
+      await user.click(picker);
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Lead went quiet']);
       await user.keyboard('{Escape}');
-      expect(screen.getByText('Cadence (2 steps)')).toBeInTheDocument();
 
       await pickContact(user, 'luis', 'Luis Gómez');
-      fireEvent.change(field('Date & time *').querySelector('input')!, { target: { value: '2026-03-20T15:00' } });
-      await user.click(screen.getByRole('button', { name: 'Start sequence' }));
+      await user.click(screen.getByRole('button', { name: 'Add to automation' }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-      expect(started[0].body).toEqual({
-        contact_id: 'c-2',
-        template_id: 'tpl-1',
-        sequence_type: 'no_response',
-        source: 'manual',
-        due_at: '2026-03-20T15:00:00.000Z',
-      });
-      expect(toast).toHaveBeenCalledWith({ title: 'Sequence started' });
+      expect(enrolled[0].body).toEqual({ contact_ids: ['c-2'] });
+      expect(toast).toHaveBeenCalledWith({ title: 'Added to Lead went quiet' });
     });
 
     it('schedules one step on the follow-up endpoint, for a person when chosen', async () => {
@@ -274,29 +269,47 @@ describe('AppointmentDrawer', () => {
       expect(toast).toHaveBeenCalledWith({ title: 'Follow-up scheduled' });
     });
 
-    it('blocks starting a sequence when no template has steps', async () => {
-      serveAgendaData([sequenceTemplate('tpl-empty', 'Empty cadence', { steps: [] })]);
+    it('explains how to get an automation when none accepts manual contacts', async () => {
+      serveAgendaData([automation('a-event', 'Tag welcome', { trigger_keys: ['contact.tag_added'] })]);
       const { user } = renderDrawer({ calendarId: 'cal-fu' });
 
-      await user.click(await screen.findByLabelText('Start automatic sequence'));
+      await user.click(await screen.findByLabelText('Add to an automation instead'));
 
-      expect(screen.getByText(/no sequences with configured steps/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Start sequence' })).toBeDisabled();
+      expect(await screen.findByText(/no active automation accepts contacts added by hand/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add to automation' })).toBeDisabled();
     });
 
-    it('shows the API reason when the contact already has an active sequence', async () => {
-      serveAgendaData([sequenceTemplate('tpl-1', 'Lead went quiet')]);
-      mockApi('post', '/automation/sequences', { status: 409, message: 'Contact already has an active sequence' });
+    it('keeps the drawer open when the automation does not take the contact', async () => {
+      serveAgendaData([automation('a-1', 'Lead went quiet')]);
+      mockApi('post', '/automations/a-1/enroll', { data: { started: [], skipped: ['c-1'] } });
       const { user, onClose } = renderDrawer({ calendarId: 'cal-fu' });
 
-      await user.click(await screen.findByLabelText('Start automatic sequence'));
+      await user.click(await screen.findByLabelText('Add to an automation instead'));
       await pickContact(user, 'ana', 'Ana Pérez');
-      fireEvent.change(field('Date & time *').querySelector('input')!, { target: { value: '2026-03-20T15:00' } });
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Start sequence' })).toBeEnabled());
-      await user.click(screen.getByRole('button', { name: 'Start sequence' }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Add to automation' })).toBeEnabled());
+      await user.click(screen.getByRole('button', { name: 'Add to automation' }));
 
       await waitFor(() =>
-        expect(toast).toHaveBeenCalledWith({ title: 'Contact already has an active sequence', variant: 'error' }),
+        expect(toast).toHaveBeenCalledWith({
+          title: 'Not added: the contact opted out, is already in this automation, or cannot enter it again',
+          variant: 'error',
+        }),
+      );
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('shows the API reason when the automation refuses', async () => {
+      serveAgendaData([automation('a-1', 'Lead went quiet')]);
+      mockApi('post', '/automations/a-1/enroll', { status: 400, message: 'Publish and activate the automation before adding contacts' });
+      const { user, onClose } = renderDrawer({ calendarId: 'cal-fu' });
+
+      await user.click(await screen.findByLabelText('Add to an automation instead'));
+      await pickContact(user, 'ana', 'Ana Pérez');
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Add to automation' })).toBeEnabled());
+      await user.click(screen.getByRole('button', { name: 'Add to automation' }));
+
+      await waitFor(() =>
+        expect(toast).toHaveBeenCalledWith({ title: 'Publish and activate the automation before adding contacts', variant: 'error' }),
       );
       expect(onClose).not.toHaveBeenCalled();
     });

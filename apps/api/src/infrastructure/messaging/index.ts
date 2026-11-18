@@ -6,6 +6,7 @@ import { renderTemplate, type TemplateVars } from './template';
 export { escapeHtml, type RenderedEmail } from './email-layout';
 export { renderTemplate, type TemplateVars } from './template';
 export * from './catalog';
+export { formatAmount, formatDateLong, formatTimeShort } from './format';
 
 /** Renders a catalog email: subject + escaped HTML. */
 export function emailFromTemplate(key: EmailTemplateKey, vars: TemplateVars): RenderedEmail {

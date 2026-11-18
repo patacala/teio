@@ -58,7 +58,12 @@ export class ConversationManagementController {
     @Body() dto: SendMessageDto,
     @CurrentTenant() tenant: TenantContext,
   ) {
-    return this.service.sendMessage(id, tenant.organization_id, dto);
+    // Who sent it is decided here, not by the request body: a person in the
+    // inbox, or an integration calling with an API key.
+    return this.service.sendMessage(id, tenant.organization_id, {
+      ...dto,
+      sender_type: tenant.role === 'api_key' ? 'api' : 'agent',
+    });
   }
 
   @Patch(':id/resolve')

@@ -17,11 +17,12 @@ import { AgentStatusToggle } from './agent-status-toggle';
 import { ContactTags } from './contact-tags';
 import { CapturedFieldsList } from './captured-fields-list';
 import { reachableChannels } from '@/components/lead/reachable-channels';
+import { ContactAutomations } from '@/components/automations/ContactAutomations';
 import { getInitials, formatRelativeTime, formatMoney } from '@/lib/utils';
 import type { Payment } from '@/services/payments.service';
 import {
   Mail, Phone, Bot, Clock, Tag, TrendingUp,
-  MessageSquare, Sparkles, Layers, Wallet, BellOff,
+  MessageSquare, Sparkles, Layers, Wallet, BellOff, Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -75,11 +76,11 @@ export function ContactSidebar({ contactId, conversationId }: ContactSidebarProp
   const handleOptOut = async () => {
     if (!contactId) return;
     try {
-      const { sequences_cancelled } = await optOut.mutateAsync(contactId);
+      const { automations_stopped } = await optOut.mutateAsync(contactId);
       toast({
-        title: sequences_cancelled > 0
-          ? `Opted out. ${sequences_cancelled} follow-up sequence(s) cancelled.`
-          : 'Opted out of automated follow-ups.',
+        title: automations_stopped > 0
+          ? `Opted out. Stopped ${automations_stopped} automation(s) for this contact.`
+          : 'Opted out of automated messages.',
       });
     } catch (err) {
       toast({ title: (err as Error)?.message || 'Failed to opt out', variant: 'error' });
@@ -166,12 +167,19 @@ export function ContactSidebar({ contactId, conversationId }: ContactSidebarProp
       {!isLoading && contact && (
         <Section title="Communications" icon={<BellOff className="h-3.5 w-3.5" />}>
           {contact.tags?.includes('opt-out') ? (
-            <Badge variant="warn">Opted out of automated follow-ups</Badge>
+            <Badge variant="warn">Opted out of automated messages</Badge>
           ) : (
             <Button variant="outline" size="sm" onClick={handleOptOut} disabled={optOut.isPending}>
-              {optOut.isPending ? 'Opting out…' : 'Opt out of follow-ups'}
+              {optOut.isPending ? 'Opting out…' : 'Opt out of automated messages'}
             </Button>
           )}
+        </Section>
+      )}
+
+      {/* Automations the contact is in */}
+      {!isLoading && contact && (
+        <Section title="Automations" icon={<Workflow className="h-3.5 w-3.5" />}>
+          <ContactAutomations contactId={contactId} />
         </Section>
       )}
 

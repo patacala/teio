@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientProxy } from '@nestjs/microservices';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
+import { OutboxService } from '../../infrastructure/outbox/outbox.service';
+import { publishDomainEvent } from '../../infrastructure/outbox/domain-events';
 import { WebhookDispatcherService } from '../integrations/webhook-dispatcher.service';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
 import { ContactEntity } from './contact.entity';
@@ -16,7 +18,7 @@ import { ContactFunnelHistoryEntity } from '../funnels/contact-funnel-history.en
 import { FunnelStageEntity } from '../funnels/funnel-stage.entity';
 import { FunnelEntity } from '../funnels/funnel.entity';
 import { UserEntity } from '../users/user.entity';
-import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
+import { stopRunsForOptOut } from '../automation-engine/workflows/runtime/opt-out';
 import type { PaginationQuery } from '@crm/shared';
 import { buildPaginationMeta, ChannelType } from '@crm/shared';
 import { NOTIFICATION_TEMPLATES, renderTemplate } from '../../infrastructure/messaging';
@@ -80,7 +82,7 @@ type SearchableColumn = (typeof SEARCHABLE_COLUMNS)[number];
 
 /**
  * Points from `custom_fields.urgency_level`, tiered instead of a single
- * hot/not-hot cutoff. English + Spanish values, since the agent (n8n/Retell)
+ * hot/not-hot cutoff. English + Spanish values, since the agent (ProSales/Retell)
  * may write either depending on the org's language.
  */
 const URGENCY_SCORE: Record<string, number> = {
@@ -153,8 +155,45 @@ export class ClientManagementService {
     @Optional() @Inject(RABBITMQ_SERVICE) private readonly rmqClient?: ClientProxy,
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
     @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
-    @Optional() private readonly automationSequenceService?: AutomationSequenceService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
+
+  private publish(topic: string, data: Record<string, unknown>): Promise<void> {
+    return publishDomainEvent(this.outbox, this.rmqClient, topic, data);
+  }
+
+  /**
+   * One event per tag added or removed. `source` says who changed them
+   * ('manual' in the CRM, 'api', 'ai', 'automation', 'system').
+   */
+  private async publishTagChanges(
+    organizationId: string,
+    contactId: string,
+    before: string[],
+    after: string[],
+    source: string,
+  ): Promise<void> {
+    for (const tag of after.filter((t) => !before.includes(t))) {
+      await this.publish(RABBITMQ_QUEUES.CONTACT_TAG_ADDED, { organization_id: organizationId, contact_id: contactId, tag, source });
+    }
+    for (const tag of before.filter((t) => !after.includes(t))) {
+      await this.publish(RABBITMQ_QUEUES.CONTACT_TAG_REMOVED, { organization_id: organizationId, contact_id: contactId, tag, source });
+    }
+  }
+
+  /** `source`: 'manual' (a person in the CRM), 'api', 'channel' (first message or call), … */
+  private publishContactCreated(contact: ContactEntity, source: string, channel?: string): Promise<void> {
+    return this.publish(RABBITMQ_QUEUES.CONTACT_CREATED, {
+      organization_id: contact.organization_id,
+      contact_id: contact.id,
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email,
+      phone: contact.phone,
+      source,
+      ...(channel ? { channel } : {}),
+    });
+  }
 
   async findAll(
     organizationId: string,
@@ -278,14 +317,8 @@ export class ClientManagementService {
     });
     const saved = await this.contactRepo.save(contact);
 
-    this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_CREATED, {
-      organization_id: organizationId,
-      contact_id: saved.id,
-      first_name: saved.first_name,
-      last_name: saved.last_name,
-      email: saved.email,
-      phone: saved.phone,
-    });
+    await this.publishContactCreated(saved, actorUserId ? 'manual' : 'api');
+    if (saved.tags?.length) await this.publishTagChanges(organizationId, saved.id, [], saved.tags, actorUserId ? 'manual' : 'api');
 
     void this.webhookDispatcher?.dispatch('contact.created', organizationId, {
       contact_id: saved.id,
@@ -306,27 +339,27 @@ export class ClientManagementService {
   }
 
   /**
-   * The human-triggered equivalent of the AI's `opt_out_contact` tool — same
-   * tag, same sequence cancellation, so a contact who opts out stops getting
-   * automated follow-ups regardless of who flips the switch.
+   * Opt-out, from the CRM button or the AI's `opt_out_contact` tool: tags the
+   * contact "opt-out" and stops their runs in every automation that respects
+   * opt-outs (marketing and follow-ups; booking messages keep going).
    */
-  async optOut(id: string, organizationId: string): Promise<{ contact: ContactEntity; sequences_cancelled: number }> {
+  async optOut(id: string, organizationId: string, source = 'manual'): Promise<{ contact: ContactEntity; automations_stopped: number }> {
     const contact = await this.findById(id, organizationId);
     const tags: string[] = contact.tags ?? [];
 
-    const sequencesCancelled = this.automationSequenceService
-      ? await this.automationSequenceService.cancelAllForContact(organizationId, id, 'opt_out')
-      : 0;
+    const automationsStopped = await stopRunsForOptOut(this.contactRepo.manager, organizationId, id);
 
     if (!tags.includes('opt-out')) {
       contact.tags = [...tags, 'opt-out'];
       await this.contactRepo.save(contact);
+      await this.publishTagChanges(organizationId, id, tags, contact.tags, source);
     }
 
-    return { contact, sequences_cancelled: sequencesCancelled };
+    return { contact, automations_stopped: automationsStopped };
   }
 
-  async update(id: string, organizationId: string, dto: UpdateContactDto): Promise<ContactEntity> {
+  /** `source`: who made the change ('manual', 'api', 'ai', 'automation'); reported on tag events. */
+  async update(id: string, organizationId: string, dto: UpdateContactDto, source = 'manual'): Promise<ContactEntity> {
     const contact = await this.findById(id, organizationId);
 
     // Track changes to core identity fields
@@ -343,6 +376,7 @@ export class ClientManagementService {
     // merges below actually merge with the prior values, not with themselves.
     const prevInsights = (contact.ai_insights as Record<string, unknown>) ?? {};
     const prevCustomFields = (contact.custom_fields as Record<string, unknown>) ?? {};
+    const prevTags = [...(contact.tags ?? [])];
 
     // Stage changes only go through updateStage/moveStageIfUnchanged (validated + recorded in
     // the funnel history). Callers such as AI tools pass raw input that may still carry it.
@@ -371,17 +405,20 @@ export class ClientManagementService {
       );
     }
 
-    this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_UPDATED, {
+    await this.publish(RABBITMQ_QUEUES.CONTACT_UPDATED, {
       organization_id: organizationId,
       contact_id: id,
       changed_fields: Object.keys(changedFields),
       first_name: saved.first_name,
       last_name: saved.last_name,
     });
+    if (dto.tags !== undefined) {
+      await this.publishTagChanges(organizationId, id, prevTags, saved.tags ?? [], source);
+    }
 
     // Captured/custom fields changed → the funnel re-checks BANT qualification.
     if (dto.custom_fields !== undefined) {
-      this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_DATA_CAPTURED, {
+      await this.publish(RABBITMQ_QUEUES.CONTACT_DATA_CAPTURED, {
         organization_id: organizationId,
         contact_id: id,
       });
@@ -623,20 +660,24 @@ export class ClientManagementService {
   }
 
   // ── Tags ─────────────────────────────────────────────────────────────
-  async addTag(id: string, organizationId: string, tag: string): Promise<ContactEntity> {
+  async addTag(id: string, organizationId: string, tag: string, source = 'manual'): Promise<ContactEntity> {
     const contact = await this.findById(id, organizationId);
     const tags = contact.tags ?? [];
     if (!tags.includes(tag)) {
       contact.tags = [...tags, tag];
-      return this.contactRepo.save(contact);
+      const saved = await this.contactRepo.save(contact);
+      await this.publishTagChanges(organizationId, id, tags, contact.tags, source);
+      return saved;
     }
     return contact;
   }
 
-  async removeTag(id: string, organizationId: string, tagId: string): Promise<void> {
+  async removeTag(id: string, organizationId: string, tagId: string, source = 'manual'): Promise<void> {
     const contact = await this.findById(id, organizationId);
-    contact.tags = (contact.tags ?? []).filter((t) => t !== tagId);
+    const before = contact.tags ?? [];
+    contact.tags = before.filter((t) => t !== tagId);
     await this.contactRepo.save(contact);
+    await this.publishTagChanges(organizationId, id, before, contact.tags, source);
   }
 
   // ── Captured data (stored in custom_fields) ──────────────────────────
@@ -655,7 +696,7 @@ export class ClientManagementService {
     contact.custom_fields = { ...(contact.custom_fields ?? {}), ...fields };
     this.applyLeadScoreSignals(contact);
     await this.contactRepo.save(contact);
-    this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_DATA_CAPTURED, {
+    await this.publish(RABBITMQ_QUEUES.CONTACT_DATA_CAPTURED, {
       organization_id: organizationId,
       contact_id: id,
     });
@@ -708,7 +749,7 @@ export class ClientManagementService {
 
     contact.lead_stage = stageId;
     await this.contactRepo.save(contact);
-    this.recordStageChange(contact, organizationId, oldStageId, stageId, changedBy ?? null, 'manual', null);
+    await this.recordStageChange(contact, organizationId, oldStageId, stageId, changedBy ?? null, 'manual', null);
     return contact;
   }
 
@@ -735,11 +776,11 @@ export class ClientManagementService {
     if (!result.affected) return false;
 
     const contact = await this.findById(id, organizationId);
-    this.recordStageChange(contact, organizationId, expectedStageId, stageId, null, 'automation', reason);
+    await this.recordStageChange(contact, organizationId, expectedStageId, stageId, null, 'automation', reason);
     return true;
   }
 
-  private recordStageChange(
+  private async recordStageChange(
     contact: ContactEntity,
     organizationId: string,
     fromStageId: string | null,
@@ -747,7 +788,7 @@ export class ClientManagementService {
     changedBy: string | null,
     source: 'manual' | 'automation',
     reason: string | null,
-  ): void {
+  ): Promise<void> {
     // Fire-and-forget history log
     void this.historyRepo.save(
       this.historyRepo.create({
@@ -760,7 +801,7 @@ export class ClientManagementService {
       }),
     );
 
-    this.rmqClient?.emit(RABBITMQ_QUEUES.CONTACT_STAGE_CHANGED, {
+    await this.publish(RABBITMQ_QUEUES.CONTACT_STAGE_CHANGED, {
       organization_id: organizationId,
       contact_id: contact.id,
       first_name: contact.first_name,
@@ -893,7 +934,7 @@ export class ClientManagementService {
 
     const defaultStage = await this.resolveDefaultStage(orgId);
 
-    return this.contactRepo.save(
+    const created = await this.contactRepo.save(
       this.contactRepo.create({
         organization_id: orgId,
         first_name: displayName ?? '',
@@ -905,6 +946,8 @@ export class ClientManagementService {
         lead_stage: defaultStage ?? undefined,
       }),
     );
+    await this.publishContactCreated(created, 'channel', channel);
+    return created;
   }
 
   /**
@@ -965,7 +1008,9 @@ export class ClientManagementService {
 
     // If INSERT succeeded (no conflict), return the new contact
     if (result.length > 0) {
-      return this.contactRepo.create(result[0]);
+      const created = this.contactRepo.create(result[0]);
+      await this.publishContactCreated(created, 'channel', channel);
+      return created;
     }
 
     // If conflict occurred (DO NOTHING), fetch the existing contact

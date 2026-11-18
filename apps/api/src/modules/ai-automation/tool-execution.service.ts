@@ -11,8 +11,6 @@ import { AvailabilityService } from '../scheduling/availability.service';
 import { CalendarService } from '../scheduling/calendar.service';
 import { AI_ACTOR } from '../scheduling/scheduling.types';
 import { isValidTimeZone, localDate, localMinutes } from '../scheduling/domain/timezone';
-import { AutomationSequenceService } from '../automation-engine/automation-sequence.service';
-import { ScheduledActionService } from '../automation-engine/scheduled-action.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentServiceService } from '../payments/payment-service.service';
 import { PaymentSettingsService } from '../payments/payment-settings.service';
@@ -24,7 +22,6 @@ import type {
   CreateContactDto,
   UpdateContactDto,
 } from '../client-management/client-management.service';
-import type { CreateSequenceInput } from '@crm/shared';
 
 interface ToolContext {
   orgId: string;
@@ -33,8 +30,6 @@ interface ToolContext {
   schedulingService: SchedulingService;
   availabilityService: AvailabilityService;
   calendarService: CalendarService;
-  automationSequenceService?: AutomationSequenceService;
-  scheduledActionService?: ScheduledActionService;
   paymentsService?: PaymentsService;
   paymentServiceService?: PaymentServiceService;
   paymentSettingsService?: PaymentSettingsService;
@@ -99,6 +94,7 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
           content: input.content as string,
           type: 'text',
           direction: 'outbound',
+          sender_type: 'ai',
         },
       ),
   ],
@@ -113,6 +109,7 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
         input.contact_id as string,
         ctx.orgId,
         input as unknown as UpdateContactDto,
+        'ai',
       ),
   ],
   [
@@ -141,14 +138,6 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
         },
         AI_ACTOR,
       );
-
-      // Cancel active sequence when appointment is booked — goal achieved
-      if (ctx.automationSequenceService) {
-        const active = await ctx.automationSequenceService.findActive(ctx.orgId, contactId);
-        if (active) {
-          await ctx.automationSequenceService.cancel(ctx.orgId, active.id, 'appointment_booked');
-        }
-      }
 
       return {
         id: appointment.id,
@@ -268,7 +257,7 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
     async (input, ctx) =>
       ctx.clientService.update(input.contact_id as string, ctx.orgId, {
         custom_fields: { note: input.note, noted_at: new Date().toISOString() },
-      }),
+      }, 'ai'),
   ],
   [
     'get_contact_appointments',
@@ -312,33 +301,6 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
     },
   ],
   [
-    'complete_follow_up',
-    async (input, ctx) => {
-      // n8n sends the step id as appointment_id (kept for existing workflows) or action_id.
-      const stepId = requireUuid({ id: input.action_id ?? input.appointment_id }, 'id');
-      const channel = input.channel as string | undefined;
-      if (!ctx.scheduledActionService) throw new Error('ScheduledActionService not available');
-
-      // Completing twice (n8n retries) does not advance the sequence twice.
-      const step = await ctx.scheduledActionService.complete(ctx.orgId, stepId, { resolvedChannel: channel });
-      return { success: true, status: step.status };
-    },
-  ],
-  [
-    'create_follow_up_sequence',
-    async (input, ctx) => {
-      if (!ctx.automationSequenceService) throw new Error('AutomationSequenceService not available');
-      const dto: CreateSequenceInput = {
-        contact_id: input.contact_id as string,
-        conversation_id: input.conversation_id as string | undefined,
-        sequence_type: (input.sequence_type as CreateSequenceInput['sequence_type']) ?? 'no_response',
-        source: (input.source as string) ?? 'n8n',
-      };
-      const seq = await ctx.automationSequenceService.create(ctx.orgId, dto);
-      return { sequence_id: seq.id, status: seq.status };
-    },
-  ],
-  [
     'create_payment_link',
     async (input, ctx) => {
       if (!ctx.paymentsService) throw new Error('PaymentsService not available');
@@ -369,32 +331,15 @@ const TOOL_REGISTRY = new Map<string, ToolFn>([
   [
     'opt_out_contact',
     async (input, ctx) => {
-      const contactId = input.contact_id as string;
-      if (!contactId) throw new Error('contact_id is required');
-
-      let sequencesCancelled = 0;
-      if (ctx.automationSequenceService) {
-        sequencesCancelled = await ctx.automationSequenceService.cancelAllForContact(
-          ctx.orgId,
-          contactId,
-          'opt_out',
-        );
-      }
-
-      const contact = await ctx.clientService.findById(contactId, ctx.orgId);
-      const currentTags: string[] = (contact.tags as string[]) ?? [];
-      if (!currentTags.includes('opt-out')) {
-        await ctx.clientService.update(contactId, ctx.orgId, {
-          tags: [...currentTags, 'opt-out'],
-        });
-      }
-
+      const contactId = requireUuid(input, 'contact_id');
+      // Same as the CRM button: tag "opt-out" and stop the contact's automations that respect it.
+      const { automations_stopped } = await ctx.clientService.optOut(contactId, ctx.orgId, 'ai');
       return {
         opted_out: true,
-        sequences_cancelled: sequencesCancelled,
-        message: sequencesCancelled > 0
-          ? `Contact opted out. ${sequencesCancelled} sequence(s) cancelled.`
-          : 'Contact opted out. No active sequences found.',
+        automations_stopped,
+        message: automations_stopped > 0
+          ? `Contact opted out. ${automations_stopped} automation(s) stopped.`
+          : 'Contact opted out. No automations were running for them.',
       };
     },
   ],
@@ -442,8 +387,6 @@ export class ToolExecutionService {
     private readonly rmqClient: ClientProxy,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
-    @Optional() private readonly automationSequenceService?: AutomationSequenceService,
-    @Optional() private readonly scheduledActionService?: ScheduledActionService,
     @Optional() private readonly paymentsService?: PaymentsService,
     @Optional() private readonly paymentServiceService?: PaymentServiceService,
     @Optional() private readonly paymentSettingsService?: PaymentSettingsService,
@@ -486,8 +429,6 @@ export class ToolExecutionService {
         schedulingService: this.schedulingService,
         availabilityService: this.availabilityService,
         calendarService: this.calendarService,
-        automationSequenceService: this.automationSequenceService,
-        scheduledActionService: this.scheduledActionService,
         paymentsService: this.paymentsService,
         paymentServiceService: this.paymentServiceService,
         paymentSettingsService: this.paymentSettingsService,
@@ -580,7 +521,7 @@ export class ToolExecutionService {
         description:
           'Books an appointment on a free slot (use get_available_slots first). The contact gets a confirmation link by email/SMS. ' +
           'Calendars that charge a service refuse this tool: use create_payment_link with a booking instead. ' +
-          'Automatically cancels any active follow-up sequence.',
+          'Booking ends the contact\'s follow-up automation.',
         input_schema: {
           type: 'object',
           properties: {
@@ -646,7 +587,7 @@ export class ToolExecutionService {
       },
       {
         name: 'opt_out_contact',
-        description: 'Opts out a contact from automated communications. Cancels ALL active sequences and adds opt-out tag. Use when contact explicitly requests to stop receiving messages.',
+        description: 'Opts out a contact from automated communications: adds the opt-out tag and stops the automations that respect it (booking messages still go out). Use when the contact explicitly asks to stop receiving messages.',
         input_schema: {
           type: 'object',
           properties: {
@@ -688,36 +629,6 @@ export class ToolExecutionService {
             contact_id: { type: 'string', description: 'The contact ID' },
             conversation_id: { type: 'string', description: 'Optional specific conversation ID' },
             limit: { type: 'number', description: 'Maximum number of messages to return' },
-          },
-          required: ['contact_id'],
-        },
-      },
-      {
-        name: 'complete_follow_up',
-        description: 'Marks a follow-up action as completed (used by n8n after execution)',
-        input_schema: {
-          type: 'object',
-          properties: {
-            appointment_id: { type: 'string', description: 'The follow-up step ID (appointment_id in the follow_up.due payload)' },
-            channel: { type: 'string', description: 'The channel used (whatsapp, sms, etc)' },
-          },
-          required: ['appointment_id'],
-        },
-      },
-      {
-        name: 'create_follow_up_sequence',
-        description: 'Creates an automated follow-up sequence for a contact',
-        input_schema: {
-          type: 'object',
-          properties: {
-            contact_id: { type: 'string', description: 'The contact ID' },
-            conversation_id: { type: 'string', description: 'The conversation ID' },
-            sequence_type: {
-              type: 'string',
-              description: 'Type of sequence',
-              enum: ['no_response', 'appointment_reminder', 'post_service', 'reactivation', 'manual'],
-            },
-            source: { type: 'string', description: 'Source of the sequence creation' },
           },
           required: ['contact_id'],
         },

@@ -70,7 +70,7 @@ export default function SchedulePage() {
   const query = useMemo(() => {
     if (!calendar) return null;
     if (view === 'list') {
-      // Follow-up steps stay on the calendar for the life of the sequence.
+      // Follow-up steps and tasks stay on the calendar for a long time.
       const from = startOf(addDays(today, needsOutcomeOnly ? -365 : isFollowUp ? -365 : -30), timeZone);
       const to = startOf(addDays(today, 91), timeZone);
       return {

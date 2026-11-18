@@ -1,7 +1,7 @@
 import {
   Bot,
   FileText,
-  Repeat,
+  Workflow,
   Zap,
   Plug,
   Wallet,
@@ -55,7 +55,7 @@ export const SETTINGS_GROUPS: NavGroup[] = [
   },
   {
     label: 'Automation',
-    items: [{ label: 'Follow-up sequences', href: '/config/sequences', icon: Repeat }],
+    items: [{ label: 'Automations', href: '/config/automations', icon: Workflow }],
   },
   {
     label: 'Messaging',

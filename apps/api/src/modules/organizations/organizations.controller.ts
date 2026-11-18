@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
-import { CreateOrganizationDto, UpdateOrganizationDto, UpdateSequenceSettingsDto } from './dto/organization.dto';
+import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/organization.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { PlatformAdmin } from '../../common/decorators/platform-admin.decorator';
 import { SkipBillingCheck } from '../billing/billing-access.decorators';
@@ -45,14 +45,6 @@ export class OrganizationsController {
     @Body() dto: UpdateProsalesIntegrationDto,
   ) {
     return this.service.updateProsalesIntegration(tenant.organization_id, dto);
-  }
-
-  @Patch('me/sequences')
-  updateSequenceSettings(
-    @CurrentTenant() tenant: TenantContext,
-    @Body() dto: UpdateSequenceSettingsDto,
-  ) {
-    return this.service.updateSequenceSettings(tenant.organization_id, dto.enabled);
   }
 
   @Post()

@@ -1,14 +1,19 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { IActionHandler, ActionResult } from './action-handler.interface';
 import { ScheduledActionEntity } from '../scheduled-action.entity';
 import { ContactEntity } from '../../client-management/contact.entity';
 import { OrganizationEntity } from '../../organizations/organization.entity';
 import { ConversationManagementService } from '../../conversation-management/conversation-management.service';
-import { WebhookDispatcherService } from '../../integrations/webhook-dispatcher.service';
-import { FollowUpContextBuilder } from './context-builder.service';
+import { MailService } from '../../../infrastructure/mail/mail.service';
+import { emailFromTemplate } from '../../../infrastructure/messaging';
 import type { ResolvedChannel } from '../channel-strategy-resolver.service';
 import { followUpText } from './follow-up-text';
 
+/**
+ * An agenda follow-up "send a message": the step's text (or the default
+ * follow-up text) on the channel the strategy resolved. Email is sent as an
+ * email — a conversation on the email channel is never dispatched.
+ */
 @Injectable()
 export class SendMessageHandler implements IActionHandler {
   readonly actionType = 'send_message';
@@ -16,8 +21,7 @@ export class SendMessageHandler implements IActionHandler {
 
   constructor(
     private readonly conversationService: ConversationManagementService,
-    private readonly contextBuilder: FollowUpContextBuilder,
-    @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
+    private readonly mailService: MailService,
   ) {}
 
   async execute(
@@ -29,66 +33,16 @@ export class SendMessageHandler implements IActionHandler {
     if (!resolved) {
       throw new Error(`No channel resolved for contact ${contact.id} — cannot send message`);
     }
-
-    // If message_content exists, send directly
-    if (appointment.message_content) {
-      await this.sendDirect(appointment, contact, resolved, org);
-      return { completed: true, channel: resolved.channel };
-    }
-
-    // If sequence appointment and there are webhook subscribers, dispatch to n8n
-    if (appointment.sequence_id && this.webhookDispatcher) {
-      const hasWebhook = await this.webhookDispatcher.hasSubscribers(
-        'follow_up.due',
-        appointment.organization_id,
-      );
-
-      if (hasWebhook) {
-        // Same context shape every handler sends, so n8n branches on `action`
-        const context = await this.contextBuilder.build(
-          appointment,
-          contact,
-          'send_message',
-          resolved.channel,
-        );
-
-        try {
-          await this.webhookDispatcher.dispatch(
-            'follow_up.due',
-            appointment.organization_id,
-            context as unknown as Record<string, unknown>,
-          );
-          this.logger.log(
-            `Dispatched follow_up.due webhook for appointment ${appointment.id} — awaiting completion via tool`,
-          );
-        } catch (err) {
-          this.logger.error(
-            `Failed to dispatch follow_up.due webhook for appointment ${appointment.id}: ${err}`,
-          );
-          throw err;
-        }
-        // Appointment stays in 'processing', n8n calls complete_follow_up tool
-        return { completed: false, channel: resolved.channel, executedAction: 'send_message' };
-      }
-
-      // No webhook subscribers — fall through to send generic message directly
-      this.logger.log(
-        `No follow_up.due webhook subscribers for org ${appointment.organization_id} — sending generic message`,
-      );
-    }
-
-    // Fallback: send generic message
-    await this.sendDirect(appointment, contact, resolved, org);
-    return { completed: true, channel: resolved.channel };
-  }
-
-  private async sendDirect(
-    appointment: ScheduledActionEntity,
-    contact: ContactEntity,
-    resolved: ResolvedChannel,
-    org: OrganizationEntity,
-  ): Promise<void> {
     const content = followUpText(appointment, contact, org);
+
+    if (resolved.channel === 'email') {
+      await this.mailService.send({
+        to: resolved.recipientId,
+        ...emailFromTemplate('follow_up', { subject: appointment.title ?? 'Follow-up', message: content, organization_name: org.name }),
+      });
+      this.logger.log(`Sent follow-up email for step ${appointment.id}`);
+      return { completed: true, channel: 'email' };
+    }
 
     const { conversation } = await this.conversationService.findOrCreateActiveConversation(
       appointment.organization_id,
@@ -100,9 +54,11 @@ export class SendMessageHandler implements IActionHandler {
     await this.conversationService.sendMessage(conversation.id, appointment.organization_id, {
       content,
       direction: 'outbound',
+      sender_type: 'automation',
       metadata: { follow_up: true, appointment_id: appointment.id },
     });
 
-    this.logger.log(`Sent follow-up message via ${resolved.channel} for appointment ${appointment.id}`);
+    this.logger.log(`Sent follow-up message via ${resolved.channel} for step ${appointment.id}`);
+    return { completed: true, channel: resolved.channel };
   }
 }

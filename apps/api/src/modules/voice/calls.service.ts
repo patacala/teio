@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import type { Redis } from 'ioredis';
-import type { Queue } from 'bullmq';
 import { CallEntity } from './call.entity';
 import { CallEventEntity } from './call-event.entity';
 import { MessageEntity } from '../conversation-management/message.entity';
@@ -13,8 +12,9 @@ import { WebhookDispatcherService } from '../integrations/webhook-dispatcher.ser
 import { ClientManagementService } from '../client-management/client-management.service';
 import { ConversationManagementService } from '../conversation-management/conversation-management.service';
 import { RABBITMQ_SERVICE, RABBITMQ_QUEUES } from '../../infrastructure/rabbitmq/rabbitmq.constants';
+import { OutboxService } from '../../infrastructure/outbox/outbox.service';
+import { publishDomainEvent } from '../../infrastructure/outbox/domain-events';
 import { REDIS_CLIENT } from '../../infrastructure/redis/redis.module';
-import { AGENT_TRIGGER_QUEUE } from '../ai-automation/ai-automation.constants';
 import { RealtimeBroadcastService } from '../../infrastructure/realtime/realtime-broadcast.service';
 import { UsageTrackingService } from '../billing/usage-tracking.service';
 import type { RetellWebhookDto } from './retell-webhook.dto';
@@ -59,10 +59,10 @@ export class CallsService {
     private readonly clientService: ClientManagementService,
     private readonly conversationService: ConversationManagementService,
     @Optional() private readonly webhookDispatcher?: WebhookDispatcherService,
-    @Optional() @Inject(AGENT_TRIGGER_QUEUE) private readonly agentQueue?: Queue,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly usageTracking?: UsageTrackingService,
     @Optional() private readonly realtimeBroadcast?: RealtimeBroadcastService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
 
   async handleWebhookEvent(dto: RetellWebhookDto): Promise<void> {
@@ -111,6 +111,7 @@ export class CallsService {
       contact.id,
       channelEntityId!,
       'voice',
+      dto.direction === 'outbound' ? 'business' : 'contact',
     );
 
     // ── Update contact last_contacted_at — fire-and-forget
@@ -172,7 +173,7 @@ export class CallsService {
     }
 
     if (dto.event === 'call_ended' || dto.event === 'call_analyzed') {
-      this.rmqClient.emit(RABBITMQ_QUEUES.CALL_COMPLETED, {
+      await publishDomainEvent(this.outbox, this.rmqClient, RABBITMQ_QUEUES.CALL_COMPLETED, {
         organization_id: orgId,
         conversation_id: conversation.id,
         contact_id: contact.id,
@@ -191,26 +192,6 @@ export class CallsService {
         call_id: call.id,
         duration: call.duration_seconds,
       });
-    }
-
-    if ((dto.event === 'call_ended' || dto.event === 'call_analyzed') && orgId) {
-      void this.agentQueue?.add(
-        'trigger',
-        {
-          event_type: 'call.completed',
-          organization_id: orgId,
-          conversation_id: conversation.id,
-          contact_id: contact.id,
-          payload: {
-            call_id: call.id,
-            duration_seconds: call.duration_seconds,
-            summary: dto.summary,
-          },
-        },
-        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-      ).catch((err: Error) =>
-        this.logger.warn(`Could not enqueue agent trigger: ${err.message}`),
-      );
     }
 
     if (dto.event === 'transcript_updated') {
@@ -469,7 +450,7 @@ export class CallsService {
 
       if (Object.keys(updateDto).length === 0) return;
 
-      await this.clientService.update(contactId, orgId, updateDto as any);
+      await this.clientService.update(contactId, orgId, updateDto as any, 'ai');
       this.logger.log(`Contact ${contactId} updated from call analysis (${Object.keys(updateDto).join(', ')})`);
     } catch (err) {
       this.logger.warn(`Failed to update contact from call analysis: ${(err as Error).message}`);

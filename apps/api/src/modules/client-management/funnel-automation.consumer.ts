@@ -12,22 +12,9 @@ interface MessageReceivedPayload extends ContactEventPayload {
   message?: { direction?: string };
 }
 
-interface AppointmentPayload extends ContactEventPayload {
-  origin?: string;
-  action?: string | null;
-}
-
-/** Origins that represent a real booking (not a follow-up task on a follow_up calendar). */
-const REAL_BOOKING_ORIGINS = new Set(['human', 'ai', 'webhook']);
-
-/** Follow-up steps share the appointments table but must never move the funnel. */
-function isRealBooking(data: AppointmentPayload): boolean {
-  return REAL_BOOKING_ORIGINS.has(data.origin ?? '') && !data.action;
-}
-
 /**
  * Drives automatic funnel movement off domain events. Silent: it only moves the
- * contact's stage, never sends anything to the customer (that stays n8n's job).
+ * contact's stage, never sends anything to the customer (that is what automations do).
  */
 @Controller()
 export class FunnelAutomationConsumer {
@@ -58,31 +45,26 @@ export class FunnelAutomationConsumer {
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_CREATED)
-  async onAppointmentCreated(@Payload() data: AppointmentPayload): Promise<void> {
-    // Follow-up tasks (origin automation/system on a follow_up calendar) also emit
-    // this event — only a real booking should advance the funnel.
-    if (!isRealBooking(data)) return;
+  async onAppointmentCreated(@Payload() data: ContactEventPayload): Promise<void> {
     await this.run('appointment.created', data);
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_CONFIRMED)
-  async onAppointmentConfirmed(@Payload() data: AppointmentPayload): Promise<void> {
-    if (!isRealBooking(data)) return;
+  async onAppointmentConfirmed(@Payload() data: ContactEventPayload): Promise<void> {
     await this.run('appointment.confirmed', data);
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_COMPLETED)
-  async onAppointmentCompleted(@Payload() data: AppointmentPayload): Promise<void> {
-    if (!isRealBooking(data)) return;
+  async onAppointmentCompleted(@Payload() data: ContactEventPayload): Promise<void> {
     await this.run('appointment.completed', data);
   }
 
   @EventPattern(RABBITMQ_QUEUES.APPOINTMENT_NO_SHOW)
-  async onAppointmentNoShow(@Payload() data: AppointmentPayload): Promise<void> {
-    if (!isRealBooking(data)) return;
+  async onAppointmentNoShow(@Payload() data: ContactEventPayload): Promise<void> {
     await this.run('appointment.no_show', data);
   }
 
+  /** The no-response follow-up automation ended without a reply ("Lead lost"). */
   @EventPattern(RABBITMQ_QUEUES.SEQUENCE_EXHAUSTED)
   async onSequenceExhausted(@Payload() data: ContactEventPayload): Promise<void> {
     await this.run('sequence.exhausted', data);

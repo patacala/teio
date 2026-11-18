@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { organizationsService } from '@/services/organizations.service';
 
@@ -19,16 +19,5 @@ export function useMyOrganization() {
     queryKey: ['my-organization'],
     queryFn: () => organizationsService.getMyOrganization(),
     staleTime: 60_000,
-  });
-}
-
-export function useUpdateSequenceSettings() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (enabled: boolean) =>
-      organizationsService.updateSequenceSettings(enabled),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-organization'] });
-    },
   });
 }

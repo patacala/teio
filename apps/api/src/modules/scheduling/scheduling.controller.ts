@@ -107,7 +107,7 @@ export class SchedulingController {
   }
 
   @Post(':id/cancel')
-  @ApiOperation({ summary: 'Cancel (the contact is notified). Follow-up steps are skipped and the sequence moves on.' })
+  @ApiOperation({ summary: 'Cancel (the contact is notified by the booking automations).' })
   cancel(@Param('id', ID) id: string, @Body() dto: CancelAppointmentDto, @CurrentTenant() tenant: TenantContext) {
     return this.service.cancel(tenant.organization_id, id, actorFromTenant(tenant), dto.reason);
   }

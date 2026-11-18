@@ -78,6 +78,7 @@ export class CallHandler implements IActionHandler {
     await this.conversationService.sendMessage(conversation.id, appointment.organization_id, {
       content,
       direction: 'outbound',
+      sender_type: 'automation',
       metadata: { follow_up: true, appointment_id: appointment.id, degraded_from: 'call' },
     });
 

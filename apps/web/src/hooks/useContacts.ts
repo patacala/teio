@@ -147,6 +147,8 @@ export function useOptOut() {
     mutationFn: (contactId: string) => contactsService.optOut(contactId),
     onSuccess: (_data, contactId) => {
       queryClient.invalidateQueries({ queryKey: ['contacts', contactId] });
+      // Opting out stops the contact's automations.
+      queryClient.invalidateQueries({ queryKey: ['automations', 'contact', contactId] });
     },
   });
 }
