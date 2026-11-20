@@ -1,6 +1,7 @@
 {
   "name": "@crm/api",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "build": "pnpm --filter @crm/shared build && nest build",
@@ -80,6 +81,9 @@
       "ts"
     ],
     "rootDir": "src",
+    "setupFiles": [
+      "<rootDir>/test-env-setup.js"
+    ],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.ts$": "ts-jest"

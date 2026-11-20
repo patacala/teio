@@ -1,6 +1,7 @@
 {
   "name": "@crm/database",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "scripts": {
     "db:migrate": "for f in schemas/*.sql; do echo \"-> $f\"; psql \"$DATABASE_URL\" -q -f \"$f\" || exit 1; done",
